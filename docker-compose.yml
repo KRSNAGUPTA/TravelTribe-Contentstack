@@ -1,0 +1,24 @@
+services:
+  server:
+    build: ./server
+    container_name: travel-tribe-backend
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./server/.env
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    container_name: travel-tribe-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

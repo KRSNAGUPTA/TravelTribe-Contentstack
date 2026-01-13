@@ -10,3 +10,6 @@ GOOGLE_CLIENT_ID=""
 
 RAZORPAY_KEY_ID = ""
 RAZORPAY_KEY_SECRET = ""
+
+# optional (for discord integration)
+DISCORD_BOT_WEBHOOK=""

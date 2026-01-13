@@ -16,12 +16,11 @@ app.use(
     origin: process.env.CORS_ORIGIN,
   })
 );
-const PORT = process.env.PORT;
 
 connectDB();
 app.get("/api", (req, res) => {
   res.status(200).json({
-    message: "Welcom to TravelTribe",
+    message: "Welcome to TravelTribe",
   });
 });
 app.use("/api/user", userRoutes);
@@ -38,10 +37,13 @@ app.post("/api/support", async (req, res) => {
     topic,
     message,
   });
+
   res.status(200).json({
     message: "Support request received",
   });
+  console.log("Support message send.")
 });
+
 app.post("/api/subscribe", async (req, res) => {
   const { email } = req.body;
   await sendNotification("subscribe", {
@@ -50,8 +52,13 @@ app.post("/api/subscribe", async (req, res) => {
   res.status(200).json({
     message: "Subscription request received",
   });
+  console.log("User Subscribed");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+const PORT = process.env.PORT || 5001;
+const HOST = "0.0.0.0";
+
+app.listen(PORT,HOST, () => {
+  console.log(`Server running on ${HOST}:${PORT}`);
 });
