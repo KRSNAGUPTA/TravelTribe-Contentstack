@@ -1,7 +1,13 @@
-VITE_API_URL="http://localhost:5000"
+VITE_API_URL=http://localhost:5001
 
-VITE_GOOGLE_CLIENT_SECRET=""
-VITE_GOOGLE_CLIENT_ID=""
+VITE_GOOGLE_CLIENT_SECRET=
+VITE_GOOGLE_CLIENT_ID=
 
-VITE_RAZORPAY_KEY_ID =""
-VITE_RAZORPAY_KEY_SECRET =""
+VITE_RAZORPAY_KEY_ID =
+VITE_RAZORPAY_KEY_SECRET =
+
+# Contentstack (CS) (region: North America) 
+VITE_CS_BASE_URL=https://cdn.contentstack.io/v3
+VITE_CS_API_KEY=
+VITE_CS_ACCESS_TOKEN=    # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
+VITE_CS_PREVIEW_TOKEN=
