@@ -1,11 +1,29 @@
 import { toast } from "@/hooks/use-toast";
 import { Button } from "./ui/button";
 import { Toaster } from "./ui/toaster";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import api from "@/api";
+import cmsClient from "@/contentstackClient";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [footerData, setFooterData] = useState({});
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = (
+          await cmsClient.get(
+            "/content_types/footer/entries/bltf643a3bf4a1a7316"
+          )
+        ).data.entry;
+        setFooterData(data);
+      } catch (error) {
+        console.error("Failed to fetch data from cms", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleSubscribe = async () => {
     if (!email) {
@@ -38,107 +56,84 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-gray-900 text-white py-10">
-      <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-6">
+    <footer className="bg-gray-900 text-white">
+      <div className="container mx-auto px-4 py-12
+    grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+
+        {/* Brand */}
         <div>
-          <Toaster />
-          <h2 className="text-2xl font-bold">TravelTribe</h2>
-          <p className="mt-2 text-gray-400">
-            Your trusted hostel booking platform. Find budget-friendly stays
-            with ease.
+          <h2 className="text-2xl font-bold">{footerData?.title}</h2>
+          <p className="mt-3 text-gray-400 text-sm leading-relaxed">
+            {footerData?.subtext}
           </p>
         </div>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Quick Links</h3>
-          <ul className="space-y-2 text-gray-400">
-            <li>
-              <a href="/" className="hover:text-white">
-                Home
-              </a>
-            </li>
-            <li>
-              <a href="/about" className="hover:text-white">
-                About Us
-              </a>
-            </li>
-            <li>
-              <a href="/hostel" className="hover:text-white">
-                Find Hostels
-              </a>
-            </li>
-            <li>
-              <a href="/contact" className="hover:text-white">
-                Contact
-              </a>
-            </li>
-          </ul>
-        </div>
+        {/* CMS Sections */}
+        {footerData?.section_group?.map((section) => (
+          <div key={section._metadata.uid}>
+            <h3 className="text-lg font-semibold mb-4">
+              {section.group_title}
+            </h3>
+            <ul className="space-y-3 text-sm text-gray-400">
+              {section.link_group?.map((item) => (
+                <li key={item._metadata.uid}>
+                  <a
+                    href={item.link.href}
+                    className="hover:text-white transition"
+                  >
+                    {item.link.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
 
+        {/* Subscribe */}
         <div>
-          <h3 className="text-lg font-semibold mb-3">Customer Support</h3>
-          <ul className="space-y-2 text-gray-400">
-            <li>
-              <a href="/contact" className="hover:text-white">
-                Help Center
-              </a>
-            </li>
-            <li>
-              <a
-                href="mailto:support@TravelTribe.com"
-                className="hover:text-white"
-              >
-                Email Us
-              </a>
-            </li>
-          </ul>
-        </div>
+          <h3 className="text-lg font-semibold mb-4">
+            {footerData?.email_title}
+          </h3>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-3">Stay Connected</h3>
-          <div className="flex items-center bg-gray-800 rounded-full">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              className="bg-transparent text-white outline-none flex-grow px-2 py-1"
+              placeholder={footerData?.email_placeholder}
+              className="w-full bg-gray-800 text-white px-4 py-2 rounded-md outline-none"
             />
             <Button
               onClick={handleSubscribe}
-              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded-full"
+              className="w-full sm:w-auto bg-purple-500 hover:bg-purple-600 rounded-md"
             >
-              Subscribe
+              {footerData?.subscribe_button_text}
             </Button>
-          </div>
-          <div className="flex gap-4 mt-4">
-            <a href="#" className="hover:text-blue-400">
-              <i className="fab fa-facebook-f"></i>
-            </a>
-            <a href="#" className="hover:text-blue-400">
-              <i className="fab fa-twitter"></i>
-            </a>
-            <a href="#" className="hover:text-blue-400">
-              <i className="fab fa-instagram"></i>
-            </a>
-            <a href="#" className="hover:text-blue-400">
-              <i className="fab fa-linkedin-in"></i>
-            </a>
           </div>
         </div>
       </div>
 
-      <div className="mt-8 mb-10 text-center text-gray-500 text-sm border-t border-gray-700 pt-4">
-        <p>© {new Date().getFullYear()} TravelTribe. All rights reserved.</p>
-        <a href="#" className="hover:text-white mx-2">
-          Terms of Service
-        </a>{" "}
-        |
-        <a href="#" className="hover:text-white mx-2">
-          Privacy Policy
-        </a>
+      {/* Bottom Bar */}
+      <div className="border-t border-gray-800 mt-6 mb-20 py-4 text-center text-xs text-gray-500 px-4">
+        <p>{footerData?.copyright_text}</p>
+        <div className="mt-2 flex justify-center gap-4 flex-wrap">
+          <a
+            href={footerData?.terms_of_service_link?.href}
+            className="hover:text-white"
+          >
+            {footerData?.terms_of_service_link?.title}
+          </a>
+          <a
+            href={footerData?.privacy_policy_link?.href}
+            className="hover:text-white"
+          >
+            {footerData?.privacy_policy_link?.title}
+          </a>
+        </div>
       </div>
     </footer>
+
+
   );
 };
 

@@ -1,11 +1,12 @@
 import Hostel from "../model/HostelModel.js";
 
 export const getAllHostels = async (req, res) => {
+  // console.log("req here")
   try {
     const hostels = await Hostel.find();
-    res.status(200).json(hostels);
+    return res.status(200).json(hostels);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 

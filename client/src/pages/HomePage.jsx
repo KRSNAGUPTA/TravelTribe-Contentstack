@@ -35,7 +35,7 @@ export default function HomePage() {
           )
         ).data.entry;
         setLandingData(data);
-        console.log(data);
+        // console.log(data);
       } catch (error) {
         console.error("Failed to fetch data from cms", error);
       }

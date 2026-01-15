@@ -16,31 +16,41 @@ import {
   PaginationLink,
 } from "@/components/ui/pagination";
 import {
-  Star,
   MapPin,
   Wifi,
   Car,
-  Dumbbell,
   Shield,
   Utensils,
-  Tv,
   BookOpen,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
-import api from "../api";
+import cmsClient from "@/contentstackClient";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import api from "@/api";
 
 // Updated amenity icons based on the facilities in the data
 const facilityIcons = {
   wifi: <Wifi className="mr-1 h-4 w-4" />,
   parking: <Car className="mr-1 h-4 w-4" />,
-  gym: <Dumbbell className="mr-1 h-4 w-4" />,
-  security: <Shield className="mr-1 h-4 w-4" />,
-  canteen: <Utensils className="mr-1 h-4 w-4" />,
-  tv: <Tv className="mr-1 h-4 w-4" />,
-  studyRoom: <BookOpen className="mr-1 h-4 w-4" />,
+  cctv: <Shield className="mr-1 h-4 w-4" />,
+  security_guard: <Shield className="mr-1 h-4 w-4" />,
+  drinking_water: <Utensils className="mr-1 h-4 w-4" />,
+  lockers: <BookOpen className="mr-1 h-4 w-4" />,
+  wheelchair_access: <Shield className="mr-1 h-4 w-4" />,
+  fire_safety: <Shield className="mr-1 h-4 w-4" />,
+  first_aid: <Shield className="mr-1 h-4 w-4" />,
 };
+const FACILITY_PRIORITY = [
+  "wifi",
+  "cctv",
+  "security_guard",
+  "parking",
+  "drinking_water",
+  "fire_safety",
+];
+
 
 export default function FindHostel() {
   const [hostels, setHostels] = useState([]);
@@ -51,62 +61,87 @@ export default function FindHostel() {
   const [price, setPrice] = useState("none");
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [roomAvailability, setRoomAvailability] = useState({});
+  const [listingPageData, setListingPageData] = useState()
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const data = (
+          await cmsClient.get(
+            "/content_types/hostel_listing/entries/blt637d48315eb69a7b"
+          )
+        ).data.entry;
+        setListingPageData(data);
+      } catch (error) {
+        console.error("Failed to fetch data from cms", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (listingPageData?.page_title) {
+      document.title = listingPageData.page_title;
+    }
+  }, [listingPageData]);
+
+
+
+
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const res = await api.get("/api/hostel/");
-        // Filter to only include hostels with available rooms
-        const hostelsWithAvailability = res.data.filter((hostel) =>
-          hasAvailableRooms(hostel.roomTypes)
-        );
-        setHostels(hostelsWithAvailability);
-        setFilteredHostels(hostelsWithAvailability);
+        const hostelsData = (await cmsClient.get("/content_types/hostel/entries")).data.entries // array of hostels
+        // console.log(hostelsData)
+        setHostels(hostelsData);
+        setFilteredHostels(hostelsData);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
         setIsLoading(false);
       }
     };
+    const fetchRoomAvailability = async () => {
+      try {
+        const res = await api.get("/api/hostel");
+
+        // Convert array → lookup map
+        // hostelId => room_types[]
+        const availabilityMap = {};
+        res.data.forEach((item) => {
+          availabilityMap[item.hostelId] = item.room_types;
+        });
+
+        setRoomAvailability(availabilityMap);
+      } catch (err) {
+        console.error("Failed to fetch room availability", err);
+      }
+    };
+    fetchRoomAvailability();
     fetchData();
   }, []);
 
-  // Check if hostel has any available rooms
-  const hasAvailableRooms = (roomTypes) => {
-    if (!roomTypes || roomTypes.length === 0) return false;
-    return roomTypes.some((room) => room.availability > 0);
+  const hasAvailableRooms = (rooms = []) =>
+    rooms.some((r) => r.available_beds > 0);
+
+  const getLowestAvailablePrice = (cmsRooms = [], backendRooms = []) => {
+    const availableKeys = backendRooms
+      .filter(r => r.available_beds > 0)
+      .map(r => r.room_key);
+
+    const availableCmsRooms = cmsRooms.filter(r =>
+      availableKeys.includes(r.room_key)
+    );
+
+    if (!availableCmsRooms.length) return null;
+
+    return Math.min(...availableCmsRooms.map(r => r.base_price));
   };
-
-  useEffect(() => {
-    if (hostels.length) {
-      setIsLoading(true);
-      const timer = setTimeout(() => {
-        let filtered = hostels.filter((hostel) => {
-          // Get lowest price from room types
-          const lowestPrice = Math.min(
-            ...hostel.roomTypes.map((room) => room.pricePerMonth)
-          );
-
-          return (
-            (search === "" ||
-              hostel.name.toLowerCase().includes(search.toLowerCase()) ||
-              hostel.location.toLowerCase().includes(search.toLowerCase())) &&
-            (location === "all" || hostel.location.includes(location)) &&
-            (price === "none" || lowestPrice <= parseInt(price)) &&
-            (college === "all" ||
-              hostel.colleges.some((clg) =>
-                clg.toLowerCase().includes(college.toLowerCase())
-              ))
-          );
-        });
-        setFilteredHostels(filtered);
-        setIsLoading(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [search, location, price, college, hostels]);
 
   const itemsPerPage = 6;
   const totalPages = Math.ceil(filteredHostels.length / itemsPerPage);
@@ -115,52 +150,54 @@ export default function FindHostel() {
     page * itemsPerPage
   );
 
-  const renderStars = (rating) => {
-    return [...Array(5)].map((_, index) => (
-      <Star
-        key={index}
-        className={`h-4 w-4 ${
-          index < rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
-        }`}
-      />
-    ));
-  };
+  // Get priority key facilities to display
 
-  // Get key facilities to display
-  const getKeyFacilities = (facilities) => {
-    const keyFacilities = [];
 
-    if (facilities.wifi) keyFacilities.push("wifi");
-    if (facilities.parking) keyFacilities.push("parking");
-    if (facilities.gym) keyFacilities.push("gym");
-    if (facilities.canteen) keyFacilities.push("canteen");
-    if (facilities.studyRoom) keyFacilities.push("studyRoom");
-    if (facilities.tv) keyFacilities.push("tv");
-    if (
-      facilities.security &&
-      (facilities.security.cctv ||
-        facilities.security.securityGuards ||
-        facilities.security.biometricEntry)
-    ) {
-      keyFacilities.push("security");
-    }
+  const getKeyFacilities = (facilities = []) =>
+    FACILITY_PRIORITY.filter(f => facilities.includes(f)).slice(0, 4);
 
-    return keyFacilities.slice(0, 4); // Show max 4 facilities
-  };
 
-  // Get lowest price from room types with availability
-  const getLowestPrice = (roomTypes) => {
-    if (!roomTypes || roomTypes.length === 0) return 0;
-    const availableRooms = roomTypes.filter((room) => room.availability > 0);
-    if (availableRooms.length === 0) return 0;
-    return Math.min(...availableRooms.map((room) => room.pricePerMonth));
-  };
 
-  // Get total available rooms
-  const getTotalAvailableRooms = (roomTypes) => {
-    if (!roomTypes || roomTypes.length === 0) return 0;
-    return roomTypes.reduce((total, room) => total + room.availability, 0);
-  };
+  useEffect(() => {
+    let filtered = hostels.filter((hostel) => {
+      const backendRooms = roomAvailability[hostel.uid] || [];
+
+      const matchesSearch =
+        search === "" ||
+        hostel.title.toLowerCase().includes(search.toLowerCase()) ||
+        hostel.address.toLowerCase().includes(search.toLowerCase());
+
+      const matchesLocation =
+        location === "all" ||
+        hostel.address.toLowerCase().includes(location.toLowerCase());
+
+      const matchesCollege =
+        college === "all" ||
+        hostel.nearby_college?.some((c) =>
+          c.toLowerCase().includes(college.toLowerCase())
+        );
+
+      const lowestPrice = getLowestAvailablePrice(
+        hostel.room_types,
+        backendRooms
+      );
+
+      const matchesPrice =
+        price === "none" ||
+        (lowestPrice !== null && lowestPrice <= Number(price));
+
+      return (
+        matchesSearch &&
+        matchesLocation &&
+        matchesCollege &&
+        matchesPrice
+      );
+    });
+
+    setFilteredHostels(filtered);
+    setPage(1);
+  }, [search, location, college, price, hostels, roomAvailability]);
+
 
   const goToPreviousPage = () => setPage(Math.max(1, page - 1));
   const goToNextPage = () => setPage(Math.min(totalPages, page + 1));
@@ -173,17 +210,16 @@ export default function FindHostel() {
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Find Your Perfect Stay
+            {listingPageData?.title}
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Browse through our curated selection of hostels and PGs designed for
-            students
+            {listingPageData?.subtitle}
           </p>
         </div>
         <div className="flex flex-wrap gap-4 justify-center mb-8">
           <Input
             type="text"
-            placeholder="Search by name or location..."
+            placeholder={listingPageData?.search_placeholder}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-72 rounded-full border-purple-200 focus:ring-purple-500"
@@ -276,9 +312,9 @@ export default function FindHostel() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No Limit</SelectItem>
-              <SelectItem value="5000">Under ₹5,000</SelectItem>
-              <SelectItem value="10000">Under ₹10,000</SelectItem>
-              <SelectItem value="15000">Under ₹15,000</SelectItem>
+              <SelectItem value="500">Under ₹500</SelectItem>
+              <SelectItem value="1000">Under ₹1000</SelectItem>
+              <SelectItem value="1500">Under ₹1500</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -292,118 +328,128 @@ export default function FindHostel() {
             }}
             className="text-sm"
           >
-            Reset Filters
+            {listingPageData?.reset_button_text}
           </Button>
         </div>
         <div className="text-center mb-6 text-gray-600">
-          Found {filteredHostels.length} properties with available rooms
+          Found {filteredHostels.length} stays
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {isLoading ? (
-            [...Array(6)].map((_, index) => (
-              <Card key={index} className="overflow-hidden animate-pulse">
-                <div className="h-48 bg-gray-200"></div>
-                <CardContent className="p-4">
-                  <div className="h-6 bg-gray-200 mb-2 rounded"></div>
-                  <div className="h-4 bg-gray-200 mb-4 rounded w-3/4"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                </CardContent>
-              </Card>
-            ))
-          ) : paginatedHostels.length > 0 ? (
-            paginatedHostels.map((hostel) => (
-              <Card
-                key={hostel._id}
-                className="overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <div className="relative h-48 overflow-hidden">
-                  <img
-                    src={
-                      hostel.images && hostel.images.length > 0
-                        ? hostel.images[0]
-                        : "/placeholder-hostel.jpg"
-                    }
-                    alt={hostel.name}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute top-2 right-2 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                    ₹{getLowestPrice(hostel.roomTypes).toLocaleString()}/month
-                  </div>
-                  <div className="absolute bottom-2 left-2 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-medium">
-                    {getTotalAvailableRooms(hostel.roomTypes)}{" "}
-                    {getTotalAvailableRooms(hostel.roomTypes) === 1
-                      ? "room"
-                      : "rooms"}{" "}
-                    available
-                  </div>
-                  {hostel.hostelType && (
-                    <div className="absolute top-2 left-2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium capitalize">
-                      {hostel.hostelType}
+        <TooltipProvider delayDuration={100}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            {isLoading ? (
+              [...Array(6)].map((_, index) => (
+                <Card key={index} className="overflow-hidden animate-pulse">
+                  <div className="h-48 bg-gray-200"></div>
+                  <CardContent className="p-4">
+                    <div className="h-6 bg-gray-200 mb-2 rounded"></div>
+                    <div className="h-4 bg-gray-200 mb-4 rounded w-3/4"></div>
+                    <div className="h-10 bg-gray-200 rounded"></div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : paginatedHostels.length > 0 ? (
+              paginatedHostels.map((hostel) => {
+                const backendRooms = roomAvailability[hostel.uid] || [];
+                const lowestPrice = getLowestAvailablePrice(
+                  hostel.room_types,
+                  backendRooms
+                );
+                const isAvailable = hasAvailableRooms(backendRooms);
+
+                return (
+                  <Card
+                    key={hostel.uid}
+                    className="overflow-hidden hover:shadow-lg transition-shadow"
+                  >
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={
+                          hostel?.images?.length > 0
+                            ? hostel.images[0].url
+                            : "/placeholder-hostel.jpg"
+                        }
+                        alt={hostel?.title}
+                        className="w-full h-full object-cover"
+                      />
+
+                      {isAvailable && lowestPrice !== null ? (
+                        <div className="absolute top-2 right-2 bg-purple-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          ₹ {lowestPrice} / day
+                        </div>
+                      ) : (
+                        <div className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          Full
+                        </div>
+                      )}
+
+                      {hostel.type && (
+                        <div className="absolute top-2 left-2 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium capitalize">
+                          {hostel.type}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                    {hostel.name}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-2 flex items-center">
-                    <MapPin className="h-4 w-4 mr-1 text-gray-400" />
-                    {hostel.location}
+
+                    <CardContent className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                        {hostel.title}
+                      </h3>
+
+                      <p className="text-gray-600 text-sm mb-2 flex items-center">
+                        <MapPin className="h-4 w-4 mr-1 text-gray-400 overflow-hidden" />
+                        {hostel.address.length > 40
+                          ? hostel.address.slice(0, 40) + "..."
+                          : hostel.address}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {getKeyFacilities(hostel.facilities).map((facility) => (
+                          <Tooltip key={facility}>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help hover:scale-125 transition-transform inline-flex items-center justify-center rounded bg-purple-50 p-1 text-purple-700 ">
+                                {facilityIcons[facility] ?? <Shield className="h-4 w-4" />}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white/90 text-purple-600 font-bold rounded-full border border-purple-500">
+                              {facility.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={() => navigate(`/hostel/${hostel.uid}`)}
+                        className="w-full bg-purple-600 hover:bg-purple-700"
+                      >
+                        {listingPageData?.view_button_text}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })
+
+            )
+              : (
+                <div className="col-span-full text-center py-10">
+                  <p className="text-gray-600 mb-4">
+                    No properties found matching your criteria.
                   </p>
-                  <div className="flex items-center mb-3">
-                    <div className="flex mr-1">
-                      {renderStars(hostel.rating || 0)}
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      ({hostel.reviews ? hostel.reviews.length : 0} reviews)
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {hostel.facilities &&
-                      getKeyFacilities(hostel.facilities).map((facility) => (
-                        <span
-                          key={facility}
-                          className="inline-flex items-center text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded"
-                        >
-                          {facilityIcons[facility]}
-                          {facility === "studyRoom"
-                            ? "Study Room"
-                            : facility.charAt(0).toUpperCase() +
-                              facility.slice(1)}
-                        </span>
-                      ))}
-                  </div>
                   <Button
                     onClick={() => {
-                      navigate(`/hostel/${hostel.hostelId}`);
+                      setSearch("");
+                      setLocation("all");
+                      setPrice("none");
+                      setCollege("all");
                     }}
-                    className="w-full bg-purple-600 hover:bg-purple-700 transition-colors"
+                    variant="outline"
+                    className="mt-4"
                   >
-                    View Details
+                    Clear Filters
                   </Button>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-10">
-              <p className="text-gray-600 mb-4">
-                No properties found matching your criteria.
-              </p>
-              <Button
-                onClick={() => {
-                  setSearch("");
-                  setLocation("all");
-                  setPrice("none");
-                  setCollege("all");
-                }}
-                variant="outline"
-                className="mt-4"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          )}
-        </div>
+                </div>
+              )}
+          </div>
+
+        </TooltipProvider>
         {filteredHostels.length > itemsPerPage && (
           <div className="flex justify-center">
             <Pagination>
