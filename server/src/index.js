@@ -5,6 +5,8 @@ import userRoutes from "./routes/userRoutes.js";
 import hostelRoutes from "./routes/hostelRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import webHookRoutes from "./routes/webHookRoutes.js";
+
 import cors from "cors";
 import { sendNotification } from "./discordBot/NotificationBot.js";
 dotenv.config();
@@ -27,6 +29,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/hostel", hostelRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/hook", webHookRoutes)
 
 //for discord bot notification
 app.post("/api/support", async (req, res) => {

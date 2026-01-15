@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    hostelId: {
+    hostelId: { //cms entry id
       type: String,
       required: true,
     },
@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    amount: {
+    amount: { //per day charges
       type: Number,
       required: true,
     },
