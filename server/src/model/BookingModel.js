@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    amount: { //per day charges
+    amount: { //per day charges * days
       type: Number,
       required: true,
     },

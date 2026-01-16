@@ -25,9 +25,9 @@ const createOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
-    res.json(order);
+    return res.json(order);
   } catch (error) {
-    res
+    return res
       .status(500)
       .json({ message: "Error while creating order", error: error });
   }
@@ -44,12 +44,12 @@ const verifyPayment = async (req, res) => {
       .digest("hex");
 
     if (razorpay_signature === expectedSign) {
-      res.json({ success: true, message: "Payment verified successfully" });
+      return res.json({ success: true, message: "Payment verified successfully" });
     } else {
-      res.status(400).json({ success: false, message: "Invalid signature" });
+      return res.status(400).json({ success: false, message: "Invalid signature" });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 export { createOrder, verifyPayment };

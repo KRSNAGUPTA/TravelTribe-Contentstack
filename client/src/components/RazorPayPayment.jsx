@@ -65,9 +65,8 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
             );
 
             if (verifyResponse.data.success) {
-              
               toast({
-                title: "✅ Payment Successful!",
+                title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
               });
               await handleBooking(orderResponse.data.receipt);
@@ -76,18 +75,10 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
             console.log(error)
             toast({
               variant: "destructive",
-              title: "❌ Payment Verification Failed",
+              title: "Payment Verification Failed",
               description: "Please contact support if amount was deducted"
             });
           }
-        },
-        prefill: {
-          name: formData.name,
-          email: formData.email,
-          contact: formData.phone,
-        },
-        theme: {
-          color: "#3399cc",
         },
       };
 

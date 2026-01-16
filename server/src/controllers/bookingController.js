@@ -20,6 +20,7 @@ export const createBooking = async (req, res) => {
       !checkIn || !checkOut || !hostelId || !roomSelection || !amount ||
       !name || !email || !phone || !gender || !receiptId
     ) {
+      console.error("Incomplete details while 'Creating Booking'.")
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -27,13 +28,13 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const hostel = await Hostel.findOne({ hostelId });
+    const hostel = await Hostel.findOne({ hostelId:hostelId });
     if (!hostel) return res.status(404).json({ message: "Hostel not found" });
 
-    const roomType = hostel.roomTypes.find(room => room.type === roomSelection);
+    const roomType = hostel.room_types.find(room => room.room_key === roomSelection);
     if (!roomType) return res.status(404).json({ message: "Room type not found" });
 
-    if (roomType.availability <= 0) {
+    if (roomType?.available_beds <= 0) {
       return res.status(400).json({ message: "No available rooms for this type" });
     }
 
@@ -49,15 +50,14 @@ export const createBooking = async (req, res) => {
       phone,
       gender,
       receiptId,
-      status: "pending",
+      status: "confirmed",
     });
 
     await newBooking.save();
 
     roomType.availability -= 1;
     await hostel.save();
-    await sendNotification("booking",newBooking);
-
+    // await sendNotification("booking",newBooking);
     res.status(201).json(newBooking);
   } catch (error) {
     res.status(500).json({ message: error.message });

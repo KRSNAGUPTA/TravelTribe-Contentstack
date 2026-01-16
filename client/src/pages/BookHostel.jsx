@@ -18,14 +18,13 @@ import {
   Phone,
   Mail,
   AlertCircle,
-  Info,
   CreditCard,
   ChevronRight,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import RazorPayPayment from "@/components/RazorPayPayment";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,7 +37,6 @@ export default function HostelBooking() {
   const [searchParams] = useSearchParams();
   const selectedRoomFromQuery = searchParams.get("room");
 
-  const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [cmsRooms, setCmsRooms] = useState([]);
@@ -46,7 +44,6 @@ export default function HostelBooking() {
   const [hostel, setHostel] = useState(null);
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     checkIn: "",
@@ -66,7 +63,7 @@ export default function HostelBooking() {
     days: 0,
     totalAmount: 0,
   });
-   useEffect(() => {
+  useEffect(() => {
     if (!user) return;
 
     setFormData((prev) => ({
@@ -98,7 +95,7 @@ export default function HostelBooking() {
     fetchData();
   }, [id, toast]);
 
-   const mergedRooms = useMemo(() => {
+  const mergedRooms = useMemo(() => {
     const availabilityMap = availabilityRooms.reduce((acc, r) => {
       acc[r.room_key] = r;
       return acc;
@@ -124,9 +121,13 @@ export default function HostelBooking() {
     );
 
     if (!room || !room.is_available) return;
-    bookingSummary.dailyRent = room.base_price;
-    bookingSummary.securityDeposit = room.base_price;
-    bookingSummary.roomType = room.room_name
+    setBookingSummary((prev) => ({
+      ...prev,
+      dailyRent: room.base_price,
+      securityDeposit: room.base_price,
+      roomType: room.room_name,
+    }));
+
 
     setFormData((prev) => ({
       ...prev,
@@ -158,20 +159,22 @@ export default function HostelBooking() {
 
     if (!room) return;
 
-    const totalAmount = room.base_price * (diffDays + 1); // rent * days + 1 day rent as security deposit
+    const rentAmount = room.base_price * diffDays;
+    const securityDeposit = room.base_price;
 
     setBookingSummary({
       roomType: room.room_name,
-      dailyRent:room.base_price,
-      securityDeposit: room.base_price,
+      dailyRent: room.base_price,
+      securityDeposit,
       days: diffDays,
-      totalAmount,
+      totalAmount: rentAmount,
     });
 
     setFormData((prev) => ({
       ...prev,
-      amount: totalAmount,
+      amount: rentAmount + securityDeposit,
     }));
+
   }, [
     formData.checkIn,
     formData.checkOut,
@@ -195,8 +198,35 @@ export default function HostelBooking() {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.phone) return false;
-    if (!formData.gender || !formData.roomSelection) return false;
+    if (!formData.name || !formData.email || !formData.phone || !formData.gender) {
+      toast({
+        title: "Incomplete details",
+        description: "Please fill in all required fields to continue.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!phoneRegex.test(formData.phone)) {
+      toast({
+        title: "Invalid phone number",
+        description: "Enter a valid 10-digit mobile number.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     if (!validateDates()) return false;
     return true;
   };
@@ -284,7 +314,6 @@ export default function HostelBooking() {
                               required
                               min={new Date().toISOString().split("T")[0]}
                               className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                              disabled={isSubmitting}
                             />
                             <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
                           </div>
@@ -315,7 +344,6 @@ export default function HostelBooking() {
                                 : new Date().toISOString().split("T")[0]
                             }
                             className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                            disabled={isSubmitting}
                           />
 
                         </div>
@@ -362,7 +390,6 @@ export default function HostelBooking() {
                             onChange={handleInputChange}
                             required
                             className="border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                            disabled={isSubmitting}
                             placeholder="Krishna Gupta"
                           />
                         </div>
@@ -381,7 +408,6 @@ export default function HostelBooking() {
                                 target: { name: "gender", value },
                               })
                             }
-                            disabled={isSubmitting}
                           >
                             <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all">
                               <SelectValue placeholder="Select gender" />
@@ -413,7 +439,6 @@ export default function HostelBooking() {
                               required
                               className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
                               placeholder="krsna@traveltribe.com"
-                              disabled={isSubmitting}
                             />
                             <Mail className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
                           </div>
@@ -437,7 +462,6 @@ export default function HostelBooking() {
                               maxLength={10}
                               className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
                               placeholder="10-digit number"
-                              disabled={isSubmitting}
                             />
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
                           </div>
@@ -509,11 +533,11 @@ export default function HostelBooking() {
                         </span>
                       </div>
 
-                      {bookingSummary.numberOfMonths > 0 && (
+                      {bookingSummary.days > 0 && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Total Rent</span>
                           <span className="font-medium text-black">
-                            ₹ {formData.totalAmount}
+                            ₹ {bookingSummary.totalAmount}
                           </span>
                         </div>
                       )}
@@ -521,7 +545,7 @@ export default function HostelBooking() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Security Deposit</span>
                         <span className="font-medium text-black">
-                          ₹{bookingSummary.securityDeposit.toLocaleString()}
+                          ₹{bookingSummary.securityDeposit}
                         </span>
                       </div>
 
@@ -529,7 +553,7 @@ export default function HostelBooking() {
                         <div className="flex justify-between font-bold">
                           <span className="text-purple-900">Total Amount</span>
                           <span className="text-purple-900 text-lg">
-                            ₹{bookingSummary.totalAmount.toLocaleString()}
+                            ₹{bookingSummary?.totalAmount + bookingSummary?.securityDeposit}
                           </span>
                         </div>
                       </div>
