@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -26,24 +25,29 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import RazorPayPayment from "@/components/RazorPayPayment";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
+import cmsClient from "@/contentstackClient";
 
 export default function HostelBooking() {
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const selectedRoomFromQuery = searchParams.get("room");
+
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [cmsRooms, setCmsRooms] = useState([]);
+  const [availabilityRooms, setAvailabilityRooms] = useState([]);
+  const [hostel, setHostel] = useState(null);
+
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [receiptId, setReceiptId] = useState("");
-  const [roomTypes, setRoomTypes] = useState([]);
-  const [bookingSummary, setBookingSummary] = useState({
-    roomType: "",
-    monthlyRent: 0,
-    securityDeposit: 0,
-    numberOfMonths: 0,
-    totalAmount: 0,
-  });
+
   const [formData, setFormData] = useState({
     checkIn: "",
     checkOut: "",
@@ -52,97 +56,159 @@ export default function HostelBooking() {
     email: "",
     phone: "",
     gender: "",
-    amount: "",
+    amount: 0,
   });
-  const [currentStep, setCurrentStep] = useState(1);
 
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const [bookingSummary, setBookingSummary] = useState({
+    roomType: "",
+    dailyRent: 0,
+    securityDeposit: 0,
+    days: 0,
+    totalAmount: 0,
+  });
+   useEffect(() => {
+    if (!user) return;
 
-  useEffect(() => {
-    // Prefill user data from auth context
-    if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        name: user.name || prev.name,
-        email: user.email || prev.email,
-      }));
-    }
+    setFormData((prev) => ({
+      ...prev,
+      name: user.name || prev.name,
+      email: user.email || prev.email,
+    }));
   }, [user]);
 
   useEffect(() => {
-    const fetchHostelData = async () => {
+    const fetchData = async () => {
       try {
-        const hostelData = await api.get(`/api/hostel/${id}`);
-        setRoomTypes(hostelData.data.roomTypes);
-      } catch (error) {
-        console.error("Error fetching hostel data:", error);
+        const apiRes = await api.get(`/api/hostel/${id}`);
+        const cmsRes = await cmsClient.get(
+          `/content_types/hostel/entries/${id}`
+        );
+
+        setAvailabilityRooms(apiRes.data.room_types || []);
+        setCmsRooms(cmsRes.data.entry.room_types || []);
+        setHostel(cmsRes.data.entry);
+      } catch (err) {
         toast({
-          title: "Error fetching hostel data",
-          description: "Please try again later",
+          title: "Failed to load hostel data",
           variant: "destructive",
         });
       }
     };
-    fetchHostelData();
+
+    fetchData();
   }, [id, toast]);
 
-  // Calculate number of months between dates
-  useEffect(() => {
-    if (formData.checkIn && formData.checkOut && formData.roomSelection) {
-      calculateBookingSummary();
-    }
-  }, [formData.checkIn, formData.checkOut, formData.roomSelection]);
+   const mergedRooms = useMemo(() => {
+    const availabilityMap = availabilityRooms.reduce((acc, r) => {
+      acc[r.room_key] = r;
+      return acc;
+    }, {});
 
-  const calculateBookingSummary = () => {
+    return cmsRooms.map((cmsRoom) => {
+      const backendRoom = availabilityMap[cmsRoom.room_key];
+
+      return {
+        ...cmsRoom,
+        total_beds: backendRoom?.total_beds ?? 0,
+        available_beds: backendRoom?.available_beds ?? 0,
+        is_available: (backendRoom?.available_beds ?? 0) > 0,
+      };
+    });
+  }, [cmsRooms, availabilityRooms]);
+
+  useEffect(() => {
+    if (!selectedRoomFromQuery || !mergedRooms.length) return;
+
+    const room = mergedRooms.find(
+      (r) => r.room_key === selectedRoomFromQuery
+    );
+
+    if (!room || !room.is_available) return;
+    bookingSummary.dailyRent = room.base_price;
+    bookingSummary.securityDeposit = room.base_price;
+    bookingSummary.roomType = room.room_name
+
+    setFormData((prev) => ({
+      ...prev,
+      roomSelection: room.room_key,
+      amount: room.base_price,
+    }));
+  }, [selectedRoomFromQuery, mergedRooms]);
+
+  useEffect(() => {
+    if (
+      !formData.checkIn ||
+      !formData.checkOut ||
+      !formData.roomSelection
+    )
+      return;
+
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
 
-    if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) return;
+    if (isNaN(checkIn) || isNaN(checkOut)) return;
 
-    // Calculate months difference (including partial months)
-    const months =
-      (checkOut.getFullYear() - checkIn.getFullYear()) * 12 +
-      (checkOut.getMonth() - checkIn.getMonth());
-
-    // Add days as fraction of month if there are remaining days
-    const daysInMonth = new Date(
-      checkOut.getFullYear(),
-      checkOut.getMonth() + 1,
-      0
-    ).getDate();
-    const remainingDays = checkOut.getDate() - checkIn.getDate();
-    const totalMonths =
-      months + (remainingDays > 0 ? remainingDays / daysInMonth : 0);
-
-    // Round up to nearest month (minimum 1 month)
-    const roundedMonths = Math.max(1, Math.ceil(totalMonths));
-
-    const selectedRoom = roomTypes.find(
-      (r) => r.type === formData.roomSelection
+    const diffDays = Math.ceil(
+      (checkOut - checkIn) / (1000 * 60 * 60 * 24)
     );
 
-    if (selectedRoom) {
-      const monthlyRent = selectedRoom.pricePerMonth;
-      const securityDeposit = monthlyRent; // Security deposit equal to 1 month rent
-      const totalRent = monthlyRent * roundedMonths;
-      const totalAmount = totalRent + securityDeposit;
+    const room = mergedRooms.find(
+      (r) => r.room_key === formData.roomSelection
+    );
 
-      setBookingSummary({
-        roomType: selectedRoom.type,
-        monthlyRent,
-        securityDeposit,
-        numberOfMonths: roundedMonths,
-        totalAmount,
+    if (!room) return;
+
+    const totalAmount = room.base_price * (diffDays + 1); // rent * days + 1 day rent as security deposit
+
+    setBookingSummary({
+      roomType: room.room_name,
+      dailyRent:room.base_price,
+      securityDeposit: room.base_price,
+      days: diffDays,
+      totalAmount,
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      amount: totalAmount,
+    }));
+  }, [
+    formData.checkIn,
+    formData.checkOut,
+    formData.roomSelection,
+    mergedRooms,
+  ]);
+
+  const validateDates = () => {
+    const checkIn = new Date(formData.checkIn);
+    const checkOut = new Date(formData.checkOut);
+
+    if (checkOut <= checkIn) {
+      toast({
+        title: "Invalid dates",
+        description: "Checkout must be at least 1 day after check-in",
+        variant: "destructive",
       });
-
-      setFormData((prev) => ({
-        ...prev,
-        amount: totalAmount,
-      }));
+      return false;
     }
+    return true;
+  };
+
+  const validateForm = () => {
+    if (!formData.name || !formData.email || !formData.phone) return false;
+    if (!formData.gender || !formData.roomSelection) return false;
+    if (!validateDates()) return false;
+    return true;
+  };
+
+  const nextStep = () => {
+    if (currentStep === 1 && validateDates()) {
+      setCurrentStep(2);
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep((s) => Math.max(1, s - 1));
   };
 
   const handleInputChange = (e) => {
@@ -152,148 +218,6 @@ export default function HostelBooking() {
       [name]: value,
     }));
   };
-
-  const validateDates = () => {
-    const checkIn = formData.checkIn ? new Date(formData.checkIn) : null;
-    const checkOut = formData.checkOut ? new Date(formData.checkOut) : null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (
-      !checkIn ||
-      !checkOut ||
-      isNaN(checkIn.getTime()) ||
-      isNaN(checkOut.getTime())
-    ) {
-      toast({
-        title: "Missing Check-in or Check-out Date",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (checkIn < today) {
-      toast({
-        title: "Invalid Check-in Date",
-        description: "Check-in date cannot be in the past",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (checkOut <= checkIn) {
-      toast({
-        title: "Invalid Check-out Date",
-        description: "Check-out date must be after check-in date",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const oneMonthLater = new Date(checkIn);
-    oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-
-    if (checkOut < oneMonthLater) {
-      toast({
-        title: "Minimum Stay Required",
-        description: "Booking must be for at least 1 month",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const validatePhone = () => {
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(formData.phone)) {
-      toast({
-        title: "Invalid Phone Number",
-        description: "Please enter a valid 10-digit phone number",
-        variant: "destructive",
-      });
-      return false;
-    }
-    return true;
-  };
-
-  const validateForm = () => {
-    if (!formData.name?.trim()) {
-      toast({
-        title: "Missing Name",
-        description: "Please enter your full name.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!formData.email?.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
-      toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!validatePhone()) return false;
-
-    if (!formData.gender) {
-      toast({
-        title: "Select Gender",
-        description: "Please select your gender.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!formData.roomSelection) {
-      toast({
-        title: "Select a Room",
-        description: "Please select a room type.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    const selectedRoom = roomTypes.find(
-      (r) => r.type === formData.roomSelection
-    );
-    if (!selectedRoom) {
-      toast({
-        title: "Invalid Room Selection",
-        description: "Please select a valid room type.",
-        variant: "destructive",
-      });
-      return false;
-    }
-
-    if (!validateDates()) return false;
-
-    return true;
-  };
-
-  const nextStep = () => {
-    if (currentStep === 1) {
-      if (validateDates()) setCurrentStep(2);
-    } else if (currentStep === 2) {
-      if (formData.roomSelection) setCurrentStep(3);
-      else {
-        toast({
-          title: "Select a Room",
-          description: "Please select a room type to continue.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) setCurrentStep(currentStep - 1);
-  };
-
-  document.title = "Book hostel at TravelTribe";
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -311,30 +235,20 @@ export default function HostelBooking() {
               </h1>
               <div className="hidden md:flex items-center space-x-2">
                 <div
-                  className={`h-2 w-12 rounded-full ${
-                    currentStep >= 1 ? "bg-purple-600" : "bg-gray-200"
-                  }`}
+                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-purple-600" : "bg-gray-200"
+                    }`}
                 ></div>
                 <div
-                  className={`h-2 w-12 rounded-full ${
-                    currentStep >= 2 ? "bg-purple-600" : "bg-gray-200"
-                  }`}
-                ></div>
-                <div
-                  className={`h-2 w-12 rounded-full ${
-                    currentStep >= 3 ? "bg-purple-600" : "bg-gray-200"
-                  }`}
+                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-purple-600" : "bg-gray-200"
+                    }`}
                 ></div>
               </div>
             </div>
             <div className="text-gray-600 mt-2 flex items-center">
-              <span className="font-medium">Step {currentStep} of 3:</span>
+              <span className="font-medium">Step {currentStep} of 2:</span>
               <span className="ml-2">
                 {currentStep === 1
-                  ? "Select Dates"
-                  : currentStep === 2
-                  ? "Choose Room"
-                  : "Personal Details & Payment"}
+                  ? "Select Dates" : "Personal Details & Payment"}
               </span>
             </div>
           </div>
@@ -382,37 +296,28 @@ export default function HostelBooking() {
                           >
                             Check-out Date
                           </Label>
-                          <div className="relative">
-                            <Input
-                              id="checkOut"
-                              name="checkOut"
-                              type="date"
-                              value={formData.checkOut}
-                              onChange={handleInputChange}
-                              required
-                              min={
-                                formData.checkIn
-                                  ? new Date(
-                                      new Date(formData.checkIn).setMonth(
-                                        new Date(formData.checkIn).getMonth() +
-                                          1
-                                      )
-                                    )
-                                      .toISOString()
-                                      .split("T")[0]
-                                  : new Date(
-                                      new Date().setMonth(
-                                        new Date().getMonth() + 1
-                                      )
-                                    )
-                                      .toISOString()
-                                      .split("T")[0]
-                              }
-                              className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                              disabled={isSubmitting}
-                            />
-                            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
-                          </div>
+                          <Input
+                            id="checkOut"
+                            name="checkOut"
+                            type="date"
+                            value={formData.checkOut}
+                            onChange={handleInputChange}
+                            required
+                            min={
+                              formData.checkIn
+                                ? new Date(
+                                  new Date(formData.checkIn).setDate(
+                                    new Date(formData.checkIn).getDate() + 1
+                                  )
+                                )
+                                  .toISOString()
+                                  .split("T")[0]
+                                : new Date().toISOString().split("T")[0]
+                            }
+                            className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
+                            disabled={isSubmitting}
+                          />
+
                         </div>
                       </div>
 
@@ -430,92 +335,10 @@ export default function HostelBooking() {
                   </Card>
                 )}
 
-                {/* Step 2: Room Selection */}
+
+
+                {/* Step 2: Personal Details */}
                 {currentStep === 2 && (
-                  <Card className="mb-6 border-purple-200 shadow-md">
-                    <CardHeader className="bg-purple-50 border-b rounded-t-xl border-purple-100">
-                      <CardTitle className="flex items-center gap-2 text-purple-900">
-                        <BedDouble className="w-5 h-5 text-purple-600" />
-                        Choose Your Room Type
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                      <RadioGroup
-                        name="roomSelection"
-                        value={formData.roomSelection}
-                        onValueChange={(value) =>
-                          handleInputChange({
-                            target: { name: "roomSelection", value },
-                          })
-                        }
-                        className="grid gap-4"
-                        disabled={isSubmitting}
-                      >
-                        {roomTypes.map((room, index) => (
-                          <div
-                            key={index}
-                            className={`border rounded-lg p-4 transition-all ${
-                              formData.roomSelection === room.type
-                                ? "border-purple-500 bg-purple-50"
-                                : "border-gray-200 hover:border-purple-300"
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <RadioGroupItem
-                                value={room.type}
-                                id={`room-${index}`}
-                                className="text-purple-600"
-                              />
-                              <div className="flex-1">
-                                <Label
-                                  htmlFor={`room-${index}`}
-                                  className="flex justify-between items-center w-full"
-                                >
-                                  <span className="text-lg font-medium">
-                                    {room.type}
-                                  </span>
-                                  <span className="text-lg font-bold text-purple-800">
-                                    ₹{room.pricePerMonth.toLocaleString()}
-                                    <span className="text-sm font-normal text-gray-600">
-                                      /month
-                                    </span>
-                                  </span>
-                                </Label>
-                                <p className="text-gray-600 mt-1 ml-1 text-sm">
-                                  {room.description ||
-                                    "Comfortable accommodation with all essential amenities"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </RadioGroup>
-
-                      <div className="flex justify-between mt-6">
-                        <Button
-                          type="button"
-                          onClick={prevStep}
-                          variant="outline"
-                          className="border-purple-200 text-purple-700 hover:bg-purple-50"
-                        >
-                          Back to Dates
-                        </Button>
-
-                        <Button
-                          type="button"
-                          onClick={nextStep}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                        >
-                          Continue to Personal Details{" "}
-                          <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Step 3: Personal Details */}
-                {currentStep === 3 && (
                   <Card className="mb-6 border-purple-200 shadow-md">
                     <CardHeader className="bg-purple-50 border-b rounded-t-xl border-purple-100">
                       <CardTitle className="flex items-center gap-2 text-purple-900">
@@ -636,7 +459,7 @@ export default function HostelBooking() {
                             variant="outline"
                             className="border-purple-200 text-purple-700 hover:bg-purple-50"
                           >
-                            Back to Room Selection
+                            Back to Date Selection
                           </Button>
 
                           <RazorPayPayment
@@ -674,18 +497,15 @@ export default function HostelBooking() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Duration</span>
                           <span className="font-medium text-black">
-                            {bookingSummary.numberOfMonths}{" "}
-                            {bookingSummary.numberOfMonths === 1
-                              ? "month"
-                              : "months"}
+                            {bookingSummary.days}{" "} Day
                           </span>
                         </div>
                       )}
 
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Monthly Rent</span>
+                        <span className="text-gray-600">Daily Rent</span>
                         <span className="font-medium text-black">
-                          ₹{bookingSummary.monthlyRent.toLocaleString()}
+                          ₹{bookingSummary.dailyRent}
                         </span>
                       </div>
 
@@ -693,11 +513,7 @@ export default function HostelBooking() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Total Rent</span>
                           <span className="font-medium text-black">
-                            ₹
-                            {(
-                              bookingSummary.monthlyRent *
-                              bookingSummary.numberOfMonths
-                            ).toLocaleString()}
+                            ₹ {formData.totalAmount}
                           </span>
                         </div>
                       )}
