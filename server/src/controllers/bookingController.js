@@ -1,6 +1,22 @@
+import axios from "axios";
 import { sendNotification } from "../discordBot/NotificationBot.js";
 import Booking from "../model/BookingModel.js";
 import Hostel from "../model/HostelModel.js";
+const formatDate = (input) => {
+  if (!input) return "";
+
+  const date = new Date(input);
+
+  if (isNaN(date.getTime())) return "";
+
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+
+  return `${day}/${month}/${year}`;
+};
+
+
 export const createBooking = async (req, res) => {
   try {
     const {
@@ -28,7 +44,7 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const hostel = await Hostel.findOne({ hostelId:hostelId });
+    const hostel = await Hostel.findOne({ hostelId: hostelId });
     if (!hostel) return res.status(404).json({ message: "Hostel not found" });
 
     const roomType = hostel.room_types.find(room => room.room_key === roomSelection);
@@ -53,11 +69,35 @@ export const createBooking = async (req, res) => {
       status: "confirmed",
     });
 
-    await newBooking.save();
+    console.log(formatDate(checkIn))
 
-    roomType.availability -= 1;
+    await newBooking.save();
+    await axios.post(
+      "https://app.contentstack.com/automations-api/run/f9ea368a35b64db6811b442b6c43b27c",
+      {
+        checkInDate: formatDate(checkIn),
+        checkOutDate: formatDate(checkOut),
+        name,
+        roomSelection,
+        hostelId,
+        email,
+        phone,
+        gender,
+        receiptId,
+        amount,
+      },
+      {
+        headers: {
+          "ah-http-key": process.env.BOOKING_EMAIL_AUTOMATE_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+
+    roomType.available_beds -= 1;
     await hostel.save();
-    // await sendNotification("booking",newBooking);
+
     res.status(201).json(newBooking);
   } catch (error) {
     res.status(500).json({ message: error.message });
