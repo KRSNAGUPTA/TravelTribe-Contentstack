@@ -49,6 +49,20 @@ import {
   Venus,
   VenusAndMars,
   BedSingle,
+  Cctv,
+  Droplets,
+  LockKeyhole,
+  Accessibility,
+  Flame,
+  Snowflake,
+  Fan,
+  WashingMachine,
+  BatteryCharging,
+  Users,
+  CookingPot,
+  Microwave,
+  House,
+  TvMinimalPlayIcon,
 } from "lucide-react";
 import Autoplay from "embla-carousel-autoplay"
 import Footer from "@/components/Footer";
@@ -148,15 +162,91 @@ export default function HostelDetails() {
     return <Loading />;
   }
 
+  const base = "w-5 h-5";
+
   const FACILITY_MAP = {
-    wifi: { label: "Free Wi-Fi", icon: Wifi },
-    cctv: { label: "CCTV Surveillance", icon: ShieldCheck },
-    security_guard: { label: "24×7 Security Guard", icon: User },
-    parking: { label: "Parking", icon: ParkingCircle },
-    tv: { label: "Television", icon: Tv },
-    shower: { label: "Hot Water Shower", icon: ShowerHead },
-    laundry: { label: "Laundry Service", icon: Sparkles },
+    wifi: {
+      label: "Free Wi-Fi",
+      icon: <Wifi className={`${base} text-sky-500`} />,
+    },
+    parking: {
+      label: "Parking",
+      icon: <ParkingCircle className={`${base} text-slate-500`} />,
+    },
+    cctv: {
+      label: "CCTV Surveillance",
+      icon: <Cctv className={`${base} text-indigo-500`} />,
+    },
+    security_guard: {
+      label: "24×7 Security",
+      icon: <ShieldCheck className={`${base} text-emerald-600`} />,
+    },
+    drinking_water: {
+      label: "Drinking Water",
+      icon: <Droplets className={`${base} text-blue-500`} />,
+    },
+    lockers: {
+      label: "Lockers",
+      icon: <LockKeyhole className={`${base} text-gray-600`} />,
+    },
+    wheelchair_access: {
+      label: "Wheelchair Access",
+      icon: <Accessibility className={`${base} text-teal-600`} />,
+    },
+    fire_safety: {
+      label: "Fire Safety",
+      icon: <Flame className={`${base} text-amber-500`} />,
+    },
+    first_aid: {
+      label: "First Aid",
+      icon: <HeartPulse className={`${base} text-rose-500`} />,
+    },
+    ac: {
+      label: "Air Conditioner",
+      icon: <Snowflake className={`${base} text-cyan-500`} />,
+    },
+    "non-ac": {
+      label: "Non-AC Room",
+      icon: <Fan className={`${base} text-neutral-500`} />,
+    },
+    hot_water: {
+      label: "Hot Water",
+      icon: <ShowerHead className={`${base} text-orange-500`} />,
+    },
+    laundry: {
+      label: "Laundry",
+      icon: <WashingMachine className={`${base} text-indigo-400`} />,
+    },
+    power_backup: {
+      label: "Power Backup",
+      icon: <BatteryCharging className={`${base} text-lime-600`} />,
+    },
+    housekeeping: {
+      label: "Housekeeping",
+      icon: <House className={`${base} text-emerald-500`} />,
+    },
+    study_area: {
+      label: "Study Area",
+      icon: <BookOpen className={`${base} text-violet-500`} />,
+    },
+    tv: {
+      label: "Television",
+      icon: <TvMinimalPlayIcon className={`${base} text-fuchsia-500`} />,
+    },
+    common_area: {
+      label: "Common Area",
+      icon: <Users className={`${base} text-purple-500`} />,
+    },
+    kitchen: {
+      label: "Kitchen",
+      icon: <CookingPot className={`${base} text-amber-600`} />,
+    },
+    microwave: {
+      label: "Microwave",
+      icon: <Microwave className={`${base} text-pink-500`} />,
+    },
   };
+
 
   const HOSTEL_TYPE_MAP = {
     Boys: {
@@ -538,41 +628,29 @@ export default function HostelDetails() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {hostel?.facilities.length > 0 ? (
+                  {hostel?.facilities?.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       {hostel.facilities.map((key) => {
                         const facility = FACILITY_MAP[key];
                         if (!facility) return null;
 
-                        const Icon = facility.icon;
                         return (
-                          <div key={key} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                            <Icon className="w-5 h-5 text-purple-500" />
-                            <span className="font-medium text-gray-700">{facility.label}</span>
+                          <div
+                            key={key}
+                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                          >
+                            {facility.icon}
+                            <span className="font-medium text-gray-700">
+                              {facility.label}
+                            </span>
                           </div>
                         );
                       })}
-
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <Sparkles className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">
-                        This hostel doesn't have any listed facilities or
-                        amenities.
-                      </p>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Contact the hostel directly for more information about
-                        available services.
-                      </p>
-                      {hostel?.contact?.phone && (
-                        <div className="mt-4 inline-flex items-center justify-center gap-2 text-purple-600">
-                          <Phone className="w-4 h-4" />
-                          <span>{hostel?.contact?.phone}</span>
-                        </div>
-                      )}
-                    </div>
+                    <p>No facilities available</p>
                   )}
+
                 </CardContent>
               </Card>
             </TabsContent>

@@ -114,7 +114,7 @@ const Footer = () => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-800 mt-6 mb-20 py-4 text-center text-xs text-gray-500 px-4">
+      <div className="border-t border-gray-800 mt-6 pb-28 py-4 text-center text-xs text-gray-500 px-4">
         <p>{footerData?.copyright_text}</p>
         <div className="mt-2 flex justify-center gap-4 flex-wrap">
           <a

@@ -107,7 +107,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="py-24 w-full bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-900 mb-16">
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
             {featuresSection?.title}
           </h2>
 
@@ -121,7 +121,7 @@ export default function HomePage() {
                   <img
                     src={item?.feature_icon?.url}
                     alt={item?.feature_title}
-                    className="h-12 w-12 object-contain text-purple-600"
+                    className="h-12 w-12 object-contain"
                   />
                 </div>
                 <h3 className="text-2xl font-semibold mb-4 text-gray-900">
@@ -140,7 +140,7 @@ export default function HomePage() {
       <section className="py-24 w-full bg-purple-50">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
-            {hostelsSection?.title}
+            {featuredHostels?.title}
           </h2>
 
           <div className="relative max-w-full mx-auto px-8">

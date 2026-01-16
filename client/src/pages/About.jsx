@@ -1,65 +1,65 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Card, CardTitle, CardContent } from "@/components/ui/card";
-import React from "react";
+import cmsClient from "@/contentstackClient";
+import React, { useEffect, useState } from "react";
+import Loading from "./Loading";
 
 function About() {
-  document.title="About TravelTribe"
+  const [about, setAbout] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const cmsRes = (
+          await cmsClient.get(
+            "/content_types/about_us/entries/blt185b62aabf4f0649"
+          )
+        ).data.entry;
+
+        setAbout(cmsRes);
+
+        if (cmsRes?.title) {
+          document.title = cmsRes.title;
+        }
+      } catch (error) {
+        console.error("Error fetching About data:", error?.message);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (!about) return <Loading />;
+
   return (
     <div className="flex flex-col min-h-screen w-full bg-purple-50">
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <Header />
       </div>
 
       <main className="flex flex-col items-center px-6 md:px-20 py-10 space-y-8">
-        <h1 className="text-3xl font-bold text-center">
-          About Travel<span className="text-purple-900">Tribe</span>
+        <h1 className="text-3xl font-bold text-center text-purple-700 my-8">
+          {about.title}
         </h1>
 
-        <Card className="w-full max-w-3xl p-6 shadow-lg">
-          <CardTitle className="text-xl mb-4 text-purple-900">
-            What is TravelTribe?
-          </CardTitle>
-          <CardContent>
-            <p className="text-gray-700 leading-relaxed">
-              TravelTribe is a student-focused hostel booking platform designed
-              to simplify the search for affordable and comfortable
-              accommodations. Whether you're a student moving to a new city or a
-              traveler looking for a budget stay, TravelTribe helps you find
-              well-reviewed hostels with ease.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="w-full max-w-3xl p-6 shadow-lg">
-          <CardTitle className="text-xl mb-4 text-purple-900">
-            Our Mission
-          </CardTitle>
-          <CardContent>
-            <p className="text-gray-700 leading-relaxed">
-              We aim to provide a seamless and hassle-free hostel booking
-              experience with transparent pricing, verified listings, and user
-              reviews. Our platform ensures that students and young
-              professionals can find safe, affordable, and well-maintained
-              accommodations near their universities or workplaces.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="w-full max-w-3xl p-6 shadow-lg">
-          <CardTitle className="text-xl mb-4 text-purple-900">
-            Join Our Community
-          </CardTitle>
-          <CardContent>
-            <p className="text-gray-700 leading-relaxed">
-              TravelTribe is more than just a booking platform—it’s a growing
-              community of students and travelers sharing real experiences. Join
-              us in creating a trusted network of accommodations for students
-              everywhere!
-            </p>
-          </CardContent>
-        </Card>
+        {about?.info_group?.map((info, index) => (
+          <Card
+            key={info.uid || index}
+            className="w-full max-w-3xl p-6 shadow-lg"
+          >
+            <CardTitle className="text-xl text-center mb-4 text-purple-700">
+              {info.title}
+            </CardTitle>
+            <CardContent>
+              <p className="text-gray-700 leading-relaxed">
+                {info.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </main>
+
       <Footer />
     </div>
   );

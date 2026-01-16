@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -12,17 +12,33 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
-import { jwtDecode } from "jwt-decode";
-import { set } from "react-hook-form";
 import api from "@/api";
+import cmsClient from "@/contentstackClient";
 
 const Login = () => {
   const { login, signupUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("login");
-  const { toast } = useToast();
+  const [authPageData, setAuthPageData] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = (
+        await cmsClient.get(
+          "/content_types/auth_page/entries/bltcb7c69182a4d93ca"
+        )
+      ).data.entry;
+
+      setAuthPageData(res);
+      document.title = res.app_title;
+    };
+
+    fetchData();
+  }, []);
 
   const handleAuth = async (e, type) => {
     e.preventDefault();
@@ -36,13 +52,14 @@ const Login = () => {
       if (type === "signup") {
         if (data.phone.length < 10) {
           return toast({
-            title: "Phone number should be at least 10 digits",
+            title: "Invalid phone number",
             variant: "destructive",
           });
         }
+
         if (data.password.length < 8) {
           return toast({
-            title: "Password should be at least 8 characters long",
+            title: "Password must be at least 8 characters",
             variant: "destructive",
           });
         }
@@ -50,8 +67,8 @@ const Login = () => {
         await signupUser(data);
 
         toast({
-          title: "Account Created Successfully",
-          description: `Welcome ${data.name}! Please log in to continue.`,
+          title: authPageData.sign_up_text,
+          description: `Welcome ${data.name}`,
           icon: <CheckCircle className="text-green-500" />,
         });
 
@@ -60,34 +77,28 @@ const Login = () => {
         return;
       }
 
-      const userData = await login(data.email, data.password);
+      await login(data.email, data.password);
 
       toast({
-        title: "Welcome Back!",
-        description: "You are now logged in.",
+        title: authPageData.login_text,
+        description: "You are now logged in",
         icon: <CheckCircle className="text-green-500" />,
       });
 
       navigate("/");
     } catch (err) {
-      let errorMsg = "Something went wrong. Please try again.";
-      setError(err.message || errorMsg);
-      console.log(err);
-      if (err.status === 409) {
-        errorMsg = "User already exists. Please log in.";
-        setError(errorMsg);
-      }
-      if (err.status === 400) {
-        errorMsg = "Invalid credentials. Please try again.";
-        setError(errorMsg);
-      }
-      if (err.status === 500) {
-        errorMsg = "Server error. Please try again later.";
-        setError(errorMsg);
-      }
+      const message =
+        err.status === 409
+          ? "User already exists"
+          : err.status === 400
+            ? "Invalid credentials"
+            : "Something went wrong";
+
+      setError(message);
+
       toast({
-        title: type === "signup" ? "Registration Failed" : "Login Failed",
-        description: error,
+        title: "Authentication Failed",
+        description: message,
         variant: "destructive",
         icon: <AlertCircle className="text-red-500" />,
       });
@@ -96,176 +107,188 @@ const Login = () => {
     }
   };
 
-  document.title = "Login | TravelTribe";
+  if (!authPageData) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md shadow-xl rounded-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-100 px-4">
+      <Card className="w-full max-w-md rounded-3xl border border-purple-100/60 shadow-[0_20px_60px_-15px_rgba(88,28,135,0.25)] backdrop-blur-sm bg-white/90">
         <Toaster />
-        <CardContent className="p-6 bg-white rounded-lg">
-          <h2 className="text-center text-2xl font-bold text-purple-700">
-            Travel Tribe
-          </h2>
-          <p className="text-center text-gray-600 mb-4">
-            Welcome! Sign in or create an account.
-          </p>
-          <div className="flex justify-center mb-4">
-            <GoogleLogin
-              onSuccess={async (credentialResponse) => {
-                const googleToken = credentialResponse.credential;
-                const data = await api.post("/api/user/google/callback", {
-                  token: googleToken,
-                });
-                localStorage.setItem("token", data.data.jwtToken);
-                localStorage.setItem("user", JSON.stringify(data.data.user));
-                toast({
-                  title: "Login Successful",
-                  description: "You are now logged in.",
-                })
-                navigate("/");
-              }}
-              onError={() =>
-                toast({
-                  title: "Login Failed",
-                  description: "Login Failed",
-                  variant: "destructive",
-                  icon: <AlertCircle className="text-red-500" />,
-                })
-              }
-            />
+
+        <CardContent className="p-8">
+          <div className="text-center space-y-2">
+            <h2 className="text-3xl font-semibold tracking-tight text-purple-700">
+              {authPageData.app_title}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {authPageData.subtitle}
+            </p>
           </div>
-          <div className="flex items-center justify-center gap-2 my-3 w-full">
-            <Separator className="flex-grow max-w-32 " />
-            <span className="text-gray-500 text-sm font-medium px-2">OR</span>
-            <Separator className="flex-grow max-w-32" />
+
+          <div className="mt-6 flex justify-center">
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  const data = await api.post("/api/user/google/callback", {
+                    token: credentialResponse.credential,
+                  });
+
+                  localStorage.setItem("token", data.data.jwtToken);
+                  localStorage.setItem("user", JSON.stringify(data.data.user));
+
+                  toast({ title: "Login Successful" });
+                  navigate("/");
+                }}
+                onError={() =>
+                  toast({
+                    title: "Google login failed",
+                    variant: "destructive",
+                  })
+                }
+              />
+          </div>
+
+          <div className="flex items-center gap-3 my-6">
+            <Separator className="flex-1" />
+            <span className="text-xs uppercase tracking-wide text-gray-400">
+              OR
+            </span>
+            <Separator className="flex-1" />
           </div>
 
           <Tabs
-            defaultValue="login"
             value={activeTab}
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid grid-cols-2 rounded-xl bg-purple-50 p-1 mb-6">
+              <TabsTrigger
+                value="login"
+                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                {authPageData.login_text}
+              </TabsTrigger>
+              <TabsTrigger
+                value="signup"
+                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+              >
+                {authPageData.sign_up_text}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="login">
               {error && (
-                <Alert variant="destructive" className="mb-4">
+                <Alert variant="destructive" className="mb-4 rounded-xl">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+
               <form
                 onSubmit={(e) => handleAuth(e, "login")}
                 className="space-y-4"
               >
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="emailLogin" className="text-gray-700">
-                    Email
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.email_label}
                   </Label>
                   <Input
-                    id="emailLogin"
-                    type="email"
                     name="email"
-                    placeholder="Enter your email"
+                    type="email"
+                    placeholder={authPageData.email_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="passLogin" className="text-gray-700">
-                    Password
+
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.password_label}
                   </Label>
                   <Input
-                    id="passLogin"
-                    type="password"
                     name="password"
-                    placeholder="Enter your password"
+                    type="password"
+                    placeholder={authPageData.password_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
+
                 <Button
                   type="submit"
-                  className="w-full bg-purple-500 text-white hover:bg-purple-600"
                   disabled={loading}
+                  className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 shadow-md transition"
                 >
-                  {loading ? "Signing in..." : "Sign in"}
+                  {loading ? "Signing in..." : authPageData.login_text}
                 </Button>
               </form>
             </TabsContent>
 
             <TabsContent value="signup">
               {error && (
-                <Alert variant="destructive" className="mb-4">
+                <Alert variant="destructive" className="mb-4 rounded-xl">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
+
               <form
                 onSubmit={(e) => handleAuth(e, "signup")}
                 className="space-y-4"
               >
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="name" className="text-gray-700">
-                    Full Name
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.name_label}
                   </Label>
                   <Input
-                    id="name"
-                    type="text"
                     name="name"
-                    placeholder="Enter your full name"
+                    placeholder={authPageData.name_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="email" className="text-gray-700">
-                    Email
+
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.email_label}
                   </Label>
                   <Input
-                    id="email"
-                    type="email"
                     name="email"
-                    placeholder="Enter your email"
+                    type="email"
+                    placeholder={authPageData.email_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="phone" className="text-gray-700">
-                    Phone Number
+
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.phone_number_label}
                   </Label>
                   <Input
-                    id="phone"
-                    type="number"
                     name="phone"
-                    placeholder="Enter your phone number"
-                    min="10"
+                    type="number"
+                    placeholder={authPageData.phone_number_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
-                <div className="mb-2 space-y-1">
-                  <Label htmlFor="password" className="text-gray-700">
-                    Password
+
+                <div className="space-y-1">
+                  <Label className="text-sm text-gray-600">
+                    {authPageData.password_label}
                   </Label>
                   <Input
-                    id="password"
-                    type="password"
                     name="password"
-                    placeholder="Create a password"
+                    type="password"
+                    placeholder={authPageData.password_placeholder}
+                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
                     required
-                    className="border border-gray-300"
                   />
                 </div>
+
                 <Button
                   type="submit"
-                  className="w-full bg-purple-500 text-white hover:bg-purple-600"
                   disabled={loading}
+                  className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 shadow-md transition"
                 >
-                  {loading ? "Creating account..." : "Create Account"}
+                  {loading ? "Creating account..." : authPageData.sign_up_text}
                 </Button>
               </form>
             </TabsContent>
@@ -273,6 +296,7 @@ const Login = () => {
         </CardContent>
       </Card>
     </div>
+
   );
 };
 

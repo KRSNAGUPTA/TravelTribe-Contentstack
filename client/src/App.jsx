@@ -10,7 +10,6 @@ const HostelPage = lazy(() => import("./pages/HostelsPage"));
 const HostelDetails = lazy(() => import("./pages/HostelDetails"));
 const HostelBooking = lazy(() => import("./pages/BookHostel"));
 const About = lazy(() => import("./pages/About"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -37,14 +36,6 @@ function App() {
               />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
               <Route
                 path="/profile"
                 element={
