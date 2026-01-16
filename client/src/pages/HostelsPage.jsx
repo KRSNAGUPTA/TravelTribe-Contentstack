@@ -507,7 +507,7 @@ export default function FindHostel() {
                                   {facilityIcons[facility] ?? <Shield className="h-4 w-4" />}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent className="bg-white/90 text-purple-600 font-bold rounded-full border border-purple-500">
+                              <TooltipContent className="bg-white/90 text-purple-600 font-semibold rounded-full border ">
                                 {facility.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                               </TooltipContent>
                             </Tooltip>
