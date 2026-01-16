@@ -1,15 +1,24 @@
-PORT = 5000
-MONGO_URI = "mongodb+srv://"
+PORT = 5001
+NODE_ENV="development"
+MONGO_URI_PROD=""
+MONGO_URI ="mongodb://mongo:27017/travel_tribe"
+
 JWT_SECRET=""
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
-CORS_ORIGIN = "*"
+CORS_ORIGIN =""
 
 GOOGLE_CLIENT_ID=""
 
 RAZORPAY_KEY_ID = ""
 RAZORPAY_KEY_SECRET = ""
 
+# webhook for authorised access to hook for cms room data update
+WEBHOOK_SECRET = ""
+
 # optional (for discord integration)
 DISCORD_BOT_WEBHOOK=""
+
+# Contentstack (CS) (region: North America) 
+CS_BASE_URL="https://cdn.contentstack.io/v3"
+CS_API_KEY=""
+CS_ACCESS_TOKEN="" # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
+CS_PREVIEW_TOKEN=""
