@@ -11,14 +11,28 @@ import cors from "cors";
 import { sendNotification } from "./discordBot/NotificationBot.js";
 import axios from "axios";
 dotenv.config();
+
+
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: [
+      process.env.CORS_ORIGIN,
+      "http://localhost:5173",
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
   })
 );
+app.options("*", cors());
+
+
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
 
 connectDB();
 app.get("/api", (req, res) => {
