@@ -42,6 +42,7 @@ const Footer = () => {
     try {
       await api.post("/api/subscribe", {
         email,
+        url:`${window.location.origin}`
       });
       toast({
         title: "Thank you for subscribing to TravelTribe!",

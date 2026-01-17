@@ -22,3 +22,6 @@ CS_BASE_URL="https://cdn.contentstack.io/v3"
 CS_API_KEY=""
 CS_ACCESS_TOKEN="" # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
 CS_PREVIEW_TOKEN=""
+
+# Contentstack's Automate
+EMAIL_AUTOMATE_KEY =""

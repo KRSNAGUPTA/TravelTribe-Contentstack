@@ -9,6 +9,7 @@ import webHookRoutes from "./routes/webHookRoutes.js";
 
 import cors from "cors";
 import { sendNotification } from "./discordBot/NotificationBot.js";
+import axios from "axios";
 dotenv.config();
 const app = express();
 app.use(express.json());
@@ -48,10 +49,16 @@ app.post("/api/support", async (req, res) => {
 });
 
 app.post("/api/subscribe", async (req, res) => {
-  const { email } = req.body;
-  await sendNotification("subscribe", {
-    email,
-  });
+  await axios.post(
+  "https://app.contentstack.com/automations-api/run/966238c2bd59420aba1b173e59a38ece",
+  req.body,
+  {
+    headers: {
+      "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
+    },
+  }
+);
+
   res.status(200).json({
     message: "Subscription request received",
   });

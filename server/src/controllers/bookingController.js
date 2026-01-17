@@ -88,7 +88,7 @@ export const createBooking = async (req, res) => {
       },
       {
         headers: {
-          "ah-http-key": process.env.BOOKING_EMAIL_AUTOMATE_KEY,
+          "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
           "Content-Type": "application/json",
         },
       }
