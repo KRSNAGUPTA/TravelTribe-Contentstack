@@ -49,21 +49,6 @@ const Header = () => {
               </TooltipContent>
             </Tooltip>
           </DockIcon>
-          {user?.role === "admin" && (<DockIcon>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div
-                      onClick={() => navigate("/dashboard")}
-                      className="cursor-pointer"
-                    >
-                      <LayoutDashboard className="size-5" />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Dashboard</p>
-                  </TooltipContent>
-                </Tooltip>
-              </DockIcon>)}
 
           {user ? (
             <>
@@ -106,22 +91,22 @@ const Header = () => {
             </>
           ) : (
             <>
-            <Separator orientation="vertical" />
-            <DockIcon>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div
-                    onClick={() => navigate("/login")}
-                    className="cursor-pointer"
-                  >
-                    <LogIn className="size-5" />
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Login</p>
-                </TooltipContent>
-              </Tooltip>
-            </DockIcon>
+              <Separator orientation="vertical" />
+              <DockIcon>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      onClick={() => navigate("/login")}
+                      className="cursor-pointer"
+                    >
+                      <LogIn className="size-5" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Login</p>
+                  </TooltipContent>
+                </Tooltip>
+              </DockIcon>
             </>
           )}
         </Dock>
