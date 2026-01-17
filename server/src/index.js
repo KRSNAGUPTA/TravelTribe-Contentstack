@@ -49,6 +49,7 @@ app.post("/api/support", async (req, res) => {
 });
 
 app.post("/api/subscribe", async (req, res) => {
+  console.log(req.body)
   await axios.post(
   "https://app.contentstack.com/automations-api/run/966238c2bd59420aba1b173e59a38ece",
   req.body,
