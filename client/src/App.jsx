@@ -12,6 +12,7 @@ const HostelBooking = lazy(() => import("./pages/BookHostel"));
 const About = lazy(() => import("./pages/About"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Login = lazy(() => import("./pages/Login"));
+const PrivacyPage = lazy(()=>import("./pages/PrivacyPage"))
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Contact = lazy(() => import("./pages/Contact"));
 
@@ -45,6 +46,7 @@ function App() {
                 }
               />
               <Route path="/login" element={<Login />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/*" element={<NotFound />} />
             </Routes>
           </Suspense>
