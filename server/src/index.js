@@ -15,17 +15,22 @@ dotenv.config();
 
 const app = express();
 
+// app.use(
+//   cors({
+//     origin: [
+//       process.env.CORS_ORIGIN,
+//       "http://localhost:5173",
+//     ],
+//     methods: ["GET", "POST", "OPTIONS"],
+//     allowedHeaders: ["Content-Type"],
+//   })
+// );
 app.use(
-  cors({
-    origin: [
-      process.env.CORS_ORIGIN,
-      "http://localhost:5173",
-    ],
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
-app.options("*", cors());
+  cors(
+  {origin:process.env.CORS_ORIGIN}
+  )
+)
+// app.options("*", cors());
 
 
 
@@ -63,27 +68,55 @@ app.post("/api/support", async (req, res) => {
 });
 
 app.post("/api/subscribe", async (req, res) => {
-  console.log(req.body)
-  await axios.post(
-  "https://app.contentstack.com/automations-api/run/966238c2bd59420aba1b173e59a38ece",
-  req.body,
-  {
-    headers: {
-      "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
-    },
-  }
-);
+  try {
+    const { email, url } = req.body;
 
-  res.status(200).json({
-    message: "Subscription request received",
-  });
-  console.log("User Subscribed");
+    if (!email || !url) {
+      return res.status(400).json({
+        message: "Email and URL are required",
+      });
+    }
+
+    if (!process.env.EMAIL_AUTOMATE_KEY) {
+      console.error("Missing EMAIL_AUTOMATE_KEY");
+      return res.status(500).json({
+        message: "Server configuration error",
+      });
+    }
+
+    await axios.post(
+      "https://app.contentstack.com/automations-api/run/966238c2bd59420aba1b173e59a38ece",
+      { email, url },
+      {
+        headers: {
+          "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("User subscribed:", email);
+
+    return res.status(200).json({
+      message: "Subscription successful",
+    });
+  } catch (error) {
+    console.error(
+      "Subscription failed:",
+      error.response?.data || error.message
+    );
+
+    return res.status(500).json({
+      message: "Subscription failed",
+    });
+  }
 });
+
 
 
 const PORT = process.env.PORT || 5001;
 const HOST = "0.0.0.0";
 
-app.listen(PORT,HOST, () => {
+app.listen(PORT, HOST, () => {
   console.log(`Server running on ${HOST}:${PORT}`);
 });
