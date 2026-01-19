@@ -48,6 +48,7 @@ import {
   Venus,
   VenusAndMars,
   MapPin,
+  View,
 } from "lucide-react";
 
 const base = "mr-1 h-4 w-4";
@@ -409,7 +410,7 @@ export default function FindHostel() {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-6 ">
             <Button
               onClick={() => {
                 setSearch("");
@@ -417,7 +418,7 @@ export default function FindHostel() {
                 setPrice("none");
                 setCollege("all");
               }}
-              className="text-sm"
+              className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
             >
               {listingPageData?.reset_button_text}
             </Button>
@@ -464,7 +465,7 @@ export default function FindHostel() {
                         />
 
                         {isAvailable && lowestPrice !== null ? (
-                          <div className="absolute top-2 right-2 bg-white/30 text-purple-600 border-purple-500 border-1 px-3 py-1 rounded-full text-sm font-bold">
+                          <div className="absolute top-2 right-2 bg-white/20 text-[var(--primary)] border-1 px-3 py-1 rounded-full text-sm font-bold">
                             ₹ {lowestPrice} / day
                           </div>
                         ) : (
@@ -479,7 +480,7 @@ export default function FindHostel() {
                             <TooltipTrigger className="absolute top-2 left-2  bg-white/80 p-2 rounded-full text-xs font-medium capitalize">
                               {hostelTypeIcon[hostel.type]}
                             </TooltipTrigger>
-                            <TooltipContent className="text-purple-500 bg-white/20 px-2 py-1 border mb-5 font-semibold">
+                            <TooltipContent className="rounded-full bg-white/10 text-black px-4 py-2 border mb-5 font-semibold">
                               {hostel.type}
                             </TooltipContent>
                           </Tooltip>
@@ -516,7 +517,7 @@ export default function FindHostel() {
 
                         <Button
                           onClick={() => navigate(`/hostel/${hostel.uid}`)}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
+                          className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:rounded-full transition-all  "
                         >
                           {listingPageData?.view_button_text}
                         </Button>
@@ -565,7 +566,7 @@ export default function FindHostel() {
                       <PaginationLink
                         onClick={() => setPage(i + 1)}
                         className={
-                          i + 1 === page ? "bg-purple-500 text-white" : ""
+                          i + 1 === page ? "bg-[var(--primary)] text-white" : ""
                         }
                       >
                         {i + 1}

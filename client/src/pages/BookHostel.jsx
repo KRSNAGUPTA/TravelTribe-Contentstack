@@ -265,11 +265,11 @@ export default function HostelBooking() {
               </h1>
               <div className="hidden md:flex items-center space-x-2">
                 <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-purple-600" : "bg-gray-200"
+                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
                     }`}
                 ></div>
                 <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-purple-600" : "bg-gray-200"
+                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
                     }`}
                 ></div>
               </div>
@@ -289,9 +289,9 @@ export default function HostelBooking() {
                 {/* Step 1: Date Selection */}
                 {currentStep === 1 && (
                   <Card className="mb-6 border-purple-200 shadow-md">
-                    <CardHeader className="bg-purple-50 rounded-t-xl border-b border-purple-100">
+                    <CardHeader className="bg-[var(--hero-grad-start)] rounded-t-xl border-b border-purple-100">
                       <CardTitle className="flex items-center gap-2 text-purple-900">
-                        <Calendar className="w-5 h-5 text-purple-600" />
+                        <Calendar className="w-5 h-5 text-[var(--primary)]" />
                         Select Your Stay Duration
                       </CardTitle>
                     </CardHeader>
@@ -353,7 +353,7 @@ export default function HostelBooking() {
                         <Button
                           type="button"
                           onClick={nextStep}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
+                          className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
                         >
                           Continue to Room Selection{" "}
                           <ChevronRight className="ml-2 h-4 w-4" />
@@ -481,7 +481,7 @@ export default function HostelBooking() {
                             type="button"
                             onClick={prevStep}
                             variant="outline"
-                            className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                            className="border-purple-200 text-[var(--primary)] hover:bg-purple-50"
                           >
                             Back to Date Selection
                           </Button>
@@ -551,8 +551,8 @@ export default function HostelBooking() {
 
                       <div className="pt-3 mt-3 border-t border-purple-200">
                         <div className="flex justify-between font-bold">
-                          <span className="text-purple-900">Total Amount</span>
-                          <span className="text-purple-900 text-lg">
+                          <span className="text-[var(--primary)] ">Total Amount</span>
+                          <span className="text-[var(--primary-active)] text-lg">
                             ₹{bookingSummary?.totalAmount + bookingSummary?.securityDeposit}
                           </span>
                         </div>
@@ -568,7 +568,7 @@ export default function HostelBooking() {
                   )}
 
                   <Alert className="bg-purple-50 mt-3 mb-3 border-purple-200 shadow-lg">
-                    <AlertCircle className="h-4 w-4 text-purple-600" />
+                    <AlertCircle className="h-4 w-4 text-[var(--primary)]" />
                     <AlertDescription className="text-gray-800 text-sm">
                       Security deposit is refundable at checkout after deducting
                       any damages.

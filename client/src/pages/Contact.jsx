@@ -53,7 +53,12 @@ function Contact() {
   const sendMessage = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.topic || !formData.message) {
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.topic ||
+      !formData.message
+    ) {
       toast({
         title: "All fields are required",
         description: "Please fill out all the fields before submitting",
@@ -83,89 +88,102 @@ function Contact() {
   const { contact } = contactData;
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-purple-50">
+    <div className="flex flex-col min-h-screen w-full bg-[var(--bg-muted)]">
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <Header />
       </div>
 
       <main className="flex flex-col items-center px-6 md:px-10 lg:px-20 py-16 pb-36 space-y-10">
-        {/* Hero */}
         <div className="text-center max-w-xl">
-          <h1 className="text-4xl font-bold text-gray-900">
+          <h1 className="text-4xl font-bold text-[var(--text-dark)]">
             {contactData.title}
           </h1>
-          <p className="text-gray-600 mt-3">
+          <p className="text-[var(--text-muted)] mt-3">
             {contactData.subtext}{" "}
             <a
               href={`mailto:${contactData.email}`}
-              className="text-purple-700 font-medium"
+              className="text-[var(--primary)] font-medium"
             >
               {contactData.email}
             </a>
           </p>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={sendMessage}
-          className="w-full max-w-lg bg-white shadow-md rounded-xl p-8 space-y-6 border"
+          className="w-full max-w-lg bg-white shadow-md rounded-xl p-8 space-y-6 border border-[var(--border)]"
         >
           <div>
-            <Label>{contact.name_label}</Label>
+            <Label className="text-[var(--text-dark)]">
+              {contact.name_label}
+            </Label>
             <Input
               name="name"
               placeholder={contact.name_placeholder}
               value={formData.name}
               onChange={handleChange}
-              className="mt-2"
+              className="mt-2 border-[var(--border)] focus:ring-[var(--primary)]"
             />
           </div>
 
           <div>
-            <Label>{contact.email_label}</Label>
+            <Label className="text-[var(--text-dark)]">
+              {contact.email_label}
+            </Label>
             <Input
               name="email"
               type="email"
               placeholder={contact.email_placeholder}
               value={formData.email}
               onChange={handleChange}
-              className="mt-2"
+              className="mt-2 border-[var(--border)] focus:ring-[var(--primary)]"
             />
           </div>
 
           <div>
-            <Label>{contact.topic_label}</Label>
+            <Label className="text-[var(--text-dark)]">
+              {contact.topic_label}
+            </Label>
             <Select
               value={formData.topic}
               onValueChange={(value) =>
                 setFormData({ ...formData, topic: value })
               }
             >
-              <SelectTrigger className="mt-2">
+              <SelectTrigger className="mt-2 border-[var(--border)]">
                 <SelectValue placeholder="Select a topic" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="help">I need help with my booking</SelectItem>
+                <SelectItem value="help">
+                  I need help with my booking
+                </SelectItem>
                 <SelectItem value="feedback">Feedback</SelectItem>
-                <SelectItem value="partnership">Business / Partnership</SelectItem>
+                <SelectItem value="partnership">
+                  Business / Partnership
+                </SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label>{contact.message_label}</Label>
+            <Label className="text-[var(--text-dark)]">
+              {contact.message_label}
+            </Label>
             <Textarea
               name="message"
               rows={5}
               placeholder={contact.message_placeholder}
               value={formData.message}
               onChange={handleChange}
-              className="mt-2"
+              className="mt-2 border-[var(--border)] focus:ring-[var(--primary)]"
             />
           </div>
 
-          <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700">
+          <Button
+            type="submit"
+            className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+          >
             {contact.send_button}
           </Button>
         </form>

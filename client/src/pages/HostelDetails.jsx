@@ -267,6 +267,14 @@ export default function HostelDetails() {
   };
 
 
+  const minRoom = hostel.room_types.reduce((min, room) =>
+    room.base_price < min.base_price ? room : min
+  );
+
+  const minPrice = minRoom.base_price;
+  const minRoomType = minRoom.room_key;
+
+
   return (
     <TooltipProvider>
       <div className="min-h-screen bg-gray-50">
@@ -286,7 +294,7 @@ export default function HostelDetails() {
             </div>
             <Button
               variant="outline"
-              className="flex items-center gap-2 rounded-full bg-purple-100 hover:bg-purple-400 hover:text-white transition-all duration-500 ease-in-out"
+              className="flex items-center gap-2 rounded-full bg-[var(--hero-grad-start)] hover:bg-[var(--primary)] hover:text-white transition-all duration-500 ease-in-out"
               onClick={handleShare}
             >
               <Share2 className="w-4 h-4" />
@@ -590,7 +598,7 @@ export default function HostelDetails() {
     w-full rounded-full text-white font-medium
     transition-all duration-300
     ${room.is_available
-                              ? "bg-purple-600 hover:bg-purple-700 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-lg"
+                              ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-2 active:translate-y-4 transition-all hover:scale-105 shadow-md hover:shadow-lg"
                               : "bg-gray-300 text-gray-500 cursor-not-allowed"
                             }
   `}
@@ -737,18 +745,15 @@ export default function HostelDetails() {
                   <div className="ml-4 m-2">
                     <p className="text-sm text-gray-500">Starts from</p>
                     <p className="text-xl font-bold text-gray-800">
-                      ₹
-                      {Math.min(
-                        ...hostel.room_types.map((room) => room.base_price)
-                      )}
+                      ₹ {minPrice}
                       / day
                     </p>
                   </div>
                 )}
               </div>
               <Button
-                onClick={() => navigate(`/hostel/${hostel?.uid}/book`)}
-                className="w-full sm:w-auto flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-8 py-6 rounded-full"
+                onClick={() => navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`)}
+                className="w-full sm:w-auto flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--on-primary)] px-8 py-6 rounded-full"
               >
                 <Calendar className="w-5 h-5" />
                 Book Now

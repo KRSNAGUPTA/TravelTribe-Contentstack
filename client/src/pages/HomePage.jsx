@@ -44,6 +44,7 @@ export default function HomePage() {
     fetchData();
   }, []);
 
+
   const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: false }));
   const navigate = useNavigate();
 
@@ -68,16 +69,19 @@ export default function HomePage() {
       <Toaster />
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex flex-col md:flex-row items-center justify-center w-full px-6 md:px-16 pt-20 bg-gradient-to-br from-purple-50 via-white to-purple-50">
+      <section className="relative min-h-screen flex flex-col md:flex-row items-center justify-between w-full px-6 md:px-16 pt-32 pb-32 bg-gradient-to-br from-[var(--hero-grad-start)]
+    to-[var(--hero-grad-end)]">
         <div className="flex flex-col items-start md:w-1/2 space-y-6 z-10">
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl text-purple-600 font-bold tracking-tight">
+            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight">
               {heroSection?.title}
             </h1>
-            <h3 className="text-3xl md:text-4xl font-bold text-gray-900">
+
+            <h2 className="text-3xl md:text-4xl font-bold text-[var(--primary)]">
               {heroSection?.subtitle}
-            </h3>
-            <p className="text-lg text-gray-600 max-w-lg">
+            </h2>
+
+            <p className="text-lg text-[var(--secondary)] max-w-lg">
               {heroSection?.subtext}
             </p>
           </div>
@@ -88,7 +92,8 @@ export default function HomePage() {
                 navigate(heroSection.cta.href);
               }
             }}
-            className="rounded-full bg-purple-600 hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 px-8 py-6 text-lg shadow-lg"
+
+            className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] px-8 py-6 text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 ease-out hover:-translate-y-0.5"
           >
             {heroSection?.cta?.title}
             <ArrowRight className="ml-2 h-5 w-5" />
@@ -105,9 +110,9 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 w-full bg-white">
+      <section className="py-24 w-full">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
+          <h2 className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)]">
             {featuresSection?.title}
           </h2>
 
@@ -115,19 +120,23 @@ export default function HomePage() {
             {featuresSection?.features?.map((item, index) => (
               <div
                 key={index}
-                className="group flex flex-col items-center text-center p-8 bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2"
+                className=" group flex flex-col items-center text-center p-8  rounded-xl shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y- "
               >
-                <div className="bg-purple-100 p-4 rounded-full mb-6 group-hover:bg-purple-200 transition-colors duration-300">
+                <div
+                  className=" mb-4 flex items-center justify-center w-16 h-16 rounded-full bg-[var(--accent)] transition-colors duration-300 group-hover:bg-white"
+                >
                   <img
                     src={item?.feature_icon?.url}
                     alt={item?.feature_title}
-                    className="h-12 w-12 object-contain"
+                    className="h-8 w-8 object-contain"
                   />
                 </div>
-                <h3 className="text-2xl font-semibold mb-4 text-gray-900">
+
+                <h3 className="text-2xl font-semibold mb-3 text-[var(--text-dark)]">
                   {item?.feature_title}
                 </h3>
-                <p className="text-gray-600 text-lg">
+
+                <p className="text-lg text-[var(--text-muted)] leading-relaxed">
                   {item?.feature_description}
                 </p>
               </div>
@@ -136,11 +145,13 @@ export default function HomePage() {
         </div>
       </section>
 
+
+
       {/* Featured Hostel */}
-      <section className="py-24 w-full bg-purple-50">
+      <section className="py-24 w-full bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
-            {featuredHostels?.title}
+          <h2 className="text-4xl font-bold text-center mb-12">
+            {hostelsSection?.title}
           </h2>
 
           <div className="relative max-w-full mx-auto px-8">
@@ -149,31 +160,35 @@ export default function HomePage() {
               opts={{ align: "start", loop: true }}
               plugins={[plugin.current]}
               onMouseEnter={() => plugin.current?.stop()}
-              onMouseLeave={() => plugin.current?.play()}>
-              <CarouselContent className="p-2">
-                {featuredHostels.map((hostel, index) => {
+              onMouseLeave={() => plugin.current?.play()}
+            >
+              <CarouselContent className="flex py-8">
+                {featuredHostels.map((hostel) => {
                   const minPrice = Math.min(
                     ...hostel.room_types.map(r => r.base_price)
                   );
 
                   return (
-                    <CarouselItem
+                    <CarouselItem className="max-w-lg"
                       key={hostel.uid}
-                      className="md:basis-1/2 lg:basis-1/3 "
-
                     >
-                      <Card className="group overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-purple-200 hover:shadow-2xl transition-all duration-500 cursor-pointer">
-
+                      <Card
+                        className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer"
+                      >
                         {/* Image */}
                         <div className="relative h-64 w-full overflow-hidden">
                           <img
                             src={hostel.images?.[0]?.url}
                             alt={hostel.title}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            className="
+                        h-full w-full object-cover
+                        transition-transform duration-500
+                        group-hover:scale-110
+                      "
                           />
 
                           {/* Gradient Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
 
                           {/* Title */}
                           <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug">
@@ -186,20 +201,23 @@ export default function HomePage() {
                         {/* Content */}
                         <CardContent className="p-5 flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-gray-500">Starting from</p>
-                            <p className="text-lg font-bold text-gray-900">₹{minPrice}</p>
+                            <p className="text-sm text-[var(--text-muted)]">
+                              Starting from
+                            </p>
+                            <p className="text-lg font-bold text-[var(--text-dark)]">
+                              ₹{minPrice}
+                            </p>
                           </div>
 
                           <Button
                             onClick={() => navigate(`/hostel/${hostel.uid}`)}
-                            className="bg-purple-600 hover:bg-purple-700 rounded-full px-5"
+                            className=" rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active) "
                           >
                             View
                           </Button>
                         </CardContent>
                       </Card>
                     </CarouselItem>
-
                   );
                 })}
               </CarouselContent>
@@ -211,9 +229,9 @@ export default function HomePage() {
 
 
       {/* Tesitimonials Section  */}
-      <section className="py-24 w-full bg-white">
+      <section className="py-24 w-full flex items-center">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
+          <h2 className="text-4xl font-bold text-center mb-12 ">
             {testimonialsSection?.title}
           </h2>
 
@@ -224,21 +242,21 @@ export default function HomePage() {
             onMouseEnter={() => plugin.current?.stop()}
             onMouseLeave={() => plugin.current?.play()}
           >
-            <CarouselContent>
+            <CarouselContent className="md:basis-1/2 lg:basis-1/3 pl-4 flex py-8">
               {testimonialsSection?.testimonials?.map((data, index) => (
                 <CarouselItem
                   key={index}
                   className="md:basis-1/2 lg:basis-1/3 pl-4 hover:cursor-pointer hover:select-none"
                 >
-                  <Card className="shadow-md hover:shadow-xl transition-all duration-500 transform hover:bg-purple-50">
-                    <CardContent className="p-8 flex flex-col items-center">
-                      <Avatar className="w-20 h-20 ring-2 ring-purple-200">
+                  <Card className="w-full h-full min-h-[420px] shadow-md hover:shadow-xl transition-all duration-500 transform hover:bg-[var(--hero-grad-start)]">
+                    <CardContent className="p-8 pt-14 flex flex-col items-center h-full">
+                      <Avatar className="w-20 h-20 ring-2 ring-[var(--hero-grad-start)]">
                         <AvatarImage src={data?.user_avatar?.url} alt={data?.user_name} />
-                        <AvatarFallback className="bg-purple-100 text-purple-600 font-bold text-2xl">
+                        <AvatarFallback className="bg-[var(--primary)] font-bold text-2xl">
                           {data?.user_name?.[0] ?? "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <h3 className="mt-6 text-xl font-semibold text-gray-900">
+                      <h3 className="mt-6 text-xl font-semibold text-gray-900 border-b-2">
                         {data?.user_name}
                       </h3>
                       <p className="mt-4 text-gray-600 text-center leading-relaxed">
@@ -254,7 +272,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ Section  */}
-      <section className="py-24 bg-purple-50">
+      <section className="py-24 bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4 max-w-3xl">
           <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
             {faqSection?.title}
@@ -267,10 +285,10 @@ export default function HomePage() {
                 value={`item-${index + 1}`}
                 className="bg-white rounded-lg"
               >
-                <AccordionTrigger className="text-lg font-medium px-6 hover:text-purple-600 transition-colors duration-500">
+                <AccordionTrigger className="text-lg font-medium px-6 hover:text-[var(--primary)] transition-colors duration-500">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-600 px-6 pb-4 font-semibold">
+                <AccordionContent className="text-gray-700 px-6 pb-4 font-semibold">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>

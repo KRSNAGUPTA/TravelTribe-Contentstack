@@ -1,6 +1,28 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+:root {
+  /* Core brand tokens */
+  --primary: #000000;          /* default fallback */
+  --primary-hover: #0b070b;
+  --primary-active: #141015;
+  --text-secondary: #c0c0c0;
+
+  /* Neutral text */
+  --text-dark: #111827;
+  --text-muted: #4b5563;
+
+  /* Accent (derived from primary) */
+  --accent: rgba(124, 58, 237, 0.12);
+  --accent-hover: rgba(124, 58, 237, 0.18);
+
+
+  /* Text & accents */
+  --on-primary: #ffffff;
+  --accent: #3a2d3b;
+  --ring: rgba(10, 8, 10, 0.5);
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
