@@ -169,7 +169,7 @@ export default function HomePage() {
                   );
 
                   return (
-                    <CarouselItem className="max-w-lg"
+                    <CarouselItem className="max-w-md mx-auto"
                       key={hostel.uid}
                     >
                       <Card
