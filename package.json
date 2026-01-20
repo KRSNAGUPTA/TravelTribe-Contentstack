@@ -4,8 +4,5 @@
   "scripts": {
     "build": "pnpm run build",
     "dev": "pnpm run dev"
-  },
-  "engines": {
-    "node": "20.x"
   }
 }
