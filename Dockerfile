@@ -15,4 +15,5 @@ COPY . .
 
 EXPOSE 5001
 
-CMD ["pnpm", "run", "dev"]
+CMD ["pnpm", "--filter", "server", "run", "dev"]
+
