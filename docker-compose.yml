@@ -8,7 +8,7 @@ services:
       - ./server/.env
     volumes:
       - ./server:/app
-      - /app/node_modules
+      - server_node_modules:/app/node_modules
     depends_on:
       - mongo
 
@@ -32,5 +32,7 @@ services:
       ME_CONFIG_BASICAUTH_PASSWORD: admin
     depends_on:
       - mongo
+
 volumes:
   mongo_data:
+  server_node_modules:
