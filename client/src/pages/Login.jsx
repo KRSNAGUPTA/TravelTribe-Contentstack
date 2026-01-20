@@ -16,7 +16,7 @@ import api from "@/api";
 import cmsClient from "@/contentstackClient";
 
 const Login = () => {
-  const { login, signupUser } = useContext(AuthContext);
+  const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -133,6 +133,8 @@ const Login = () => {
 
                   localStorage.setItem("token", data.data.jwtToken);
                   localStorage.setItem("user", JSON.stringify(data.data.user));
+                  setUser(data.data.user);
+                  setAuthToken(data.data.jwtToken);
 
                   toast({ title: "Login Successful" });
                   navigate("/");

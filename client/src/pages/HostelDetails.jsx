@@ -677,7 +677,7 @@ export default function HostelDetails() {
                     </p>
 
                     <Button
-                      className="mt-2 rounded-full"
+                      className="mt-2 rounded-full text-black"
                       onClick={() =>
                         toast({ title: "Review feature coming soon" })
                       }
@@ -687,52 +687,53 @@ export default function HostelDetails() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-4">
-                  {reviews.map((review, index) => (
-                    <Card key={review._id || index}>
-                      <CardContent className="p-5 flex gap-4">
+                // <div className="space-y-4">
+                //   {reviews.map((review, index) => (
+                //     <Card key={review._id || index}>
+                //       <CardContent className="p-5 flex gap-4">
 
-                        {/* Avatar */}
-                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                          <User className="w-6 h-6 text-gray-500" />
-                        </div>
+                //         {/* Avatar */}
+                //         <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                //           <User className="w-6 h-6 text-gray-500" />
+                //         </div>
 
-                        {/* Content */}
-                        <div className="flex-1 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-semibold text-gray-800">
-                              {review.user_name || "Anonymous"}
-                            </h4>
+                //         {/* Content */}
+                //         <div className="flex-1 space-y-1">
+                //           <div className="flex items-center justify-between">
+                //             <h4 className="font-semibold text-gray-800">
+                //               {review.user_name || "Anonymous"}
+                //             </h4>
 
-                            {/* Rating */}
-                            <div className="flex gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${i < review.rating
-                                    ? "fill-yellow-500 text-yellow-500"
-                                    : "text-gray-300"
-                                    }`}
-                                />
-                              ))}
-                            </div>
-                          </div>
+                //             {/* Rating */}
+                //             <div className="flex gap-1">
+                //               {[...Array(5)].map((_, i) => (
+                //                 <Star
+                //                   key={i}
+                //                   className={`w-4 h-4 ${i < review.rating
+                //                     ? "fill-yellow-500 text-yellow-500"
+                //                     : "text-gray-300"
+                //                     }`}
+                //                 />
+                //               ))}
+                //             </div>
+                //           </div>
 
-                          <p className="text-sm text-gray-600">
-                            {review.comment}
-                          </p>
+                //           <p className="text-sm text-gray-600">
+                //             {review.comment}
+                //           </p>
 
-                          {review.createdAt && (
-                            <p className="text-xs text-gray-400">
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
+                //           {review.createdAt && (
+                //             <p className="text-xs text-gray-400">
+                //               {new Date(review.createdAt).toLocaleDateString()}
+                //             </p>
+                //           )}
+                //         </div>
 
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                //       </CardContent>
+                //     </Card>
+                //   ))}
+                // </div>
+                ""
               )}
             </TabsContent>
 

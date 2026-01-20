@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthContext } from "../context/AuthContext";
@@ -14,8 +14,14 @@ import { Separator } from "@/components/ui/separator"
 
 
 const Header = () => {
+  const [userInfo, setUserInfo] = useState(null)
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  useEffect(() => {
+    console.log("User logined")
+    setUserInfo(user);
+  }, [user]);
+  const toolTipContentCss = "text-black rounded-full border px-4 py-2 font-bold bg-white"
 
   return (
     <div className="relative">
@@ -23,12 +29,12 @@ const Header = () => {
         <Dock direction="middle">
           <DockIcon>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger asChild >
                 <div onClick={() => navigate("/")} className="cursor-pointer">
                   <House className="size-5" />
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className={toolTipContentCss}>
                 <p>Home</p>
               </TooltipContent>
             </Tooltip>
@@ -44,13 +50,13 @@ const Header = () => {
                   <Search className="size-5" />
                 </div>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className={toolTipContentCss}>
                 <p>Search</p>
               </TooltipContent>
             </Tooltip>
           </DockIcon>
 
-          {user ? (
+          {userInfo ? (
             <>
               <DockIcon>
                 <Tooltip>
@@ -61,17 +67,17 @@ const Header = () => {
                     >
                       <Avatar className="size-7">
                         <AvatarImage
-                          src={user.avatar || "/vite.svg"}
-                          alt={user.name}
+                          src={userInfo?.avatar || "/vite.svg"}
+                          alt={userInfo?.name}
                         />
                         <AvatarFallback className="bg-gray-600 text-white text-sm md:text-lg font-semibold">
-                          {user.name ? user.name[0].toUpperCase() : "U"}
+                          {userInfo?.name ? userInfo?.name[0].toUpperCase() : "U"}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{user?.name ? `Profile | ${user.name}` : "user"}</p>
+                  <TooltipContent className={toolTipContentCss}>
+                    <p>{userInfo?.name ? `Profile | ${userInfo.name}` : "user"}</p>
                   </TooltipContent>
                 </Tooltip>
               </DockIcon>
@@ -83,7 +89,7 @@ const Header = () => {
                       <LogOut className="size-5 text-red-500" />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className={toolTipContentCss}>
                     <p>Logout</p>
                   </TooltipContent>
                 </Tooltip>
@@ -102,7 +108,7 @@ const Header = () => {
                       <LogIn className="size-5" />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className={toolTipContentCss}>
                     <p>Login</p>
                   </TooltipContent>
                 </Tooltip>

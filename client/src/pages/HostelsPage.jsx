@@ -322,43 +322,43 @@ export default function FindHostel() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Colleges</SelectItem>
+                <SelectItem value="Thakur College of Engineering and Technology">
+                  Thakur College of Engineering and Technology
+                </SelectItem>
                 <SelectItem value="iitb">IIT Bombay</SelectItem>
                 <SelectItem value="vjti">VJTI Mumbai</SelectItem>
                 <SelectItem value="ict">
                   Institute of Chemical Technology (ICT)
                 </SelectItem>
-                <SelectItem value="spit">
+                <SelectItem value="Sardar Patel Institute of Technology">
                   Sardar Patel Institute of Technology
                 </SelectItem>
-                <SelectItem value="kjsce">
-                  KJ Somaiya College of Engineering
+                <SelectItem value="K.J. Somaiya College of Science & Commerce">
+                  K.J. Somaiya College of Science & Commerce
                 </SelectItem>
-                <SelectItem value="djsce">
+                <SelectItem value="DJ Sanghvi College of Engineering">
                   DJ Sanghvi College of Engineering
                 </SelectItem>
-                <SelectItem value="mpstme">
+                <SelectItem value="Mukesh Patel School of Technology">
                   Mukesh Patel School of Technology
                 </SelectItem>
-                <SelectItem value="nmims">NMIMS University</SelectItem>
+                <SelectItem value="NMIMS University">NMIMS University</SelectItem>
                 <SelectItem value="rait">
                   Ramrao Adik Institute of Technology (RAIT)
                 </SelectItem>
-                <SelectItem value="tcet">
-                  Thakur College of Engineering and Technology
-                </SelectItem>
-                <SelectItem value="sfit">
+                <SelectItem value="St. Francis Institute of Technology">
                   St. Francis Institute of Technology
                 </SelectItem>
-                <SelectItem value="siesgst">
+                <SelectItem value="SIES Graduate School of Technology">
                   SIES Graduate School of Technology
                 </SelectItem>
-                <SelectItem value="dbit">
+                <SelectItem value="Don Bosco Institute of Technology">
                   Don Bosco Institute of Technology
                 </SelectItem>
-                <SelectItem value="xavier">
+                <SelectItem value="Xavier Institute of Engineering">
                   Xavier Institute of Engineering
                 </SelectItem>
-                <SelectItem value="tpoly">Thakur Polytechnic</SelectItem>
+                <SelectItem value="Thakur Polytechnic">Thakur Polytechnic</SelectItem>
               </SelectContent>
             </Select>
             <Select value={location} onValueChange={setLocation}>
