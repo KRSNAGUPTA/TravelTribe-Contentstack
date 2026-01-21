@@ -72,7 +72,7 @@ useEffect(() => {
         setProfileData(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("CDA: Error fetching CMS data for Profiel Page:", error?.message);
+        console.error("CDA: Error fetching CMS data for Profile Page:", error?.message);
       }
     };
 
