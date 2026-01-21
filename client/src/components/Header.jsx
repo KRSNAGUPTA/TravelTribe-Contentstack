@@ -12,7 +12,6 @@ import {
 } from "./ui/tooltip";
 import { Separator } from "@/components/ui/separator"
 import Stack from "@/sdk/contentstackSDK";
-import Loading from "@/pages/Loading";
 import cmsClient from "@/contentstackClient";
 
 
@@ -21,7 +20,7 @@ const Header = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
   const [icons, setIcons] = useState();
-useEffect(() => {
+  useEffect(() => {
     const fetchCDAData = async () => {
       try {
         const entry = (
@@ -66,7 +65,6 @@ useEffect(() => {
     setUserInfo(user);
   }, [user]);
   const toolTipContentCss = "text-black rounded-full border px-4 py-2 font-bold bg-white"
-  if(!icons) return <Loading/>
 
   return (
     <div className="relative">
@@ -76,7 +74,10 @@ useEffect(() => {
             <Tooltip>
               <TooltipTrigger asChild >
                 <div onClick={() => navigate("/")} className="cursor-pointer">
-                  <img src={icons?.home.url} className="size-5"  alt="Home" draggable={false}/>
+                  {icons?.home ?
+                  <img src={icons?.home.url} className="size-5 select-none" alt="Home" draggable={false} />
+                  : <House/>
+}
                 </div>
               </TooltipTrigger>
               <TooltipContent className={toolTipContentCss}>
@@ -92,7 +93,10 @@ useEffect(() => {
                   onClick={() => navigate("/hostel")}
                   className=""
                 >
-                  <img src={icons?.search.url} className="size-5" alt="Search" draggable={false}/>
+                  {icons?.search ?
+                    <img src={icons?.search.url} className="size-5 select-none" alt="Search" draggable={false} />
+                    : <Search />
+                  }
                 </div>
               </TooltipTrigger>
               <TooltipContent className={toolTipContentCss}>
@@ -130,7 +134,10 @@ useEffect(() => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div onClick={logout}>
-                      <img src={icons?.logout.url} className="size-5" alt="Logout" draggable={false}/>
+                      {icons?.logout ?
+                        <img src={icons?.logout.url} className="size-5 select-none" alt="Logout" draggable={false} />
+                        : <LogOut />
+                      }
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className={toolTipContentCss}>
@@ -148,7 +155,10 @@ useEffect(() => {
                     <div
                       onClick={() => navigate("/login")}
                     >
-                      <img src={icons?.login.url} className="size-5" alt="Login" draggable={false}/>
+                      {icons?.login ?
+                        <img src={icons?.login.url} className="size-5 select-none" alt="Login" draggable={false} />
+                        : <LogIn />
+                      }
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className={toolTipContentCss}>
