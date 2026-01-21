@@ -21,4 +21,4 @@ WORKDIR /app/server
 
 EXPOSE 5001
 
-CMD ["pnpm", "run", "dev"]
+CMD ["pnpm", "--filter","run","start"]
