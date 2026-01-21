@@ -2,18 +2,23 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Enable pnpm via corepack (BEST PRACTICE)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Enable pnpm
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
-# Copy dependency files first (for caching)
-COPY package.json pnpm-lock.yaml ./
+# Copy workspace files FIRST (cache-friendly)
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
 
-RUN pnpm install
+# Copy only server package.json first
+COPY server/package.json server/package.json
 
-# Copy source code
-COPY . .
+# Install only server deps
+RUN pnpm install --filter server...
+
+# Copy rest of server code
+COPY server ./server
+
+WORKDIR /app/server
 
 EXPOSE 5001
 
-CMD ["pnpm", "--filter", "server", "run", "dev"]
-
+CMD ["pnpm", "run", "dev"]
