@@ -13,7 +13,7 @@ services:
       - server_node_modules:/app/server/node_modules
     depends_on:
       - mongo
-    command: pnpm run dev
+    command: pnpm run dev:server
 
   mongo:
     image: mongo:7

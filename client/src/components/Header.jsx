@@ -18,7 +18,7 @@ const Header = () => {
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
   useEffect(() => {
-    console.log("User logined")
+    // console.log("User logined")
     setUserInfo(user);
   }, [user]);
   const toolTipContentCss = "text-black rounded-full border px-4 py-2 font-bold bg-white"
