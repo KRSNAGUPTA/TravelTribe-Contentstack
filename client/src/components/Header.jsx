@@ -13,6 +13,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import Stack from "@/sdk/contentstackSDK";
 import Loading from "@/pages/Loading";
+import cmsClient from "@/contentstackClient";
 
 
 const Header = () => {
