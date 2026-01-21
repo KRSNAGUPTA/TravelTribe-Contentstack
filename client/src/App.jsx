@@ -4,7 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./middlewares/protectedRoutes";
 import Loading from "./pages/Loading";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import cmsClient from "./contentstackClient";
+import cmsClient from "./contentstack/contentstackClient";
 import { applyTheme } from "./lib/applyTheme";
 
 const HomePage = lazy(() => import("./pages/HomePage"));

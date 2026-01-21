@@ -11,8 +11,8 @@ import {
   TooltipContent,
 } from "./ui/tooltip";
 import { Separator } from "@/components/ui/separator"
-import Stack from "@/sdk/contentstackSDK";
-import cmsClient from "@/contentstackClient";
+import Stack from "@/contentstack/contentstackSDK";
+import cmsClient from "@/contentstack/contentstackClient";
 
 
 const Header = () => {

@@ -18,7 +18,7 @@ import {
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import api from "@/api";
 
@@ -50,7 +50,7 @@ import {
   MapPin,
   View,
 } from "lucide-react";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
 
 const base = "mr-1 h-4 w-4";
 

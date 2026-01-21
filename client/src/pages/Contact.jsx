@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Loading from "./Loading";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 
 function Contact() {
   const [contactData, setContactData] = useState(null);

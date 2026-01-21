@@ -13,8 +13,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api";
-import cmsClient from "@/contentstackClient";
-import Stack from "@/sdk/contentstackSDK";
+import cmsClient from "@/contentstack/contentstackClient";
+import Stack from "@/contentstack/contentstackSDK";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);

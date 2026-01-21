@@ -1,10 +1,10 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Card, CardTitle, CardContent } from "@/components/ui/card";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import React, { useEffect, useState } from "react";
 import Loading from "./Loading";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
 
 function About() {
   const [about, setAbout] = useState(null);

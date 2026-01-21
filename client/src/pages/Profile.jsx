@@ -45,8 +45,8 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import cmsClient from "@/contentstackClient";
-import Stack from "@/sdk/contentstackSDK";
+import cmsClient from "@/contentstack/contentstackClient";
+import Stack from "@/contentstack/contentstackSDK";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});

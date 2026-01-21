@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
 
 export default function NotFound() {
   const [data,setData] = useState(null)

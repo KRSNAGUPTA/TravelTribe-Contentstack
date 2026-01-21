@@ -19,61 +19,61 @@ import {
 } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
+import ContentstackLivePreview from "@contentstack/live-preview-utils";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
 
   useEffect(() => {
-    const fetchCDAData = async () => {
-      try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/landing_page/entries/bltd518b717b8917267?include[]=page_sections.hostels_section.reference"
-          )
-        ).data.entry;
-        // console.log("CDA");
-        // console.log(entry);
+  const fetchCDAData = async () => {
+    try {
+      const entry = (
+        await cmsClient.get(
+          "/content_types/landing_page/entries/bltd518b717b8917267?include[]=page_sections.hostels_section.reference"
+        )
+      ).data.entry;
 
-        document.title = entry.title;
-        setLandingData(entry.page_sections);
-      } catch (error) {
-        console.error("Failed to fetch data from cms", error);
-      }
-    };
-
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("landing_page")
-          .Entry("bltd518b717b8917267")
-          .includeReference("page_sections.hostels_section.reference")
-          .toJSON()
-          .fetch();
-        // console.log("SDK");
-        // console.log(entry);
-        document.title = entry.title;
-        setLandingData(entry.page_sections);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    // fetchCDAData();
-    // fetchSDKData();
-
-    // console.log("t/f", import.meta.env.VITE_SDK)
-    
-    if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
-      fetchSDKData()
-    } else {
-      fetchCDAData();
-      // console.log("CDA active")
+      document.title = entry.title;
+      setLandingData(entry.page_sections);
+    } catch (error) {
+      console.error("Failed to fetch data from CDA", error);
     }
-  }, []);
+  };
+
+  const fetchSDKData = async () => {
+    try {
+      const entry = await Stack
+        .ContentType("landing_page")
+        .Entry("bltd518b717b8917267")
+        .includeReference("page_sections.hostels_section.reference")
+        .toJSON()
+        .fetch();
+
+      document.title = entry.title;
+      setLandingData(entry.page_sections);
+    } catch (error) {
+      console.error("Failed to fetch data from SDK", error);
+    }
+  };
+
+  const fetchData =
+    import.meta.env.VITE_SDK === "true" ? fetchSDKData : fetchCDAData;
+
+  // Initial fetch 
+  fetchData();
+
+  // Register live preview listener
+  ContentstackLivePreview.onEntryChange(fetchData);
+
+  // Cleanup listener
+  return () => {
+    ContentstackLivePreview.offEntryChange(fetchData);
+  };
+}, []);
+
 
   const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: false }));
   const navigate = useNavigate();

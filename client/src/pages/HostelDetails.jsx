@@ -72,9 +72,9 @@ import { toast } from "@/hooks/use-toast";
 import Loading from "./Loading";
 import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
 
 export default function HostelDetails() {
   const { id } = useParams();

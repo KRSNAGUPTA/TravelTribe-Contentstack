@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
 import Header from "@/components/Header";
-import Stack from "@/sdk/contentstackSDK";
+import Stack from "@/contentstack/contentstackSDK";
 
 export default function PrivacyPolicy() {
   const [privacyData, setPrivacyData] = useState(null);

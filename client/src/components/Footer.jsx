@@ -3,7 +3,7 @@ import { Button } from "./ui/button";
 import { Toaster } from "./ui/toaster";
 import { useEffect, useState } from "react";
 import api from "@/api";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 
 const Footer = () => {
   const [email, setEmail] = useState("");

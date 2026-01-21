@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
-import cmsClient from "@/contentstackClient";
+import cmsClient from "@/contentstack/contentstackClient";
 
 export default function HostelBooking() {
   const { id } = useParams();
