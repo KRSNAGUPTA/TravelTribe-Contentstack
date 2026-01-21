@@ -44,7 +44,7 @@ useEffect(() => {
           .toJSON()
           .fetch();
         setIcons(entry);
-        console.log(entry)
+        // console.log(entry)
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
         console.error("SDK: Error fetching Profile Page data:", error?.message);
