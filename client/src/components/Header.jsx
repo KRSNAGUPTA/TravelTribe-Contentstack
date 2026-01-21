@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AuthContext } from "../context/AuthContext";
-import { House, LogIn, LogOut, LayoutDashboard, Search } from "lucide-react";
+import { House, LogIn, LogOut, Search } from "lucide-react";
 import { Dock, DockIcon } from "./magicui/dock";
 import {
   TooltipProvider,
@@ -11,17 +11,61 @@ import {
   TooltipContent,
 } from "./ui/tooltip";
 import { Separator } from "@/components/ui/separator"
+import Stack from "@/sdk/contentstackSDK";
+import Loading from "@/pages/Loading";
 
 
 const Header = () => {
   const [userInfo, setUserInfo] = useState(null)
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
+  const [icons, setIcons] = useState();
+useEffect(() => {
+    const fetchCDAData = async () => {
+      try {
+        const entry = (
+          await cmsClient.get(
+            "/content_types/header/entries/bltf9dba16208e02dd7"
+          )
+        ).data.entry;
+
+        setIcons(entry);
+        if (entry?.page_title) document.title = entry.page_title;
+      } catch (error) {
+        console.error("CDA: Error fetching CMS data for Profiel Page:", error?.message);
+      }
+    };
+
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("header")
+          .Entry("bltf9dba16208e02dd7")
+          .toJSON()
+          .fetch();
+        setIcons(entry);
+        console.log(entry)
+        if (entry?.page_title) document.title = entry.page_title;
+      } catch (error) {
+        console.error("SDK: Error fetching Profile Page data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
+  }, []);
+
   useEffect(() => {
     // console.log("User logined")
     setUserInfo(user);
   }, [user]);
   const toolTipContentCss = "text-black rounded-full border px-4 py-2 font-bold bg-white"
+  if(!icons) return <Loading/>
 
   return (
     <div className="relative">
@@ -31,7 +75,7 @@ const Header = () => {
             <Tooltip>
               <TooltipTrigger asChild >
                 <div onClick={() => navigate("/")} className="cursor-pointer">
-                  <House className="size-5" />
+                  <img src={icons?.home.url} className="size-5"  alt="Home" draggable={false}/>
                 </div>
               </TooltipTrigger>
               <TooltipContent className={toolTipContentCss}>
@@ -45,9 +89,9 @@ const Header = () => {
               <TooltipTrigger asChild>
                 <div
                   onClick={() => navigate("/hostel")}
-                  className="cursor-pointer"
+                  className=""
                 >
-                  <Search className="size-5" />
+                  <img src={icons?.search.url} className="size-5" alt="Search" draggable={false}/>
                 </div>
               </TooltipTrigger>
               <TooltipContent className={toolTipContentCss}>
@@ -63,7 +107,6 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <div
                       onClick={() => navigate("/profile")}
-                      className="cursor-pointer"
                     >
                       <Avatar className="size-7">
                         <AvatarImage
@@ -85,8 +128,8 @@ const Header = () => {
               <DockIcon>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div onClick={logout} className="cursor-pointer">
-                      <LogOut className="size-5 text-red-500" />
+                    <div onClick={logout}>
+                      <img src={icons?.logout.url} className="size-5" alt="Logout" draggable={false}/>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className={toolTipContentCss}>
@@ -103,9 +146,8 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <div
                       onClick={() => navigate("/login")}
-                      className="cursor-pointer"
                     >
-                      <LogIn className="size-5" />
+                      <img src={icons?.login.url} className="size-5" alt="Login" draggable={false}/>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent className={toolTipContentCss}>

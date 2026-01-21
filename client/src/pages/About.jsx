@@ -4,30 +4,53 @@ import { Card, CardTitle, CardContent } from "@/components/ui/card";
 import cmsClient from "@/contentstackClient";
 import React, { useEffect, useState } from "react";
 import Loading from "./Loading";
+import Stack from "@/sdk/contentstackSDK";
 
 function About() {
   const [about, setAbout] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCDAData = async () => {
       try {
-        const cmsRes = (
+        const entry = (
           await cmsClient.get(
             "/content_types/about_us/entries/blt185b62aabf4f0649"
           )
         ).data.entry;
 
-        setAbout(cmsRes);
+        setAbout(entry);
 
-        if (cmsRes?.title) {
-          document.title = cmsRes.title;
+        if (entry?.title) {
+          document.title = entry.title;
         }
       } catch (error) {
-        console.error("Error fetching About data:", error?.message);
+        console.error("CDA: Error fetching About data:", error?.message);
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("about_us")
+          .Entry("blt185b62aabf4f0649")
+          .toJSON()
+          .fetch();
+        setAbout(entry);
+        if (entry?.title) {
+          document.title = entry.title;
+        }
+      } catch (error) {
+        console.error("SDK: Error fetching About data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
   }, []);
 
   if (!about) return <Loading />;

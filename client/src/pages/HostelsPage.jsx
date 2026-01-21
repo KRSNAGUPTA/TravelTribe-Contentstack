@@ -50,6 +50,7 @@ import {
   MapPin,
   View,
 } from "lucide-react";
+import Stack from "@/sdk/contentstackSDK";
 
 const base = "mr-1 h-4 w-4";
 
@@ -159,7 +160,7 @@ export default function FindHostel() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCDAData = async () => {
       try {
         const data = (
           await cmsClient.get(
@@ -172,7 +173,27 @@ export default function FindHostel() {
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("hostel_listing")
+          .Entry("blt637d48315eb69a7b")
+          .toJSON()
+          .fetch();
+        document.title = entry.title;
+        setListingPageData(entry);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
   }, []);
 
   useEffect(() => {

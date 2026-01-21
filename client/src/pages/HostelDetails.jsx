@@ -74,6 +74,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import cmsClient from "@/contentstackClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Stack from "@/sdk/contentstackSDK";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -84,16 +85,20 @@ export default function HostelDetails() {
   const plugin = useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
   )
-
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAPIData = async()=>{
       try {
-        const cmsRes = await cmsClient.get(`/content_types/hostel/entries/${id}`);
         const apiRes = await api.get(`/api/hostel/${id}`);
-
-        setHostel(cmsRes.data.entry);
         setRoomAvailability(apiRes.data);
         setReviews(apiRes.data.reviews || []);
+      } catch (error) {
+        console.log("Error fetching hostel data from backend", error)
+      }
+    }
+    const fetchCDAData = async () => {
+      try {
+        const entry = (await cmsClient.get(`/content_types/hostel/entries/${id}`)).data.entry;
+        setHostel(entry);
       } catch (error) {
         console.error("Error fetching hostel data:", error);
         setHostel(null);
@@ -102,7 +107,30 @@ export default function HostelDetails() {
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("hostel")
+          .Entry(id)
+          .toJSON()
+          .fetch();
+        setHostel(entry);
+      } catch (error) {
+        console.error("SDK: Error fetching hostel Page data:", error?.message);
+      }
+      finally {
+        setLoading(false);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
+    fetchAPIData();
   }, [id]);
 
 

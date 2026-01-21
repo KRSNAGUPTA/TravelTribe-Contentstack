@@ -190,7 +190,7 @@ importers:
         version: 9.0.3
       mongoose:
         specifier: ^8.10.0
-        version: 8.21.0
+        version: 8.21.0(gcp-metadata@6.1.1)
       multer:
         specifier: ^1.4.5-lts.1
         version: 1.4.5-lts.2
@@ -5302,17 +5302,19 @@ snapshots:
       '@types/whatwg-url': 11.0.5
       whatwg-url: 14.2.0
 
-  mongodb@6.20.0:
+  mongodb@6.20.0(gcp-metadata@6.1.1):
     dependencies:
       '@mongodb-js/saslprep': 1.4.5
       bson: 6.10.4
       mongodb-connection-string-url: 3.0.2
+    optionalDependencies:
+      gcp-metadata: 6.1.1
 
-  mongoose@8.21.0:
+  mongoose@8.21.0(gcp-metadata@6.1.1):
     dependencies:
       bson: 6.10.4
       kareem: 2.6.3
-      mongodb: 6.20.0
+      mongodb: 6.20.0(gcp-metadata@6.1.1)
       mpath: 0.9.0
       mquery: 5.0.0
       ms: 2.1.3

@@ -14,6 +14,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api";
 import cmsClient from "@/contentstackClient";
+import Stack from "@/sdk/contentstackSDK";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
@@ -25,19 +26,45 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("login");
   const [authPageData, setAuthPageData] = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const res = (
-        await cmsClient.get(
-          "/content_types/auth_page/entries/bltcb7c69182a4d93ca"
-        )
-      ).data.entry;
+  
 
-      setAuthPageData(res);
-      document.title = res.app_title;
+  useEffect(() => {
+    const fetchCDAData = async () => {
+      try {
+        const entry = (
+          await cmsClient.get(
+            "/content_types/auth_page/entries/bltcb7c69182a4d93ca"
+          )
+        ).data.entry;
+
+        setAuthPageData(entry);
+        document.title = entry.app_title;
+      } catch (error) {
+        console.error("CDA: Error fetching Auth Page data:", error?.message);
+      }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("auth_page")
+          .Entry("bltcb7c69182a4d93ca")
+          .toJSON()
+          .fetch();
+        setAuthPageData(entry);
+        document.title = entry.app_title;
+      } catch (error) {
+        console.error("SDK: Error fetching Auth Page data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
   }, []);
 
   const handleAuth = async (e, type) => {
@@ -125,27 +152,27 @@ const Login = () => {
           </div>
 
           <div className="mt-6 flex justify-center">
-              <GoogleLogin
-                onSuccess={async (credentialResponse) => {
-                  const data = await api.post("/api/user/google/callback", {
-                    token: credentialResponse.credential,
-                  });
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                const data = await api.post("/api/user/google/callback", {
+                  token: credentialResponse.credential,
+                });
 
-                  localStorage.setItem("token", data.data.jwtToken);
-                  localStorage.setItem("user", JSON.stringify(data.data.user));
-                  setUser(data.data.user);
-                  setAuthToken(data.data.jwtToken);
+                localStorage.setItem("token", data.data.jwtToken);
+                localStorage.setItem("user", JSON.stringify(data.data.user));
+                setUser(data.data.user);
+                setAuthToken(data.data.jwtToken);
 
-                  toast({ title: "Login Successful" });
-                  navigate("/");
-                }}
-                onError={() =>
-                  toast({
-                    title: "Google login failed",
-                    variant: "destructive",
-                  })
-                }
-              />
+                toast({ title: "Login Successful" });
+                navigate("/");
+              }}
+              onError={() =>
+                toast({
+                  title: "Google login failed",
+                  variant: "destructive",
+                })
+              }
+            />
           </div>
 
           <div className="flex items-center gap-3 my-6">

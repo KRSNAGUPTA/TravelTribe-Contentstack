@@ -2,28 +2,51 @@ import React, { useEffect, useState } from "react";
 import cmsClient from "@/contentstackClient";
 import Loading from "./Loading";
 import Header from "@/components/Header";
+import Stack from "@/sdk/contentstackSDK";
 
 export default function PrivacyPolicy() {
   const [privacyData, setPrivacyData] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCDAData = async () => {
       try {
-        const cmsRes = (
+        const entry = (
           await cmsClient.get(
             "/content_types/privacy_page/entries/blta8e91d738392bd3d"
           )
         ).data.entry;
 
-        setPrivacyData(cmsRes);
-        if (cmsRes?.title) document.title = cmsRes.title;
+        setPrivacyData(entry);
+        if (entry?.title) document.title = entry.title;
       } catch (error) {
-        console.error("Error fetching Privacy Page data:", error?.message);
+        console.error("CDA: Error fetching Privacy Page data:", error?.message);
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("privacy_page")
+          .Entry("blta8e91d738392bd3d")
+          .toJSON()
+          .fetch();
+        setPrivacyData(entry);
+      } catch (error) {
+        console.error("SDK: Error fetching Privacy Page data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
   }, []);
+
+
+
 
   if (!privacyData) return <Loading />;
 

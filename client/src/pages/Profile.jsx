@@ -46,6 +46,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import cmsClient from "@/contentstackClient";
+import Stack from "@/sdk/contentstackSDK";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});
@@ -59,24 +60,46 @@ export default function ProfilePage() {
     password: "",
     isPasswordChanged: false,
   });
-  useEffect(() => {
-    const fetchData = async () => {
+useEffect(() => {
+    const fetchCDAData = async () => {
       try {
-        const cmsRes = (
+        const entry = (
           await cmsClient.get(
             "/content_types/profile_page/entries/bltc76b51f6a5d5e5e2"
           )
         ).data.entry;
 
-        setProfileData(cmsRes);
-        if (cmsRes?.page_title) document.title = cmsRes.page_title;
+        setProfileData(entry);
+        if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("Error fetching CMS data for Profiel Page:", error?.message);
+        console.error("CDA: Error fetching CMS data for Profiel Page:", error?.message);
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("profile_page")
+          .Entry("bltc76b51f6a5d5e5e2")
+          .toJSON()
+          .fetch();
+        setProfileData(entry);
+        if (entry?.page_title) document.title = entry.page_title;
+      } catch (error) {
+        console.error("SDK: Error fetching Profile Page data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      // console.log("SDK active")
+      fetchSDKData()
+    } else {
+      fetchCDAData();
+      // console.log("CDA active")
+    }
   }, []);
+
+
   useEffect(() => {
     const fetchUserData = async () => {
       try {

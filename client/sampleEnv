@@ -11,3 +11,10 @@ VITE_CS_BASE_URL=https://cdn.contentstack.io/v3
 VITE_CS_API_KEY=
 VITE_CS_ACCESS_TOKEN=    # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
 VITE_CS_PREVIEW_TOKEN= #optional for now --not using 
+
+VITE_SDK = true #SDK and CDA both version available. Choose true -> SDK, false -> CDA
+# Contentstack (CS) (region: North America) (SDK)
+# below are devlopment environment key used in sdk version
+VITE_CS_DEV_ENV=devlopment 
+VITE_CS_DEV_ACCESS_TOKEN=
+VITE_CS_DEV_PREVIEW_TOKEN=
