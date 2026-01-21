@@ -8,17 +8,19 @@ RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 # Copy workspace configuration files
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 
-# Copy server's package.json first so pnpm can detect the workspace
+# Copy server's package.json first
 COPY server/package.json ./server/
 
-# Install dependencies for server workspace
-RUN pnpm install --filter server...
+# Install dependencies (this creates node_modules at /app)
+RUN pnpm install --filter server... --frozen-lockfile
 
-# Now copy the rest of the server code
+# Copy the rest of the server code
 COPY server ./server
 
-WORKDIR /app/server
+# Stay at /app, don't change to /app/server
+WORKDIR /app
 
 EXPOSE 5001
 
-CMD ["pnpm", "start"]
+# Run from the workspace root
+CMD ["pnpm", "--filter", "server", "start"]
