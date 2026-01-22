@@ -121,15 +121,15 @@ export default function HomePage() {
         <div className="flex flex-col items-start md:w-1/2 space-y-6 z-10">
           <div className="space-y-4">
             {/* {console.log(...heroSection.$.title)} */}
-            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight" {...heroSection.$.title}  >
+            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight" {...heroSection?.$?.title}  >
               {heroSection?.title}
             </h1>
 
-            <h2 className="text-3xl md:text-4xl font-bold text-[var(--primary)]">
+            <h2 className="text-3xl md:text-4xl font-bold text-[var(--primary)]" {...heroSection?.$?.subtitle}>
               {heroSection?.subtitle}
             </h2>
 
-            <p className="text-lg text-[var(--secondary)] max-w-lg">
+            <p className="text-lg text-[var(--secondary)] max-w-lg" {...heroSection?.$?.subtext}>
               {heroSection?.subtext}
             </p>
           </div>
@@ -142,6 +142,7 @@ export default function HomePage() {
             }}
 
             className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] px-8 py-6 text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 ease-out hover:-translate-y-0.5"
+            {...heroSection?.cta?.$?.title}
           >
             {heroSection?.cta?.title}
             <ArrowRight className="ml-2 h-5 w-5" />
@@ -161,7 +162,7 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="py-24 w-full">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)]">
+          <h2 className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)]" {...featuresSection?.$?.title}>
             {featuresSection?.title}
           </h2>
 
@@ -181,11 +182,11 @@ export default function HomePage() {
                   />
                 </div>
 
-                <h3 className="text-2xl font-semibold mb-3 text-[var(--text-dark)]">
+                <h3 className="text-2xl font-semibold mb-3 text-[var(--text-dark)]" {...item?.$?.feature_title}>
                   {item?.feature_title}
                 </h3>
 
-                <p className="text-lg text-[var(--text-muted)] leading-relaxed">
+                <p className="text-lg text-[var(--text-muted)] leading-relaxed" {...item?.$?.feature_description}>
                   {item?.feature_description}
                 </p>
               </div>
@@ -199,7 +200,7 @@ export default function HomePage() {
       {/* Featured Hostel */}
       <section className="py-24 w-full bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12">
+          <h2 className="text-4xl font-bold text-center mb-12" {...hostelsSection?.$?.title}>
             {hostelsSection?.title}
           </h2>
 
@@ -240,7 +241,7 @@ export default function HomePage() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
 
                           {/* Title */}
-                          <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug">
+                          <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug" {...hostel?.$?.title}>
                             {hostel.title.length > 32
                               ? `${hostel.title.slice(0, 32)}...`
                               : hostel.title}
@@ -280,7 +281,7 @@ export default function HomePage() {
       {/* Tesitimonials Section  */}
       <section className="py-24 w-full flex items-center">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-12 ">
+          <h2 className="text-4xl font-bold text-center mb-12 " {...testimonialsSection?.$?.title}>
             {testimonialsSection?.title}
           </h2>
 
@@ -305,10 +306,10 @@ export default function HomePage() {
                           {data?.user_name?.[0] ?? "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <h3 className="mt-6 text-xl font-semibold text-gray-900 border-b-2">
+                      <h3 className="mt-6 text-xl font-semibold text-gray-900 border-b-2" {...data?.$?.user_name}>
                         {data?.user_name}
                       </h3>
-                      <p className="mt-4 text-gray-600 text-center leading-relaxed">
+                      <p className="mt-4 text-gray-600 text-center leading-relaxed" {...data?.$?.user_quote}>
                         "{data?.user_quote}"
                       </p>
                     </CardContent>
@@ -323,7 +324,7 @@ export default function HomePage() {
       {/* FAQ Section  */}
       <section className="py-24 bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4 max-w-3xl">
-          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900">
+          <h2 className="text-4xl font-bold text-center mb-12 text-gray-900" {...faqSection?.$?.title}>
             {faqSection?.title}
           </h2>
 
@@ -334,10 +335,10 @@ export default function HomePage() {
                 value={`item-${index + 1}`}
                 className="bg-white rounded-lg"
               >
-                <AccordionTrigger className="text-lg font-medium px-6 hover:text-[var(--primary)] transition-colors duration-500">
+                <AccordionTrigger className="text-lg font-medium px-6 hover:text-[var(--primary)] transition-colors duration-500" {...item?.$?.question}>
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-gray-700 px-6 pb-4 font-semibold">
+                <AccordionContent className="text-gray-700 px-6 pb-4 font-semibold" {...item?.$?.answer}>
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>
