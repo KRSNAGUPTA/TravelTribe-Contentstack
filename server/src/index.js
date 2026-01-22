@@ -8,7 +8,6 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import webHookRoutes from "./routes/webHookRoutes.js";
 
 import cors from "cors";
-import { sendNotification } from "./discordBot/NotificationBot.js";
 import axios from "axios";
 dotenv.config();
 
