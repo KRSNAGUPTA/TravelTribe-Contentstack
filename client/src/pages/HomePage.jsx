@@ -22,8 +22,9 @@ import { Toaster } from "@/components/ui/toaster";
 import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import ContentstackLivePreview from "@contentstack/live-preview-utils";
 import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
+
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -53,6 +54,8 @@ export default function HomePage() {
         .includeReference("page_sections.hostels_section.reference")
         .toJSON()
         .fetch();
+      
+      addEditableTags(entry, "landing_page",true, 'en-us')
 
       document.title = entry.title;
       setLandingData(entry.page_sections);
@@ -117,7 +120,8 @@ export default function HomePage() {
     to-[var(--hero-grad-end)]">
         <div className="flex flex-col items-start md:w-1/2 space-y-6 z-10">
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight" >
+            {/* {console.log(...heroSection.$.title)} */}
+            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight" {...heroSection.$.title}  >
               {heroSection?.title}
             </h1>
 

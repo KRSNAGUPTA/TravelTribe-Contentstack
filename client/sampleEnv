@@ -6,15 +6,19 @@ VITE_GOOGLE_CLIENT_ID=
 VITE_RAZORPAY_KEY_ID =
 VITE_RAZORPAY_KEY_SECRET =
 
-# Contentstack (CS) (region: North America) 
+# Contentstack (CS) (region: North America) (CDA)
 VITE_CS_BASE_URL=https://cdn.contentstack.io/v3
-VITE_CS_API_KEY=
-VITE_CS_ACCESS_TOKEN=    # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
-VITE_CS_PREVIEW_TOKEN= #optional for now --not using 
+VITE_CS_API_KEY= 
+VITE_CS_ACCESS_TOKEN= # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
+VITE_CS_PREVIEW_TOKEN=
+VITE_CS_BRANCH=
 
-VITE_SDK = true #SDK and CDA both version available. Choose true -> SDK, false -> CDA
+VITE_SDK = true #to switch between SDK and CDA mode, SDK mode required for live preview
 # Contentstack (CS) (region: North America) (SDK)
-# below are devlopment environment key used in sdk version
-VITE_CS_DEV_ENV=devlopment 
+# for live preview (devlopment environment)
+VITE_CS_DEV_ENV=devlopment
 VITE_CS_DEV_ACCESS_TOKEN=
 VITE_CS_DEV_PREVIEW_TOKEN=
+VITE_CS_DEV_PREVIEW_HOST=rest-preview.contentstack.com
+VITE_CS_DEV_API_HOST=cdn.contentstack.io
+VITE_CS_DEV_APP_HOST=app.contentstack.com
