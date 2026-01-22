@@ -102,8 +102,9 @@ function Contact() {
     try {
       await api.post("/api/support", formData);
       toast({
-        title: "Message sent",
-        description: "We will get back to you soon",
+        title: "Query Received",
+        description: "Our team will contact you soon!",
+        variant:"success"
       });
       setFormData({ name: "", email: "", topic: "", message: "" });
     } catch {
