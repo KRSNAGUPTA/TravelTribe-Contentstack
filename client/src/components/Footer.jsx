@@ -4,25 +4,56 @@ import { Toaster } from "./ui/toaster";
 import { useEffect, useState } from "react";
 import api from "@/api";
 import cmsClient from "@/contentstack/contentstackClient";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
   const [footerData, setFooterData] = useState({});
+  
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCDAData = async () => {
       try {
-        const data = (
+        const entry = (
           await cmsClient.get(
             "/content_types/footer/entries/bltf643a3bf4a1a7316"
           )
         ).data.entry;
-        setFooterData(data);
+        setFooterData(entry);
       } catch (error) {
-        console.error("Failed to fetch data from cms", error);
+        console.error("CDA: Failed to fetch footer data from cms", error);
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("footer")
+          .Entry("bltf643a3bf4a1a7316")
+          .toJSON()
+          .fetch();
+        addEditableTags(entry, "footer", true, 'en-us')
+        setFooterData(entry);
+
+        // for live preview 
+        const data = {
+          "entryUid": "bltf643a3bf4a1a7316",
+          "contenttype": "footer",
+          "locale": "en-us"
+        }
+        setDataForChromeExtension(data)
+      } catch (error) {
+        console.error("SDK: Failed to fetch footer data", error);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      fetchSDKData()
+      onEntryChange(fetchSDKData);
+    } else {
+      fetchCDAData();
+    }
   }, []);
 
   const handleSubscribe = async () => {
@@ -63,8 +94,8 @@ const Footer = () => {
 
         {/* Brand */}
         <div>
-          <h2 className="text-2xl font-bold">{footerData?.title}</h2>
-          <p className="mt-3 text-gray-400 text-sm leading-relaxed">
+          <h2 className="text-2xl font-bold" {...footerData?.$?.title}>{footerData?.title}</h2>
+          <p className="mt-3 text-gray-400 text-sm leading-relaxed" {...footerData?.$?.subtext}>
             {footerData?.subtext}
           </p>
         </div>
@@ -72,17 +103,18 @@ const Footer = () => {
         {/* CMS Sections */}
         {footerData?.section_group?.map((section) => (
           <div key={section._metadata.uid}>
-            <h3 className="text-lg font-semibold mb-4">
-              {section.group_title}
+            <h3 className="text-lg font-semibold mb-4" {...section?.$?.group_title}>
+              {section?.group_title}
             </h3>
             <ul className="space-y-3 text-sm text-gray-400">
               {section.link_group?.map((item) => (
                 <li key={item._metadata.uid}>
                   <a
-                    href={item.link.href}
+                    href={item?.link?.href}
                     className="hover:text-white transition"
+                    {...item?.link?.$?.title}
                   >
-                    {item.link.title}
+                    {item?.link?.title}
                   </a>
                 </li>
               ))}
@@ -92,7 +124,7 @@ const Footer = () => {
 
         {/* Subscribe */}
         <div>
-          <h3 className="text-lg font-semibold mb-4">
+          <h3 className="text-lg font-semibold mb-4" {...footerData?.$?.email_title}>
             {footerData?.email_title}
           </h3>
 
@@ -103,12 +135,13 @@ const Footer = () => {
               onChange={(e) => setEmail(e.target.value)}
               placeholder={footerData?.email_placeholder}
               className="w-full bg-gray-800 text-white px-4 py-1 rounded-md outline-none"
+              {...footerData?.$?.email_placeholder}
             />
             <Button
               onClick={handleSubscribe}
               className="w-full sm:w-auto bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md"
             >
-              {footerData?.subscribe_button_text}
+              <span {...footerData?.$?.subscribe_button_text}>{footerData?.subscribe_button_text}</span>
             </Button>
           </div>
         </div>
@@ -116,17 +149,19 @@ const Footer = () => {
 
       {/* Bottom Bar */}
       <div className="border-t border-gray-800 mt-6 pb-28 py-4 text-center text-xs text-gray-500 px-4">
-        <p>{footerData?.copyright_text}</p>
+        <p {...footerData?.$?.copyright_text}>{footerData?.copyright_text}</p>
         <div className="mt-2 flex justify-center gap-4 flex-wrap">
           <a
             href={footerData?.terms_of_service_link?.href}
             className="hover:text-white"
+            {...footerData?.terms_of_service_link?.$?.title}
           >
             {footerData?.terms_of_service_link?.title}
           </a>
           <a
             href={footerData?.privacy_policy_link?.href}
             className="hover:text-white"
+            {...footerData?.privacy_policy_link?.$?.title}
           >
             {footerData?.privacy_policy_link?.title}
           </a>

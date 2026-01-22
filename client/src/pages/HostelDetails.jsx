@@ -74,7 +74,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import cmsClient from "@/contentstack/contentstackClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -114,7 +116,16 @@ export default function HostelDetails() {
           .Entry(id)
           .toJSON()
           .fetch();
+        addEditableTags(entry, "hostel",true, 'en-us')
         setHostel(entry);
+
+        // for live preview 
+        const data = {
+          "entryUid":id,
+          "contenttype":"hostel",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (error) {
         console.error("SDK: Error fetching hostel Page data:", error?.message);
       }
@@ -124,11 +135,10 @@ export default function HostelDetails() {
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
     fetchAPIData();
   }, [id]);
@@ -312,10 +322,10 @@ export default function HostelDetails() {
         <div className="max-w-5xl mx-auto p-4 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-1">
+              <h1 className="text-3xl font-bold text-gray-800 mb-1" {...hostel?.$?.title}>
                 {hostel?.title}
               </h1>
-              <div className="flex items-center text-sm text-gray-500">
+              <div className="flex items-center text-sm text-gray-500" {...hostel?.$?.address}>
                 <MapPin className="w-4 h-4 mr-1" />
                 <p className="max-w-lg">{hostel?.address}</p>
               </div>
@@ -404,7 +414,7 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-black" />
                             <span className="font-medium">Name:</span>
-                            <span>{hostel.contact.name}</span>
+                            <span {...hostel?.contact?.$?.name}>{hostel.contact.name}</span>
                           </div>
                         )}
 
@@ -412,7 +422,7 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4 text-black" />
                             <span className="font-medium">Phone:</span>
-                            <span> +91 {hostel.contact.phone}</span>
+                            <span {...hostel?.contact?.$?.phone}> +91 {hostel.contact.phone}</span>
                           </div>
                         )}
 
@@ -420,7 +430,7 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-black" />
                             <span className="font-medium">Email:</span>
-                            <span>{hostel.contact.email}</span>
+                            <span {...hostel?.contact?.$?.email}>{hostel.contact.email}</span>
                           </div>
                         )}
 
@@ -583,7 +593,7 @@ export default function HostelDetails() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <BedSingle className="w-5 h-5 text-purple-500" />
-                            <h3 className="text-lg font-semibold">{room.room_name}</h3>
+                            <h3 className="text-lg font-semibold" {...room?.$?.room_name}>{room.room_name}</h3>
                           </div>
 
                           <span
@@ -597,7 +607,7 @@ export default function HostelDetails() {
                         </div>
 
                         {/* Description */}
-                        <p className="text-sm text-gray-600 min-h-[1.2rem]">
+                        <p className="text-sm text-gray-600 min-h-[1.2rem]" {...room?.$?.description}>
                           {room.description || ""}
                         </p>
 
@@ -611,7 +621,7 @@ export default function HostelDetails() {
                             </span>
                           </span>
 
-                          <span className="font-semibold text-gray-900">
+                          <span className="font-semibold text-gray-900" {...room?.$?.base_price}>
                             ₹{room.base_price} / day
                           </span>
                         </div>

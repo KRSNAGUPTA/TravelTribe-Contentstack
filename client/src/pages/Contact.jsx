@@ -16,6 +16,9 @@ import {
 } from "@/components/ui/select";
 import Loading from "./Loading";
 import cmsClient from "@/contentstack/contentstackClient";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 function Contact() {
   const [contactData, setContactData] = useState(null);
@@ -28,22 +31,50 @@ function Contact() {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCDAData = async () => {
       try {
-        const cmsRes = (
+        const entry = (
           await cmsClient.get(
             "/content_types/contact_page/entries/blt66e7166f9eac8711"
           )
         ).data.entry;
 
-        setContactData(cmsRes);
-        if (cmsRes?.page_title) document.title = cmsRes.page_title;
+        setContactData(entry);
+        if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("Error fetching Contact Page data:", error?.message);
+        console.error("CDA: Error fetching Contact Page data:", error?.message);
       }
     };
 
-    fetchData();
+    const fetchSDKData = async () => {
+      try {
+        const entry = await Stack
+          .ContentType("contact_page")
+          .Entry("blt66e7166f9eac8711")
+          .toJSON()
+          .fetch();
+        addEditableTags(entry, "contact_page",true, 'en-us')
+        setContactData(entry);
+        if (entry?.page_title) document.title = entry.page_title;
+
+        // for live preview 
+        const data = {
+          "entryUid":"blt66e7166f9eac8711",
+          "contenttype":"contact_page",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
+      } catch (error) {
+        console.error("SDK: Error fetching Contact Page data:", error?.message);
+      }
+    };
+
+    if (import.meta.env.VITE_SDK === "true") {
+      fetchSDKData()
+      onEntryChange(fetchSDKData);
+    } else {
+      fetchCDAData();
+    }
   }, []);
 
   const handleChange = (e) => {
@@ -95,16 +126,17 @@ function Contact() {
 
       <main className="flex flex-col items-center px-6 md:px-10 lg:px-20 py-16 pb-36 space-y-10">
         <div className="text-center max-w-xl">
-          <h1 className="text-4xl font-bold text-[var(--text-dark)]">
-            {contactData.title}
+          <h1 className="text-4xl font-bold text-[var(--text-dark)]" {...contactData?.$?.title}>
+            {contactData?.title}
           </h1>
-          <p className="text-[var(--text-muted)] mt-3">
-            {contactData.subtext}{" "}
+          <p className="text-[var(--text-muted)] mt-3" {...contactData?.$?.subtext}>
+            {contactData?.subtext}{" "}
             <a
-              href={`mailto:${contactData.email}`}
+              href={`mailto:${contactData?.email}`}
               className="text-[var(--primary)] font-medium"
+              {...contactData?.$?.email}
             >
-              {contactData.email}
+              {contactData?.email}
             </a>
           </p>
         </div>

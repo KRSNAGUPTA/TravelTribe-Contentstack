@@ -50,7 +50,9 @@ import {
   MapPin,
   View,
 } from "lucide-react";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 const base = "mr-1 h-4 w-4";
 
@@ -180,19 +182,27 @@ export default function FindHostel() {
           .Entry("blt637d48315eb69a7b")
           .toJSON()
           .fetch();
+        addEditableTags(entry, "hostel_listing",true, 'en-us')
         document.title = entry.title;
         setListingPageData(entry);
+
+        // for live preview 
+        const data = {
+          "entryUid":"blt637d48315eb69a7b",
+          "contenttype":"hostel_listing",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (err) {
         console.error(err);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
   }, []);
 
@@ -322,10 +332,10 @@ export default function FindHostel() {
         </div>
         <main className="container mx-auto px-4 py-8">
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2" {...listingPageData?.$?.title}>
               {listingPageData?.title}
             </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 max-w-2xl mx-auto" {...listingPageData?.$?.subtitle}>
               {listingPageData?.subtitle}
             </p>
           </div>
@@ -336,6 +346,7 @@ export default function FindHostel() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-72 rounded-full border-purple-200 focus:ring-purple-500"
+              {...listingPageData?.$?.search_placeholder}
             />
             <Select value={college} onValueChange={setCollege}>
               <SelectTrigger className="w-56">
@@ -441,7 +452,7 @@ export default function FindHostel() {
               }}
               className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
             >
-              {listingPageData?.reset_button_text}
+              <span {...listingPageData?.$?.reset_button_text}>{listingPageData?.reset_button_text}</span>
             </Button>
           </div>
           <div className="text-center mb-6 text-gray-600">
@@ -540,7 +551,7 @@ export default function FindHostel() {
                           onClick={() => navigate(`/hostel/${hostel.uid}`)}
                           className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:rounded-full transition-all  "
                         >
-                          {listingPageData?.view_button_text}
+                          <span {...listingPageData?.$?.view_button_text}>{listingPageData?.view_button_text}</span>
                         </Button>
                       </CardContent>
                     </Card>

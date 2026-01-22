@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
 import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 export default function NotFound() {
   const [data,setData] = useState(null)
@@ -30,18 +32,27 @@ export default function NotFound() {
           .Entry("blta6083be0942d0903")
           .toJSON()
           .fetch();
+        addEditableTags(entry, "not_found_page",true, 'en-us')
         setData(entry);
+        if (entry?.title) document.title = entry.title;
+
+        // for live preview 
+        const data = {
+          "entryUid":"blta6083be0942d0903",
+          "contenttype":"not_found_page",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (error) {
-        console.error("CDA: Error fetching 404 Page data:", error?.message);
+        console.error("SDK: Error fetching 404 Page data:", error?.message);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
   }, []);
   
@@ -51,7 +62,7 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-purple-50 to-white px-4">
       <div className="max-w-3xl w-full text-center space-y-6">
-        <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto mb-6 animate-floating">
+        <div className="w-full max-w-xs sm:max-w-md md:max-w-lg mx-auto mb-6 animate-floating" {...data?.$?.image}>
           <img
             src={data?.image?.url}
             alt="404 Error Illustration"
@@ -63,6 +74,7 @@ export default function NotFound() {
           <Button
             onClick={() => navigate("/")}
             className="bg-purple-600 hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 px-5 py-3 sm:px-6 sm:py-4 text-base sm:text-lg shadow-lg group"
+            {...data?.$?.button_text}
           >
             <Home className="mr-2 h-4 w-4 sm:h-5 sm:w-5 group-hover:animate-bounce" />
             {data?.button_text}

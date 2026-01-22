@@ -46,7 +46,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import cmsClient from "@/contentstack/contentstackClient";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});
@@ -83,19 +85,27 @@ useEffect(() => {
           .Entry("bltc76b51f6a5d5e5e2")
           .toJSON()
           .fetch();
+        addEditableTags(entry, "profile_page",true, 'en-us')
         setProfileData(entry);
         if (entry?.page_title) document.title = entry.page_title;
+
+        // for live preview 
+        const data = {
+          "entryUid":"bltc76b51f6a5d5e5e2",
+          "contenttype":"profile_page",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (error) {
         console.error("SDK: Error fetching Profile Page data:", error?.message);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
   }, []);
 

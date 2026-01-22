@@ -11,8 +11,10 @@ import {
   TooltipContent,
 } from "./ui/tooltip";
 import { Separator } from "@/components/ui/separator"
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import cmsClient from "@/contentstack/contentstackClient";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 
 const Header = () => {
@@ -43,20 +45,27 @@ const Header = () => {
           .Entry("bltf9dba16208e02dd7")
           .toJSON()
           .fetch();
+        addEditableTags(entry, "header",true, 'en-us')
         setIcons(entry);
-        // console.log(entry)
         if (entry?.page_title) document.title = entry.page_title;
+
+        // for live preview 
+        const data = {
+          "entryUid":"bltf9dba16208e02dd7",
+          "contenttype":"header",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (error) {
         console.error("SDK: Error fetching Profile Page data:", error?.message);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
   }, []);
 
@@ -73,7 +82,7 @@ const Header = () => {
           <DockIcon>
             <Tooltip>
               <TooltipTrigger asChild >
-                <div onClick={() => navigate("/")} className="cursor-pointer">
+                <div onClick={() => navigate("/")} className="cursor-pointer" {...icons?.$?.home}>
                   {icons?.home ?
                   <img src={icons?.home.url} className="size-5 select-none" alt="Home" draggable={false} />
                   : <House/>
@@ -92,6 +101,7 @@ const Header = () => {
                 <div
                   onClick={() => navigate("/hostel")}
                   className=""
+                  {...icons?.$?.search}
                 >
                   {icons?.search ?
                     <img src={icons?.search.url} className="size-5 select-none" alt="Search" draggable={false} />
@@ -113,7 +123,7 @@ const Header = () => {
                     <div
                       onClick={() => navigate("/profile")}
                     >
-                      <Avatar className="size-7">
+                      <Avatar className="size-7" >
                         <AvatarImage
                           src={userInfo?.avatar || "/vite.svg"}
                           alt={userInfo?.name}
@@ -133,7 +143,7 @@ const Header = () => {
               <DockIcon>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div onClick={logout}>
+                    <div onClick={logout} {...icons?.$?.logout}>
                       {icons?.logout ?
                         <img src={icons?.logout.url} className="size-5 select-none" alt="Logout" draggable={false} />
                         : <LogOut />
@@ -154,6 +164,7 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <div
                       onClick={() => navigate("/login")}
+                      {...icons?.$?.login}
                     >
                       {icons?.login ?
                         <img src={icons?.login.url} className="size-5 select-none" alt="Login" draggable={false} />

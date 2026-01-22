@@ -14,7 +14,9 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api";
 import cmsClient from "@/contentstack/contentstackClient";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { setDataForChromeExtension } from "@/contentstack/utils";
+import { addEditableTags } from "@contentstack/utils";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
@@ -51,19 +53,27 @@ const Login = () => {
           .Entry("bltcb7c69182a4d93ca")
           .toJSON()
           .fetch();
+        addEditableTags(entry, "auth_page",true, 'en-us')
         setAuthPageData(entry);
         document.title = entry.app_title;
+
+        // for live preview 
+        const data = {
+          "entryUid":"bltcb7c69182a4d93ca",
+          "contenttype":"auth_page",
+          "locale":"en-us"
+        }
+        setDataForChromeExtension(data)
       } catch (error) {
         console.error("SDK: Error fetching Auth Page data:", error?.message);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      // console.log("SDK active")
       fetchSDKData()
+      onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
-      // console.log("CDA active")
     }
   }, []);
 
@@ -143,11 +153,11 @@ const Login = () => {
 
         <CardContent className="p-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-purple-700">
-              {authPageData.app_title}
+            <h2 className="text-3xl font-semibold tracking-tight text-purple-700" {...authPageData?.$?.app_title}>
+              {authPageData?.app_title}
             </h2>
-            <p className="text-sm text-gray-500">
-              {authPageData.subtitle}
+            <p className="text-sm text-gray-500" {...authPageData?.$?.subtitle}>
+              {authPageData?.subtitle}
             </p>
           </div>
 
