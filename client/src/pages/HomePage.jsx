@@ -21,8 +21,9 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
-import Stack from "@/contentstack/contentstackSDK";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import ContentstackLivePreview from "@contentstack/live-preview-utils";
+import { setDataForChromeExtension } from "@/contentstack/utils";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -37,6 +38,7 @@ export default function HomePage() {
       ).data.entry;
 
       document.title = entry.title;
+      // console.log("Using CDA")
       setLandingData(entry.page_sections);
     } catch (error) {
       console.error("Failed to fetch data from CDA", error);
@@ -54,24 +56,33 @@ export default function HomePage() {
 
       document.title = entry.title;
       setLandingData(entry.page_sections);
+      console.log(entry)
+
+
+      // for live preview 
+      const data = {
+        "entryUid":"bltd518b717b8917267",
+        "contenttype":"landing_page",
+        "locale":"en-us"
+      }
+      setDataForChromeExtension(data)
+      // console.log("Using SDK")
     } catch (error) {
       console.error("Failed to fetch data from SDK", error);
     }
   };
 
-  const fetchData =
-    import.meta.env.VITE_SDK === "true" ? fetchSDKData : fetchCDAData;
-
-  // Initial fetch 
-  fetchData();
-
-  // Register live preview listener
-  ContentstackLivePreview.onEntryChange(fetchData);
+  if(import.meta.env.VITE_SDK === "true"){
+    fetchSDKData();
+    onEntryChange(fetchSDKData);
+  }else{
+    fetchCDAData();
+  }
 
   // Cleanup listener
-  return () => {
-    ContentstackLivePreview.offEntryChange(fetchData);
-  };
+  // return () => {
+  //   ContentstackLivePreview.offEntryChange(fetchData);
+  // };
 }, []);
 
 
@@ -94,9 +105,9 @@ export default function HomePage() {
 
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white" >
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-        <Header />
+        <Header  />
       </div>
 
       <Toaster />
@@ -106,7 +117,7 @@ export default function HomePage() {
     to-[var(--hero-grad-end)]">
         <div className="flex flex-col items-start md:w-1/2 space-y-6 z-10">
           <div className="space-y-4">
-            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight">
+            <h1 className="text-5xl md:text-6xl font-bold  tracking-tight" >
               {heroSection?.title}
             </h1>
 
@@ -138,6 +149,7 @@ export default function HomePage() {
             src={heroSection?.hero_image?.url}
             alt={heroSection?.hero_image?.title || "Travel Tribe Hostel Illustration"}
             className="w-full max-w-2xl h-auto object-contain transform hover:scale-105 transition-transform duration-500"
+            draggable="false"
           />
         </div>
       </section>
