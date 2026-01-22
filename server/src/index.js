@@ -51,20 +51,32 @@ app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/hook", webHookRoutes)
 
-//for discord bot notification
+//for email notification
 app.post("/api/support", async (req, res) => {
-  const { name, email, topic, message } = req.body;
-  await sendNotification("support", {
-    name,
-    email,
-    topic,
-    message,
-  });
-
-  res.status(200).json({
-    message: "Support request received",
-  });
-  console.log("Support message send.")
+  const { name, email, topic, message, url } = req.body;
+  try {
+    console.log(req.body)
+    await axios.post(
+      "https://app.contentstack.com/automations-api/run/12b6c0df1e9a444d882eaf6687709ff1",
+       {
+        name, email, topic, message, url
+       },
+       {
+          headers: {
+            "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      
+    console.log("Support message send.")
+    return res.status(200).json({
+      message: "Support request received",
+    });
+    
+  } catch (error) {
+    console.error("Error while sending mail", error)
+  }
 });
 
 app.post("/api/subscribe", async (req, res) => {

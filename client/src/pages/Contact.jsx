@@ -28,6 +28,7 @@ function Contact() {
     email: "",
     topic: "",
     message: "",
+    url: window.location.origin
   });
 
   useEffect(() => {
