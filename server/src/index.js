@@ -53,6 +53,12 @@ app.use("/api/hook", webHookRoutes)
 //for email notification
 app.post("/api/support", async (req, res) => {
   const { name, email, topic, message, url } = req.body;
+  if (!process.env.EMAIL_AUTOMATE_KEY) {
+      console.error("Missing EMAIL_AUTOMATE_KEY");
+      return res.status(500).json({
+        message: "Server configuration error",
+      });
+    }
   try {
     console.log(req.body)
     await axios.post(
@@ -75,6 +81,10 @@ app.post("/api/support", async (req, res) => {
     
   } catch (error) {
     console.error("Error while sending mail", error)
+    return res.status(500).json({
+      message:"Error while sending email",
+      error
+    })
   }
 });
 
