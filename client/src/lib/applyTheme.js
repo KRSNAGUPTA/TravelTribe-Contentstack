@@ -35,7 +35,7 @@ export function applyTheme(primaryColor) {
 
   document.documentElement.style.setProperty(
     "--hero-grad-start",
-    base.alpha(0.06).toRgbString()
+    base.alpha(0.08).toRgbString()
   );
 
   document.documentElement.style.setProperty(

@@ -183,7 +183,7 @@ export default function HostelBooking() {
   ]);
 
   const validateDates = () => {
-    console.log("Worked")
+    // console.log("Worked")
     if(!formData.checkIn || !formData.checkOut){
       toast({
         title: "Invalid dates",
