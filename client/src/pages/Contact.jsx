@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
-import { toast } from "@/hooks/use-toast";
 import api from "@/api";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,9 +18,13 @@ import cmsClient from "@/contentstack/contentstackClient";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import { setDataForChromeExtension } from "@/contentstack/utils";
 import { addEditableTags } from "@contentstack/utils";
+import { useToast } from "@/hooks/use-toast";
+import { Loader } from "lucide-react";
+import { Toaster } from "@/components/ui/toaster";
 
 function Contact() {
   const [contactData, setContactData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -30,8 +33,10 @@ function Contact() {
     message: "",
     url: window.location.origin
   });
+  const { toast } = useToast();
 
   useEffect(() => {
+
     const fetchCDAData = async () => {
       try {
         const entry = (
@@ -54,15 +59,15 @@ function Contact() {
           .Entry("blt66e7166f9eac8711")
           .toJSON()
           .fetch();
-        addEditableTags(entry, "contact_page",true, 'en-us')
+        addEditableTags(entry, "contact_page", true, 'en-us')
         setContactData(entry);
         if (entry?.page_title) document.title = entry.page_title;
 
         // for live preview 
         const data = {
-          "entryUid":"blt66e7166f9eac8711",
-          "contenttype":"contact_page",
-          "locale":"en-us"
+          "entryUid": "blt66e7166f9eac8711",
+          "contenttype": "contact_page",
+          "locale": "en-us"
         }
         setDataForChromeExtension(data)
       } catch (error) {
@@ -100,11 +105,11 @@ function Contact() {
     }
 
     try {
+      setLoading(true);
       await api.post("/api/support", formData);
       toast({
         title: "Query Received",
-        description: "Our team will contact you soon!",
-        variant:"success"
+        description: "Our team will contact you soon!"
       });
       setFormData({ name: "", email: "", topic: "", message: "" });
     } catch {
@@ -113,6 +118,9 @@ function Contact() {
         description: "Please try again later",
         variant: "destructive",
       });
+    }
+    finally {
+      setLoading(false);
     }
   };
 
@@ -216,9 +224,10 @@ function Contact() {
 
           <Button
             type="submit"
-            className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+            className="w-full text-[var(--on-primary)] bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] hover:rounded-xl transition-all duration-200 hover:translate-y-2 hover:scale-110"
+            disable={loading}
           >
-            {contact.send_button}
+            {loading ? <Loader className="animate-spin" />  : contact.send_button}
           </Button>
         </form>
       </main>

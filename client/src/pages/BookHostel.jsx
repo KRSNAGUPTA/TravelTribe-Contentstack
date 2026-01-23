@@ -183,6 +183,15 @@ export default function HostelBooking() {
   ]);
 
   const validateDates = () => {
+    console.log("Worked")
+    if(!formData.checkIn || !formData.checkOut){
+      toast({
+        title: "Invalid dates",
+        description: "Select Check-in and Check-out dates",
+        variant: "destructive",
+      })
+      return false;
+    }
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
 
@@ -461,7 +470,7 @@ export default function HostelBooking() {
                               pattern="[0-9]{10}"
                               maxLength={10}
                               className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                              placeholder="10-digit number"
+                              placeholder="6XXXX XXXXX"
                             />
                             <Phone className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
                           </div>
