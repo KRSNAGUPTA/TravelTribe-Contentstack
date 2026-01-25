@@ -43,7 +43,7 @@ ContentstackLivePreview.init({
 });
 export const {onEntryChange} = ContentstackLivePreview
 
-const personalizeSdk = await Personalize.init(projectUid);
+Personalize.init(projectUid);
 
 // console.log("SDK Initialized")
 export default Stack;
