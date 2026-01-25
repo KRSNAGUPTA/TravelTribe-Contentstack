@@ -22,3 +22,7 @@ VITE_CS_DEV_PREVIEW_TOKEN=
 VITE_CS_DEV_PREVIEW_HOST=rest-preview.contentstack.com
 VITE_CS_DEV_API_HOST=cdn.contentstack.io
 VITE_CS_DEV_APP_HOST=app.contentstack.com
+
+
+# Contentstack Personalization
+VITE_CS_PERSONALIZE_PROJECT_UID=

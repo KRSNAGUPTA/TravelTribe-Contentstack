@@ -13,6 +13,9 @@ importers:
       '@contentstack/live-preview-utils':
         specifier: ^4.2.0
         version: 4.2.0(@preact/signals-core@1.12.2)(csstype@3.2.3)
+      '@contentstack/personalize-edge-sdk':
+        specifier: ^1.0.21
+        version: 1.0.21
       '@contentstack/utils':
         specifier: ^1.6.3
         version: 1.6.3
@@ -298,6 +301,9 @@ packages:
 
   '@contentstack/live-preview-utils@4.2.0':
     resolution: {integrity: sha512-lUk6TDcBUWgC1G99pSkc5fFEnWCnfc14OQuLGnuK+etoJI/HnwkF74v7iLR0uw2ympOMD9OhjTf/e/VBju377w==}
+
+  '@contentstack/personalize-edge-sdk@1.0.21':
+    resolution: {integrity: sha512-1EEmHBzwYN4w+z8fuKJiC96RtftMIuuqgP7WnpPG4kooTCniqXw2SpCWT7YnXt9HeB3EbKMr3ENuD4IBxeM1WQ==}
 
   '@contentstack/utils@1.6.3':
     resolution: {integrity: sha512-FU1hFks9vnJ5e9cwBTPgnf3obx/fuKh+c3Gtc71mq1Mrub3/z4rJZJWLJ2kublVKnXWnhz+Yt66rshxO/TT9IQ==}
@@ -1566,6 +1572,9 @@ packages:
 
   countup.js@2.9.0:
     resolution: {integrity: sha512-llqrvyXztRFPp6+i8jx25phHWcVWhrHO4Nlt0uAOSKHB8778zzQswa4MU3qKBvkXfJKftRYFJuVHez67lyKdHg==}
+
+  cross-fetch@4.1.0:
+    resolution: {integrity: sha512-uKm5PU+MHTootlWEY+mZ4vvXoCn4fLQxT9dSc1sXVMSFkINTJVN8cAQROpwcKm8bJ/c7rgZVIBWzH5T78sNZZw==}
 
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
@@ -3290,6 +3299,12 @@ snapshots:
       - '@preact/signals-react'
       - csstype
 
+  '@contentstack/personalize-edge-sdk@1.0.21':
+    dependencies:
+      cross-fetch: 4.1.0
+    transitivePeerDependencies:
+      - encoding
+
   '@contentstack/utils@1.6.3': {}
 
   '@esbuild/aix-ppc64@0.25.12':
@@ -4435,6 +4450,12 @@ snapshots:
       vary: 1.1.2
 
   countup.js@2.9.0: {}
+
+  cross-fetch@4.1.0:
+    dependencies:
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - encoding
 
   cross-spawn@7.0.6:
     dependencies:
