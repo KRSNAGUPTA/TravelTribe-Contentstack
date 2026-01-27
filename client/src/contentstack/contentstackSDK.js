@@ -14,7 +14,8 @@ const Stack = Contentstack.Stack({
     }
 }
 );
-const personalizeSdk = await Personalize.init(projectUid);
+
+// const personalizeSdk = await Personalize.init(projectUid);
 
 if(import.meta.env.VITE_CS_DEV_API_HOST){
     Stack.setHost(import.meta.env.VITE_CS_DEV_API_HOST)
