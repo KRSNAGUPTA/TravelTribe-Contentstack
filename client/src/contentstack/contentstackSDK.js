@@ -1,7 +1,7 @@
 import Contentstack from "contentstack"
 import ContentstackLivePreview from "@contentstack/live-preview-utils";
 import Personalize from '@contentstack/personalize-edge-sdk';
-let projectUid = process.env.VITE_CS_PERSONALIZE_PROJECT_UID;
+let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
 const Stack = Contentstack.Stack({
     api_key:import.meta.env.VITE_CS_API_KEY,
     delivery_token:import.meta.env.VITE_CS_DEV_ACCESS_TOKEN,
@@ -14,6 +14,7 @@ const Stack = Contentstack.Stack({
     }
 }
 );
+const personalizeSdk = await Personalize.init(projectUid);
 
 if(import.meta.env.VITE_CS_DEV_API_HOST){
     Stack.setHost(import.meta.env.VITE_CS_DEV_API_HOST)
@@ -43,7 +44,6 @@ ContentstackLivePreview.init({
 });
 export const {onEntryChange} = ContentstackLivePreview
 
-Personalize.init(projectUid);
-
+// console.log(personalizeSdk.getVariants())
 // console.log("SDK Initialized")
 export default Stack;

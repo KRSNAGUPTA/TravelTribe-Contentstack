@@ -57,7 +57,7 @@ export default function HomePage() {
 
         document.title = entry.title;
         setLandingData(entry.page_sections);
-        console.log(entry);
+        // console.log(entry);
 
         // for live preview
         const data = {
@@ -107,7 +107,7 @@ export default function HomePage() {
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white mx-auto">
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <Header />
       </div>
