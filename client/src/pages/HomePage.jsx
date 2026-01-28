@@ -324,7 +324,7 @@ export default function HomePage() {
                         </AvatarFallback>
                       </Avatar>
                       <h3
-                        className="mt-6 text-xl font-semibold text-gray-900 border-b-2"
+                        className="mt-6 text-xl font-semibold text-gray-900 border-b-2 "
                         {...data?.$?.user_name}
                       >
                         {data?.user_name}

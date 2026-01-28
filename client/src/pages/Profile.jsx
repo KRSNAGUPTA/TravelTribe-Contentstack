@@ -196,7 +196,7 @@ useEffect(() => {
 
       <section className="pt-20 pb-28 px-6 text-center">
         <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 border-purple-500 shadow-xl">
-          <AvatarImage src={userData?.avatar || "/icon.png"} />
+          <AvatarImage src={userData?.avatar || "/icon.png"} draggable="false" />
           <AvatarFallback className="bg-purple-100 text-purple-700 text-3xl">
             {userData?.name?.charAt(0) || "U"}
           </AvatarFallback>
