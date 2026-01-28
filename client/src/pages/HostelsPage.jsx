@@ -549,7 +549,7 @@ export default function FindHostel() {
 
                         <Button
                           onClick={() => navigate(`/hostel/${hostel.uid}`)}
-                          className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:rounded-full transition-all  "
+                          className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md transition-transform duration-700 hover:rounded-xl "
                         >
                           <span {...listingPageData?.$?.view_button_text}>{listingPageData?.view_button_text}</span>
                         </Button>

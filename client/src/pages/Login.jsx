@@ -153,7 +153,7 @@ const Login = () => {
 
         <CardContent className="p-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-semibold tracking-tight text-purple-700" {...authPageData?.$?.app_title}>
+            <h2 className="pacifico-regular text-3xl font-semibold tracking-tight text-purple-700" {...authPageData?.$?.app_title}>
               {authPageData?.app_title}
             </h2>
             <p className="text-sm text-gray-500" {...authPageData?.$?.subtitle}>

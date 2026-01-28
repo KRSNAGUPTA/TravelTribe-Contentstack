@@ -3,6 +3,7 @@ import Hostel from "../model/HostelModel.js";
 
 const hostelDataHook = async (req, res) => {
   try {
+    console.log("Hostel webhook payload:", req.body);
     const hostelEntryId = req.body?.data?.entry?.uid;
 
     if (!hostelEntryId) {
@@ -15,6 +16,7 @@ const hostelDataHook = async (req, res) => {
     });
 
     if (existingHostel) {
+      console.log("Hostel already initialized:", hostelEntryId);
       return res.status(200).json({
         message: "Hostel already initialized",
       });

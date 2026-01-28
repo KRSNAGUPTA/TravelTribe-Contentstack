@@ -244,7 +244,7 @@ useEffect(() => {
                       onChange={handleValueChange}
                       placeholder="New password"
                     />
-                    <Button onClick={handleProfileUpdate} className="w-full bg-purple-600">
+                    <Button onClick={handleProfileUpdate} className="w-full bg-purple-600 hover:bg-[var(--primary-hover)] rounded-md  ">
                       Update
                     </Button>
                   </div>

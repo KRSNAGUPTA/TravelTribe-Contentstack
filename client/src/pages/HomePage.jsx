@@ -116,11 +116,11 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section
-        className=" relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 md:px-16 pt-36 md:pt-24"
+        className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 md:px-16 pt-36 md:pt-24"
       >
         <div className="relative z-10 max-w-xl md:max-w-2xl md:pl-10 md:pt-20 space-y-6">
           <div className="space-y-4">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular">
               {heroSection?.title}
             </h1>
 
@@ -169,13 +169,13 @@ export default function HomePage() {
       <section className="py-24 w-full">
         <div className="container mx-auto px-4">
           <h2
-            className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)]"
+            className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)] bubblegum-sans-regular"
             {...featuresSection?.$?.title}
           >
             {featuresSection?.title}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-12">
             {featuresSection?.features?.map((item, index) => (
               <div
                 key={index}
@@ -212,7 +212,7 @@ export default function HomePage() {
       <section className="py-24 w-full bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4">
           <h2
-            className="text-4xl font-bold text-center mb-12"
+            className="text-4xl font-bold text-center mb-12 bubblegum-sans-regular"
             {...hostelsSection?.$?.title}
           >
             {hostelsSection?.title}
@@ -293,7 +293,7 @@ export default function HomePage() {
       <section className="py-24 w-full flex items-center">
         <div className="container mx-auto px-4">
           <h2
-            className="text-4xl font-bold text-center mb-12 "
+            className="text-4xl font-bold text-center mb-12 bubblegum-sans-regular"
             {...testimonialsSection?.$?.title}
           >
             {testimonialsSection?.title}
@@ -348,7 +348,7 @@ export default function HomePage() {
       <section className="py-24 bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4 max-w-3xl">
           <h2
-            className="text-4xl font-bold text-center mb-12 text-gray-900"
+            className="text-4xl font-bold text-center mb-12 text-gray-900 bubblegum-sans-regular"
             {...faqSection?.$?.title}
           >
             {faqSection?.title}

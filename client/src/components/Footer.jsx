@@ -95,7 +95,7 @@ const Footer = () => {
 
         {/* Brand */}
         <div>
-          <h2 className="text-2xl font-bold" {...footerData?.$?.title}>{footerData?.title}</h2>
+          <h2 className="text-2xl md:text-4xl font-bold pacifico-regular" {...footerData?.$?.title}>{footerData?.title}</h2>
           <p className="mt-3 text-gray-400 text-sm leading-relaxed" {...footerData?.$?.subtext}>
             {footerData?.subtext}
           </p>
