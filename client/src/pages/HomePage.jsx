@@ -54,6 +54,7 @@ export default function HomePage() {
           .fetch();
 
         addEditableTags(entry, "landing_page", true, "en-us");
+        // console.log("Entry with editable tags:", entry);
 
         document.title = entry.title;
         setLandingData(entry.page_sections);
@@ -120,15 +121,15 @@ export default function HomePage() {
       >
         <div className="relative z-10 max-w-xl md:max-w-2xl md:pl-10 md:pt-20 space-y-6">
           <div className="space-y-4">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular" {...heroSection?.$?.title}>
               {heroSection?.title}
             </h1>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary)]">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary)]" {...heroSection?.$?.subtitle}>
               {heroSection?.subtitle}
             </h2>
 
-            <p className="text-base sm:text-lg text-[var(--secondary)] max-w-lg">
+            <p className="text-base sm:text-lg text-[var(--secondary)] max-w-lg" {...heroSection?.$?.subtext}>
               {heroSection?.subtext}
             </p>
           </div>
@@ -138,6 +139,7 @@ export default function HomePage() {
               heroSection?.cta?.href && navigate(heroSection.cta.href)
             }
             className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
+            {...heroSection?.cta?.$.title}
           >
             {heroSection?.cta?.title}
             <ArrowRight className="ml-2 h-5 w-5" />

@@ -37,10 +37,11 @@ ContentstackLivePreview.init({
     },
     editButton: {
         enable: true,
-        exclude: ["outsideLivePreviewPortal"],
+        exclude: ["outsideLivePreviewPortal"],  // to exclude edit button on outside live preview portal pages
         includeByQueryParameter: false,
         position:'top-right',
-    }
+    },
+    mode:"builder"
     
 });
 export const {onEntryChange} = ContentstackLivePreview
