@@ -784,8 +784,10 @@ export default function HostelDetails() {
                   <div className="ml-4 m-2">
                     <p className="text-sm text-gray-500">Starts from</p>
                     <p className="text-xl font-bold text-gray-800">
-                      ₹ {minPrice}
-                      / day
+                      {minPrice && minPrice > 0 ? 
+                      `₹ ${minPrice}
+                      / day`
+                      : "Not Available"}
                     </p>
                   </div>
                 )}

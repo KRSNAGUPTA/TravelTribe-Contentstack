@@ -139,7 +139,7 @@ export default function HomePage() {
               heroSection?.cta?.href && navigate(heroSection.cta.href)
             }
             className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
-            {...heroSection?.cta?.$.title}
+            {...heroSection?.cta?.$?.title}
           >
             {heroSection?.cta?.title}
             <ArrowRight className="ml-2 h-5 w-5" />
