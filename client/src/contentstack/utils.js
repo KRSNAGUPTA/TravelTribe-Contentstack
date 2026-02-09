@@ -23,6 +23,7 @@ export const setDataForChromeExtension = (data) => {
   // console.log("data", data)
   if (!data.entryUid || !data.contenttype || !data.locale) {
     console.error("Util.js:  Incomplete data for chrome extension");
+    console.error("Received data:", data);
     return;
   }
   try {

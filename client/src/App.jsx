@@ -30,7 +30,7 @@ function App() {
         import.meta.env.VITE_SDK,
         null,
       );
-      console.log("Theme entry:", entry);
+      // console.log("Theme entry:", entry);
       const base = entry?.primary_color?.hex;
 
       if (!base) {
@@ -47,14 +47,6 @@ function App() {
       mounted = false;
     };
   }, []);
-
-  console.log(`
-VITE_CS_BRANCH=${import.meta.env.VITE_CS_BRANCH}
-VITE_CS_LOCALE=${import.meta.env.VITE_CS_LOCALE}
-
-VITE_SDK=${import.meta.env.VITE_SDK}
-VITE_CS_DEV_ENV=${import.meta.env.VITE_CS_DEV_ENV}
-`);
 
   return (
     <Router>
