@@ -22,68 +22,30 @@ import { Toaster } from "@/components/ui/toaster";
 import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
 
   useEffect(() => {
-    const fetchCDAData = async () => {
-      try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/landing_page/entries/bltd518b717b8917267?include[]=page_sections.hostels_section.reference",
-          )
-        ).data.entry;
+    const fetchData = async () => {
+      const entry = (
+        await fetchEntries(
+          "landing_page",
+          import.meta.env.VITE_SDK,
+          "page_sections.hostels_section.reference",
+        )
+      )[0];
 
-        document.title = entry.title;
-        // console.log("Using CDA")
-        setLandingData(entry.page_sections);
-      } catch (error) {
-        console.error("Failed to fetch data from CDA", error);
-      }
+      // console.log("entry", entry);
+
+      if (!entry) return;
+
+      document.title = entry.title || "Travel Tribe";
+      setLandingData(entry.page_sections);
     };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack.ContentType("landing_page")
-          .Entry("bltd518b717b8917267")
-          .includeReference("page_sections.hostels_section.reference")
-          .toJSON()
-          .fetch();
-
-        addEditableTags(entry, "landing_page", true, "en-us");
-        // console.log("Entry with editable tags:", entry);
-
-        document.title = entry.title;
-        setLandingData(entry.page_sections);
-        // console.log(entry);
-
-        // for live preview
-        const data = {
-          entryUid: "bltd518b717b8917267",
-          contenttype: "landing_page",
-          locale: "en-us",
-        };
-        setDataForChromeExtension(data);
-        // console.log("Using SDK")
-      } catch (error) {
-        console.error("Failed to fetch data from SDK", error);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData();
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
-
-    // Cleanup listener
-    // return () => {
-    //   ContentstackLivePreview.offEntryChange(fetchData);
-    // };
+    onEntryChange(fetchData);
   }, []);
 
   const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: false }));
@@ -116,20 +78,27 @@ export default function HomePage() {
       <Toaster />
 
       {/* Hero Section */}
-      <section
-        className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 md:px-16 pt-36 md:pt-24"
-      >
+      <section className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 md:px-16 pt-36 md:pt-24">
         <div className="relative z-10 max-w-xl md:max-w-2xl md:pl-10 md:pt-20 space-y-6">
           <div className="space-y-4">
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular" {...heroSection?.$?.title}>
+            <h1
+              className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular"
+              {...heroSection?.$?.title}
+            >
               {heroSection?.title}
             </h1>
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary)]" {...heroSection?.$?.subtitle}>
+            <h2
+              className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary)]"
+              {...heroSection?.$?.subtitle}
+            >
               {heroSection?.subtitle}
             </h2>
 
-            <p className="text-base sm:text-lg text-[var(--secondary)] max-w-lg" {...heroSection?.$?.subtext}>
+            <p
+              className="text-base sm:text-lg text-[var(--secondary)] max-w-lg"
+              {...heroSection?.$?.subtext}
+            >
               {heroSection?.subtext}
             </p>
           </div>
@@ -146,9 +115,7 @@ export default function HomePage() {
           </Button>
         </div>
 
-        <div
-          className=" absolute bottom-0 right-0 hidden md:block w-[70vw] lg:w-[75vw] max-w-none z-0 pointer-events-none"
-        >
+        <div className=" absolute bottom-0 right-0 hidden md:block w-[70vw] lg:w-[75vw] max-w-none z-0 pointer-events-none">
           <img
             src={heroSection?.hero_image?.url}
             alt="Travel Tribe Illustration"
