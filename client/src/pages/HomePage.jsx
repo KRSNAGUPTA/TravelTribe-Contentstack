@@ -26,6 +26,7 @@ import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
+  
 
   useEffect(() => {
     const fetchData = async () => {
