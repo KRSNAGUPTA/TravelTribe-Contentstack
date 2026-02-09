@@ -29,53 +29,28 @@ const Login = () => {
   const [activeTab, setActiveTab] = useState("login");
   const [authPageData, setAuthPageData] = useState(null);
 
-  
-
+  const data = {
+    entryUid: "bltcb7c69182a4d93ca",
+    contenttype: "auth_page",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
   useEffect(() => {
-    const fetchCDAData = async () => {
+    const fetchData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/auth_page/entries/bltcb7c69182a4d93ca"
-          )
-        ).data.entry;
-
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
         setAuthPageData(entry);
-        document.title = entry.app_title;
+        if (entry?.app_title) document.title = entry.app_title;
       } catch (error) {
-        console.error("CDA: Error fetching Auth Page data:", error?.message);
+        console.error("Error fetching auth page data", error);
       }
     };
-
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("auth_page")
-          .Entry("bltcb7c69182a4d93ca")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "auth_page",true, 'en-us')
-        setAuthPageData(entry);
-        document.title = entry.app_title;
-
-        // for live preview 
-        const data = {
-          "entryUid":"bltcb7c69182a4d93ca",
-          "contenttype":"auth_page",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching Auth Page data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
   }, []);
 
   const handleAuth = async (e, type) => {
@@ -154,7 +129,10 @@ const Login = () => {
 
         <CardContent className="p-8">
           <div className="text-center space-y-2">
-            <h2 className="pacifico-regular text-3xl font-semibold tracking-tight text-purple-700" {...authPageData?.$?.app_title}>
+            <h2
+              className="pacifico-regular text-3xl font-semibold tracking-tight text-purple-700"
+              {...authPageData?.$?.app_title}
+            >
               {authPageData?.app_title}
             </h2>
             <p className="text-sm text-gray-500" {...authPageData?.$?.subtitle}>
@@ -336,7 +314,6 @@ const Login = () => {
         </CardContent>
       </Card>
     </div>
-
   );
 };
 
