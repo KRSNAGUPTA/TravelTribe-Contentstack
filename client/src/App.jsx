@@ -30,7 +30,7 @@ function App() {
         import.meta.env.VITE_SDK,
         null,
       );
-      // console.log("Theme entry:", entry);
+      console.log("Theme entry:", entry);
       const base = entry?.primary_color?.hex;
 
       if (!base) {
@@ -47,6 +47,21 @@ function App() {
       mounted = false;
     };
   }, []);
+
+  console.log(`VITE_API_URL=${import.meta.env.VITE_API_URL}
+VITE_CS_BASE_URL=${import.meta.env.VITE_CS_BASE_URL}
+VITE_CS_API_KEY=${import.meta.env.VITE_CS_API_KEY}
+VITE_CS_ACCESS_TOKEN=${import.meta.env.VITE_CS_ACCESS_TOKEN}
+VITE_CS_PREVIEW_TOKEN=${import.meta.env.VITE_CS_PREVIEW_TOKEN}
+VITE_CS_BRANCH=${import.meta.env.VITE_CS_BRANCH}
+VITE_CS_LOCALE=${import.meta.env.VITE_CS_LOCALE}
+
+VITE_SDK=${import.meta.env.VITE_SDK}
+VITE_CS_DEV_ENV=${import.meta.env.VITE_CS_DEV_ENV}
+VITE_CS_DEV_PREVIEW_HOST=${import.meta.env.VITE_CS_DEV_PREVIEW_HOST}
+VITE_CS_DEV_API_HOST=${import.meta.env.VITE_CS_DEV_API_HOST}
+VITE_CS_DEV_APP_HOST=${import.meta.env.VITE_CS_DEV_APP_HOST}
+`);
 
   return (
     <Router>
