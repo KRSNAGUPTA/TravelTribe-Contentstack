@@ -14,10 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Loading from "./Loading";
-import cmsClient from "@/contentstack/contentstackClient";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Loader } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,53 +35,30 @@ function Contact() {
     url: window.location.origin
   });
   const { toast } = useToast();
+  const data = {
+    entryUid: "blt66e7166f9eac8711",
+    contenttype: "contact_page",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
 
   useEffect(() => {
-
-    const fetchCDAData = async () => {
+    const fetchData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/contact_page/entries/blt66e7166f9eac8711"
-          )
-        ).data.entry;
-
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
         setContactData(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("CDA: Error fetching Contact Page data:", error?.message);
+        console.error("Error fetching contact page data", error);
       }
     };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("contact_page")
-          .Entry("blt66e7166f9eac8711")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "contact_page", true, 'en-us')
-        setContactData(entry);
-        if (entry?.page_title) document.title = entry.page_title;
-
-        // for live preview 
-        const data = {
-          "entryUid": "blt66e7166f9eac8711",
-          "contenttype": "contact_page",
-          "locale": "en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching Contact Page data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
   }, []);
 
   const handleChange = (e) => {

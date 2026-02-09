@@ -45,16 +45,17 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import cmsClient from "@/contentstack/contentstackClient";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});
   const [bookings, setBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [profileData, setProfileData] = useState(null)
+  const [profileData, setProfileData] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -62,53 +63,29 @@ export default function ProfilePage() {
     password: "",
     isPasswordChanged: false,
   });
-useEffect(() => {
-    const fetchCDAData = async () => {
+  const data = {
+    entryUid: "bltc76b51f6a5d5e5e2",
+    contenttype: "profile_page",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/profile_page/entries/bltc76b51f6a5d5e5e2"
-          )
-        ).data.entry;
-
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
         setProfileData(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("CDA: Error fetching CMS data for Profile Page:", error?.message);
+        console.error("Error fetching profile page data", error);
       }
     };
-
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("profile_page")
-          .Entry("bltc76b51f6a5d5e5e2")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "profile_page",true, 'en-us')
-        setProfileData(entry);
-        if (entry?.page_title) document.title = entry.page_title;
-
-        // for live preview 
-        const data = {
-          "entryUid":"bltc76b51f6a5d5e5e2",
-          "contenttype":"profile_page",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching Profile Page data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
   }, []);
-
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -125,7 +102,7 @@ useEffect(() => {
   }, []);
 
   const filteredBookings = bookings.filter(
-    (booking) => statusFilter === "all" || booking.status === statusFilter
+    (booking) => statusFilter === "all" || booking.status === statusFilter,
   );
 
   const getStatusColor = (status) => {
@@ -142,8 +119,8 @@ useEffect(() => {
       const updatedFields = Object.fromEntries(
         Object.entries(formData).filter(
           ([key, value]) =>
-            key !== "isPasswordChanged" && value !== "" && value !== "*******"
-        )
+            key !== "isPasswordChanged" && value !== "" && value !== "*******",
+        ),
       );
 
       if (!formData.isPasswordChanged) {
@@ -196,7 +173,10 @@ useEffect(() => {
 
       <section className="pt-20 pb-28 px-6 text-center">
         <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 border-purple-500 shadow-xl">
-          <AvatarImage src={userData?.avatar || "/icon.png"} draggable="false" />
+          <AvatarImage
+            src={userData?.avatar || "/icon.png"}
+            draggable="false"
+          />
           <AvatarFallback className="bg-purple-100 text-purple-700 text-3xl">
             {userData?.name?.charAt(0) || "U"}
           </AvatarFallback>
@@ -217,7 +197,10 @@ useEffect(() => {
 
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button size="sm" className="rounded-full bg-purple-600 hover:bg-purple-700">
+                  <Button
+                    size="sm"
+                    className="rounded-full bg-purple-600 hover:bg-purple-700"
+                  >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
@@ -244,7 +227,10 @@ useEffect(() => {
                       onChange={handleValueChange}
                       placeholder="New password"
                     />
-                    <Button onClick={handleProfileUpdate} className="w-full bg-purple-600 hover:bg-[var(--primary-hover)] rounded-md  ">
+                    <Button
+                      onClick={handleProfileUpdate}
+                      className="w-full bg-purple-600 hover:bg-[var(--primary-hover)] rounded-md  "
+                    >
                       Update
                     </Button>
                   </div>
@@ -335,7 +321,7 @@ useEffect(() => {
                       <TableCell>
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            booking.status
+                            booking.status,
                           )}`}
                         >
                           {booking.status}
@@ -353,5 +339,4 @@ useEffect(() => {
       <Footer />
     </div>
   );
-
 }

@@ -19,14 +19,15 @@ import {
 } from "@/components/ui/accordion";
 import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
-import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
+import {
+  fetchEntries,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
-  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,8 +45,17 @@ export default function HomePage() {
 
       document.title = entry.title || "Travel Tribe";
       setLandingData(entry.page_sections);
+
+      // Set data for chrome extension with the fetched entry UID
+      const data = {
+        entryUid: entry?.uid,
+        contenttype: "landing_page",
+        locale: import.meta.env.VITE_CS_LOCALE,
+      };
+      setDataForChromeExtension(data);
     };
 
+    fetchData();
     onEntryChange(fetchData);
   }, []);
 

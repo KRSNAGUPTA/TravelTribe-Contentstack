@@ -51,8 +51,11 @@ import {
   View,
 } from "lucide-react";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntries,
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 const base = "mr-1 h-4 w-4";
 
@@ -158,67 +161,41 @@ export default function FindHostel() {
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [roomAvailability, setRoomAvailability] = useState({});
-  const [listingPageData, setListingPageData] = useState()
+  const [listingPageData, setListingPageData] = useState();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchCDAData = async () => {
-      try {
-        const data = (
-          await cmsClient.get(
-            "/content_types/hostel_listing/entries/blt637d48315eb69a7b"
-          )
-        ).data.entry;
-        setListingPageData(data);
-      } catch (error) {
-        console.error("Failed to fetch data from cms", error);
-      }
-    };
-
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("hostel_listing")
-          .Entry("blt637d48315eb69a7b")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "hostel_listing",true, 'en-us')
-        document.title = entry.title;
-        setListingPageData(entry);
-
-        // for live preview 
-        const data = {
-          "entryUid":"blt637d48315eb69a7b",
-          "contenttype":"hostel_listing",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (listingPageData?.page_title) {
-      document.title = listingPageData.page_title;
-    }
-  }, [listingPageData]);
-
+  const data = {
+    entryUid: "blt637d48315eb69a7b",
+    contenttype: "hostel_listing",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
 
   useEffect(() => {
     const fetchData = async () => {
+      try {
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
+        document.title = entry.page_title;
+        setListingPageData(entry);
+      } catch (error) {
+        console.error("Error fetching hostel listing data", error);
+      }
+    };
+
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
+  }, []);
+
+
+  useEffect(() => {
+    const fetchHostels = async () => {
       setIsLoading(true);
       try {
-        const hostelsData = (await cmsClient.get("/content_types/hostel/entries")).data.entries // array of hostels
-        // console.log(hostelsData)
+        const hostelsData = await fetchEntries("hostel", import.meta.env.VITE_SDK, "") // array of hostels
+
         setHostels(hostelsData);
         setFilteredHostels(hostelsData);
         setIsLoading(false);
@@ -244,7 +221,7 @@ export default function FindHostel() {
       }
     };
     fetchRoomAvailability();
-    fetchData();
+    fetchHostels();
   }, []);
 
   const hasAvailableRooms = (rooms = []) =>

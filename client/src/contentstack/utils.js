@@ -39,6 +39,10 @@ export const setDataForChromeExtension = (data) => {
 };
 
 export const fetchEntries = async (contentType, viaSdk, ref) => {
+  if (!contentType || !viaSdk) {
+    console.error("fetchEntries: Missing required parameters");
+    return [];
+  }
   if (viaSdk) {
     try {
       let entryQuery = Stack.ContentType(contentType).Query();
@@ -75,7 +79,11 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
 };
 
 export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
-  if (viaSdk) {
+  if (!contentType || !entryId || !viaSdk) {
+    console.error("fetchEntryById: Missing required parameters");
+    return null;
+  }
+  if (viaSdk === "true") {
     try {
       const contentTypeRef = Stack.ContentType(contentType);
       let entryQuery = contentTypeRef.Entry(entryId);

@@ -1,59 +1,39 @@
 import React, { useEffect, useState } from "react";
-import cmsClient from "@/contentstack/contentstackClient";
 import Loading from "./Loading";
 import Header from "@/components/Header";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 import Footer from "@/components/Footer";
 
 export default function PrivacyPolicy() {
   const [privacyData, setPrivacyData] = useState(null);
+  const data = {
+    entryUid: "blta8e91d738392bd3d",
+    contenttype: "privacy_page",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
 
   useEffect(() => {
-    const fetchCDAData = async () => {
+    const fetchData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/privacy_page/entries/blta8e91d738392bd3d"
-          )
-        ).data.entry;
-
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
         setPrivacyData(entry);
         if (entry?.title) document.title = entry.title;
       } catch (error) {
-        console.error("CDA: Error fetching Privacy Page data:", error?.message);
+        console.error("Error fetching privacy page data", error);
       }
     };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("privacy_page")
-          .Entry("blta8e91d738392bd3d")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "privacy_page",true, 'en-us')
-        setPrivacyData(entry);
-
-        // for live preview 
-        const data = {
-          "entryUid":"blta8e91d738392bd3d",
-          "contenttype":"privacy_page",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching Privacy Page data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
   }, []);
 
 

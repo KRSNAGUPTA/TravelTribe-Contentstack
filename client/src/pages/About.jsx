@@ -1,66 +1,42 @@
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Card, CardTitle, CardContent } from "@/components/ui/card";
-import cmsClient from "@/contentstack/contentstackClient";
 import React, { useEffect, useState } from "react";
 import Loading from "./Loading";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 function About() {
   const [about, setAbout] = useState(null);
+  const data = {
+    entryUid: "blt185b62aabf4f0649",
+    contenttype: "about_us",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
 
   useEffect(() => {
-    const fetchCDAData = async () => {
+    const fetchData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/about_us/entries/blt185b62aabf4f0649"
-          )
-        ).data.entry;
-
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
+        // console.log("Abous Us");
+        // console.log(entry);
         setAbout(entry);
-
-        if (entry?.title) {
-          document.title = entry.title;
-        }
+        document.title = entry?.title || "About - Travel Tribe";
       } catch (error) {
-        console.error("CDA: Error fetching About data:", error?.message);
+        console.error("Error fetching about page data", error);
       }
     };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("about_us")
-          .Entry("blt185b62aabf4f0649")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "about_us",true, 'en-us')
-        setAbout(entry);
-        if (entry?.title) {
-          document.title = entry.title;
-        }
-
-        // for live preview 
-        const data = {
-          "entryUid":"blt185b62aabf4f0649",
-          "contenttype":"about_us",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching About data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
   }, []);
 
   if (!about) return <Loading />;
@@ -72,7 +48,10 @@ function About() {
       </div>
 
       <main className="flex flex-col items-center px-6 md:px-20 py-10 space-y-8">
-        <h1 className="text-3xl font-bold text-center text-[var(--text-dark)] my-8" {...about?.$?.title}>
+        <h1
+          className="text-3xl font-bold text-center text-[var(--text-dark)] my-8"
+          {...about?.$?.title}
+        >
           {about?.title}
         </h1>
 
@@ -81,11 +60,17 @@ function About() {
             key={info.uid || index}
             className="w-full max-w-3xl p-6 bg-white shadow-lg"
           >
-            <CardTitle className="text-xl text-center mb-4 text-[var(--primary)]" {...info?.$?.title}>
+            <CardTitle
+              className="text-xl text-center mb-4 text-[var(--primary)]"
+              {...info?.$?.title}
+            >
               {info?.title}
             </CardTitle>
             <CardContent>
-              <p className="text-[var(--text-muted)] leading-relaxed" {...info?.$?.description}>
+              <p
+                className="text-[var(--text-muted)] leading-relaxed"
+                {...info?.$?.description}
+              >
                 {info?.description}
               </p>
             </CardContent>

@@ -75,8 +75,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import cmsClient from "@/contentstack/contentstackClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -86,60 +88,43 @@ export default function HostelDetails() {
   const [loading, setLoading] = useState(true);
   const plugin = useRef(
     Autoplay({ delay: 2000, stopOnInteraction: true })
-  )
+  );
+  const data = {
+    entryUid: id,
+    contenttype: "hostel",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
+
   useEffect(() => {
-    const fetchAPIData = async()=>{
+    const fetchAPIData = async () => {
       try {
         const apiRes = await api.get(`/api/hostel/${id}`);
         setRoomAvailability(apiRes.data);
         setReviews(apiRes.data.reviews || []);
       } catch (error) {
-        console.log("Error fetching hostel data from backend", error)
+        console.log("Error fetching hostel data from backend", error);
       }
-    }
-    const fetchCDAData = async () => {
+    };
+
+    const fetchData = async () => {
       try {
-        const entry = (await cmsClient.get(`/content_types/hostel/entries/${id}`)).data.entry;
+        const entry = await fetchEntryById(
+          data.contenttype,
+          data.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
         setHostel(entry);
       } catch (error) {
-        console.error("Error fetching hostel data:", error);
+        console.error("Error fetching hostel data", error);
         setHostel(null);
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack
-          .ContentType("hostel")
-          .Entry(id)
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "hostel",true, 'en-us')
-        setHostel(entry);
-
-        // for live preview 
-        const data = {
-          "entryUid":id,
-          "contenttype":"hostel",
-          "locale":"en-us"
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching hostel Page data:", error?.message);
-      }
-      finally {
-        setLoading(false);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    onEntryChange(fetchData);
+    setDataForChromeExtension(data);
     fetchAPIData();
   }, [id]);
 

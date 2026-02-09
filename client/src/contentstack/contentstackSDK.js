@@ -1,7 +1,7 @@
 import Contentstack from "contentstack";
 import ContentstackLivePreview from "@contentstack/live-preview-utils";
 import Personalize from "@contentstack/personalize-edge-sdk";
-let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
+// let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
 const Stack = Contentstack.Stack({
   api_key: import.meta.env.VITE_CS_API_KEY,
   delivery_token: import.meta.env.VITE_CS_DEV_ACCESS_TOKEN,

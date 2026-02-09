@@ -13,10 +13,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api";
-import cmsClient from "@/contentstack/contentstackClient";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import {
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
