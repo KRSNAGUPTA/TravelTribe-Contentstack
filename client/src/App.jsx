@@ -7,6 +7,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import cmsClient from "./contentstack/contentstackClient";
 import { applyTheme } from "./lib/applyTheme";
 import Stack from "./contentstack/contentstackSDK";
+import { fetchEntryById } from "./contentstack/utils";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const HostelPage = lazy(() => import("./pages/HostelsPage"));
@@ -21,80 +22,31 @@ const Contact = lazy(() => import("./pages/Contact"));
 
 function App() {
   useEffect(() => {
-    const fetchCDAData = async () => {
-      let mounted = true;
+    let mounted = true;
+    async function loadTheme() {
+      const entry = await fetchEntryById(
+        "website_theme",
+        "blt1536a6f67fbc5110",
+        import.meta.env.VITE_SDK,
+        null,
+      );
+      // console.log("Theme entry:", entry);
+      const base = entry?.primary_color?.hex;
 
-      async function loadTheme() {
-        try {
-          const res = await cmsClient.get(
-            "/content_types/website_theme/entries",
-          );
-          // console.log(res.data?.entries?.[0]?._version)
-
-          const base = res.data?.entries?.[0]?.primary_color?.hex;
-
-          if (!base) {
-            console.warn("Theme color not found");
-            return;
-          }
-
-          if (mounted) {
-            applyTheme(base);
-          }
-        } catch (err) {
-          console.error("Failed to load website theme", err);
-        }
+      if (!base) {
+        console.warn("Theme color not found");
+        return;
       }
-
-      loadTheme();
-
-      return () => {
-        mounted = false;
-      };
-    };
-
-    const fetchSDKData = async () => {
-      let mounted = true;
-      async function loadTheme() {
-        try {
-          const entry = await Stack.ContentType("website_theme")
-            .Entry("blt1536a6f67fbc5110")
-            .toJSON()
-            .fetch();
-
-          const base = entry?.primary_color?.hex;
-
-          if (!base) {
-            console.warn("Theme color not found");
-            return;
-          }
-
-          if (mounted) {
-            applyTheme(base);
-          }
-          if (mounted) {
-            applyTheme(base);
-          }
-          // console.log("Using SDK")
-        } catch (error) {
-          console.error("Failed to fetch data from SDK", error);
-        }
+      if (mounted) {
+        applyTheme(base);
       }
-      loadTheme();
-
-      return () => {
-        mounted = false;
-      };
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData();
-    } else {
-      fetchCDAData();
     }
-  }, []);
+    loadTheme();
 
-  useEffect(() => {}, []);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <Router>

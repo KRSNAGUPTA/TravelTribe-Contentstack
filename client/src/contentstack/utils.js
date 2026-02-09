@@ -43,7 +43,7 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
     console.error("fetchEntries: Missing required parameters");
     return [];
   }
-  if (viaSdk) {
+  if (viaSdk === "true") {
     try {
       let entryQuery = Stack.ContentType(contentType).Query();
 
@@ -65,7 +65,7 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
   } else {
     try {
       const response = await cmsClient.get(
-        `/content_types/${contentType}/entries`,
+        `/content_types/${contentType}/entries?environment=${import.meta.env.VITE_CS_DEV_ENV}`,
         {
           params: ref ? { include: [ref] } : {},
         },
@@ -104,7 +104,7 @@ export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
   } else {
     try {
       const response = await cmsClient.get(
-        `/content_types/${contentType}/entries/${entryId}`,
+        `/content_types/${contentType}/entries/${entryId}?environment=${import.meta.env.VITE_CS_DEV_ENV}`,
         {
           params: ref ? { include: [ref] } : {},
         },

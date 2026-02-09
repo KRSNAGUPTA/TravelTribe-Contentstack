@@ -164,7 +164,7 @@ export default function ProfilePage() {
   if (!userData || !profileData) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-50 via-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)]">
       <Toaster />
 
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-10">
@@ -172,12 +172,12 @@ export default function ProfilePage() {
       </div>
 
       <section className="pt-20 pb-28 px-6 text-center">
-        <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 border-purple-500 shadow-xl">
+        <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 bg-[var(--accent)]  shadow-xl">
           <AvatarImage
             src={userData?.avatar || "/icon.png"}
             draggable="false"
           />
-          <AvatarFallback className="bg-purple-100 text-purple-700 text-3xl">
+          <AvatarFallback className="bg-[var(--accent)] text-[var(--primary)] text-3xl">
             {userData?.name?.charAt(0) || "U"}
           </AvatarFallback>
         </Avatar>
@@ -199,7 +199,7 @@ export default function ProfilePage() {
                 <PopoverTrigger asChild>
                   <Button
                     size="sm"
-                    className="rounded-full bg-purple-600 hover:bg-purple-700"
+                    className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
                   >
                     <Edit className="w-4 h-4 mr-2" />
                     Edit
@@ -229,7 +229,7 @@ export default function ProfilePage() {
                     />
                     <Button
                       onClick={handleProfileUpdate}
-                      className="w-full bg-purple-600 hover:bg-[var(--primary-hover)] rounded-md  "
+                      className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md  "
                     >
                       Update
                     </Button>
@@ -286,9 +286,9 @@ export default function ProfilePage() {
               <p className="text-gray-500">{profileData?.no_booking_text}</p>
             </Card>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-purple-100 bg-white shadow">
+            <div className="overflow-x-auto rounded-xl border border-[var(--accent)] bg-white shadow">
               <Table>
-                <TableHeader className="bg-purple-50">
+                <TableHeader className="bg-[var(--accent)] ">
                   <TableRow>
                     <TableHead>Receipt</TableHead>
                     <TableHead>Hostel</TableHead>
@@ -304,7 +304,7 @@ export default function ProfilePage() {
                   {filteredBookings.map((booking) => (
                     <TableRow
                       key={booking.receiptId}
-                      className="hover:bg-purple-50 transition"
+                      className="hover:bg-[var(--accent)]  transition"
                     >
                       <TableCell>{booking.receiptId}</TableCell>
                       <TableCell>{booking.hostelId}</TableCell>

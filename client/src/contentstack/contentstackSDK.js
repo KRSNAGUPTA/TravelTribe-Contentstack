@@ -4,11 +4,11 @@ import Personalize from "@contentstack/personalize-edge-sdk";
 // let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
 const Stack = Contentstack.Stack({
   api_key: import.meta.env.VITE_CS_API_KEY,
-  delivery_token: import.meta.env.VITE_CS_DEV_ACCESS_TOKEN,
+  delivery_token: import.meta.env.VITE_CS_ACCESS_TOKEN,
   environment: import.meta.env.VITE_CS_DEV_ENV,
   branch: import.meta.env.VITE_CS_BRANCH,
   live_preview: {
-    preview_token: import.meta.env.VITE_CS_DEV_PREVIEW_TOKEN,
+    preview_token: import.meta.env.VITE_CS_PREVIEW_TOKEN,
     enable: true,
     host: import.meta.env.VITE_CS_DEV_PREVIEW_HOST,
   },

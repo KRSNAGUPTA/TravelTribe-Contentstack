@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home } from "@/lib/iconsConfig";
 import Loading from "./Loading";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import  { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
+import { Home } from "lucide-react";
 
 export default function NotFound() {
   const [pageData, setPageData] = useState(null);
