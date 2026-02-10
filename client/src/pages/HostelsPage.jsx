@@ -19,7 +19,12 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
 import cmsClient from "@/contentstack/contentstackClient";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import api from "@/api";
 
 // Updated amenity icons based on the facilities in the data
@@ -56,6 +61,8 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
+import { ChevronRight } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 const base = "mr-1 h-4 w-4";
 
@@ -66,73 +73,39 @@ export const facilityIcons = {
 
   cctv: <Cctv className={`${base} text-indigo-500`} />,
 
-  security_guard: (
-    <ShieldCheck className={`${base} text-emerald-600`} />
-  ),
+  security_guard: <ShieldCheck className={`${base} text-emerald-600`} />,
 
-  drinking_water: (
-    <Droplets className={`${base} text-blue-500`} />
-  ),
+  drinking_water: <Droplets className={`${base} text-blue-500`} />,
 
-  lockers: (
-    <LockKeyhole className={`${base} text-gray-600`} />
-  ),
+  lockers: <LockKeyhole className={`${base} text-gray-600`} />,
 
-  wheelchair_access: (
-    <Accessibility className={`${base} text-teal-600`} />
-  ),
+  wheelchair_access: <Accessibility className={`${base} text-teal-600`} />,
 
-  fire_safety: (
-    <Flame className={`${base} text-amber-500`} />
-  ),
+  fire_safety: <Flame className={`${base} text-amber-500`} />,
 
-  first_aid: (
-    <HeartPulse className={`${base} text-rose-500`} />
-  ),
+  first_aid: <HeartPulse className={`${base} text-rose-500`} />,
 
-  ac: (
-    <Snowflake className={`${base} text-cyan-500`} />
-  ),
+  ac: <Snowflake className={`${base} text-cyan-500`} />,
 
-  "non-ac": (
-    <Fan className={`${base} text-neutral-500`} />
-  ),
+  "non-ac": <Fan className={`${base} text-neutral-500`} />,
 
-  hot_water: (
-    <ShowerHead className={`${base} text-orange-500`} />
-  ),
+  hot_water: <ShowerHead className={`${base} text-orange-500`} />,
 
-  laundry: (
-    <WashingMachine className={`${base} text-indigo-400`} />
-  ),
+  laundry: <WashingMachine className={`${base} text-indigo-400`} />,
 
-  power_backup: (
-    <BatteryCharging className={`${base} text-lime-600`} />
-  ),
+  power_backup: <BatteryCharging className={`${base} text-lime-600`} />,
 
-  housekeeping: (
-    <House className={`${base} text-emerald-500`} />
-  ),
+  housekeeping: <House className={`${base} text-emerald-500`} />,
 
-  study_area: (
-    <BookOpen className={`${base} text-violet-500`} />
-  ),
+  study_area: <BookOpen className={`${base} text-violet-500`} />,
 
-  tv: (
-    <TvMinimalPlayIcon className={`${base} text-fuchsia-500`} />
-  ),
+  tv: <TvMinimalPlayIcon className={`${base} text-fuchsia-500`} />,
 
-  common_area: (
-    <Users className={`${base} text-purple-500`} />
-  ),
+  common_area: <Users className={`${base} text-purple-500`} />,
 
-  kitchen: (
-    <CookingPot className={`${base} text-amber-600`} />
-  ),
+  kitchen: <CookingPot className={`${base} text-amber-600`} />,
 
-  microwave: (
-    <Microwave className={`${base} text-pink-500`} />
-  ),
+  microwave: <Microwave className={`${base} text-pink-500`} />,
 };
 
 const FACILITY_PRIORITY = [
@@ -149,7 +122,6 @@ const hostelTypeIcon = {
   Girls: <Venus className="h-4 w-4 text-pink-600" />,
   Unisex: <VenusAndMars className="h-4 w-4 text-purple-600" />,
 };
-
 
 export default function FindHostel() {
   const [hostels, setHostels] = useState([]);
@@ -189,12 +161,15 @@ export default function FindHostel() {
     setDataForChromeExtension(data);
   }, []);
 
-
   useEffect(() => {
     const fetchHostels = async () => {
       setIsLoading(true);
       try {
-        const hostelsData = await fetchEntries("hostel", import.meta.env.VITE_SDK, "") // array of hostels
+        const hostelsData = await fetchEntries(
+          "hostel",
+          import.meta.env.VITE_SDK,
+          "",
+        ); // array of hostels
 
         setHostels(hostelsData);
         setFilteredHostels(hostelsData);
@@ -229,32 +204,29 @@ export default function FindHostel() {
 
   const getLowestAvailablePrice = (cmsRooms = [], backendRooms = []) => {
     const availableKeys = backendRooms
-      .filter(r => r.available_beds > 0)
-      .map(r => r.room_key);
+      .filter((r) => r.available_beds > 0)
+      .map((r) => r.room_key);
 
-    const availableCmsRooms = cmsRooms.filter(r =>
-      availableKeys.includes(r.room_key)
+    const availableCmsRooms = cmsRooms.filter((r) =>
+      availableKeys.includes(r.room_key),
     );
 
     if (!availableCmsRooms.length) return null;
 
-    return Math.min(...availableCmsRooms.map(r => r.base_price));
+    return Math.min(...availableCmsRooms.map((r) => r.base_price));
   };
 
   const itemsPerPage = 6;
   const totalPages = Math.ceil(filteredHostels.length / itemsPerPage);
   const paginatedHostels = filteredHostels.slice(
     (page - 1) * itemsPerPage,
-    page * itemsPerPage
+    page * itemsPerPage,
   );
 
   // Get priority key facilities to display
 
-
   const getKeyFacilities = (facilities = []) =>
-    FACILITY_PRIORITY.filter(f => facilities.includes(f)).slice(0, 4);
-
-
+    FACILITY_PRIORITY.filter((f) => facilities.includes(f)).slice(0, 4);
 
   useEffect(() => {
     let filtered = hostels.filter((hostel) => {
@@ -272,47 +244,56 @@ export default function FindHostel() {
       const matchesCollege =
         college === "all" ||
         hostel.nearby_college?.some((c) =>
-          c.toLowerCase().includes(college.toLowerCase())
+          c.toLowerCase().includes(college.toLowerCase()),
         );
 
       const lowestPrice = getLowestAvailablePrice(
         hostel.room_types,
-        backendRooms
+        backendRooms,
       );
 
       const matchesPrice =
         price === "none" ||
         (lowestPrice !== null && lowestPrice <= Number(price));
 
-      return (
-        matchesSearch &&
-        matchesLocation &&
-        matchesCollege &&
-        matchesPrice
-      );
+      return matchesSearch && matchesLocation && matchesCollege && matchesPrice;
     });
 
     setFilteredHostels(filtered);
     setPage(1);
   }, [search, location, college, price, hostels, roomAvailability]);
 
+  // Scroll to top when user changes pagination page
+  useEffect(() => {
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (e) {
+      // fallback for environments without window
+      if (typeof window !== "undefined") window.scrollTo(0, 0);
+    }
+  }, [page]);
 
   const goToPreviousPage = () => setPage(Math.max(1, page - 1));
   const goToNextPage = () => setPage(Math.min(totalPages, page + 1));
 
   return (
     <TooltipProvider>
-
       <div className="min-h-screen bg-gray-50">
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
           <Header />
         </div>
         <main className="container mx-auto px-4 py-8">
           <div className="text-center mb-12">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular" {...listingPageData?.$?.title}>
+            <h1
+              className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular"
+              {...listingPageData?.$?.title}
+            >
               {listingPageData?.title}
             </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto" {...listingPageData?.$?.subtitle}>
+            <p
+              className="text-gray-600 max-w-2xl mx-auto"
+              {...listingPageData?.$?.subtitle}
+            >
               {listingPageData?.subtitle}
             </p>
           </div>
@@ -351,7 +332,9 @@ export default function FindHostel() {
                 <SelectItem value="Mukesh Patel School of Technology">
                   Mukesh Patel School of Technology
                 </SelectItem>
-                <SelectItem value="NMIMS University">NMIMS University</SelectItem>
+                <SelectItem value="NMIMS University">
+                  NMIMS University
+                </SelectItem>
                 <SelectItem value="rait">
                   Ramrao Adik Institute of Technology (RAIT)
                 </SelectItem>
@@ -367,7 +350,9 @@ export default function FindHostel() {
                 <SelectItem value="Xavier Institute of Engineering">
                   Xavier Institute of Engineering
                 </SelectItem>
-                <SelectItem value="Thakur Polytechnic">Thakur Polytechnic</SelectItem>
+                <SelectItem value="Thakur Polytechnic">
+                  Thakur Polytechnic
+                </SelectItem>
               </SelectContent>
             </Select>
             <Select value={location} onValueChange={setLocation}>
@@ -429,7 +414,9 @@ export default function FindHostel() {
               }}
               className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
             >
-              <span {...listingPageData?.$?.reset_button_text}>{listingPageData?.reset_button_text}</span>
+              <span {...listingPageData?.$?.reset_button_text}>
+                {listingPageData?.reset_button_text}
+              </span>
             </Button>
           </div>
           <div className="text-center mb-6 text-gray-600">
@@ -453,7 +440,7 @@ export default function FindHostel() {
                   const backendRooms = roomAvailability[hostel.uid] || [];
                   const lowestPrice = getLowestAvailablePrice(
                     hostel.room_types,
-                    backendRooms
+                    backendRooms,
                   );
                   const isAvailable = hasAvailableRooms(backendRooms);
 
@@ -485,7 +472,6 @@ export default function FindHostel() {
 
                         {hostel.type && (
                           <Tooltip>
-
                             <TooltipTrigger className="absolute top-2 left-2  bg-white/80 p-2 rounded-full text-xs font-medium capitalize">
                               {hostelTypeIcon[hostel.type]}
                             </TooltipTrigger>
@@ -494,7 +480,6 @@ export default function FindHostel() {
                             </TooltipContent>
                           </Tooltip>
                         )}
-
                       </div>
 
                       <CardContent className="p-4">
@@ -510,64 +495,70 @@ export default function FindHostel() {
                         </p>
 
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {getKeyFacilities(hostel.facilities).map((facility) => (
-                            <Tooltip key={facility}>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help hover:scale-125 transition-transform inline-flex items-center justify-center rounded bg-purple-50 p-1 text-purple-700 ">
-                                  {facilityIcons[facility] ?? <Shield className="h-4 w-4" />}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-white/90 text-purple-600 font-semibold rounded-full border ">
-                                {facility.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                              </TooltipContent>
-                            </Tooltip>
-                          ))}
+                          {getKeyFacilities(hostel.facilities).map(
+                            (facility) => (
+                              <Tooltip key={facility}>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help hover:scale-125 transition-transform inline-flex items-center justify-center rounded bg-purple-50 p-1 text-purple-700 ">
+                                    {facilityIcons[facility] ?? (
+                                      <Shield className="h-4 w-4" />
+                                    )}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-white/90 text-purple-600 font-semibold rounded-full border ">
+                                  {facility
+                                    .replace(/_/g, " ")
+                                    .replace(/\b\w/g, (c) => c.toUpperCase())}
+                                </TooltipContent>
+                              </Tooltip>
+                            ),
+                          )}
                         </div>
 
                         <Button
                           onClick={() => navigate(`/hostel/${hostel.uid}`)}
                           className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md transition-transform duration-700 hover:rounded-xl "
                         >
-                          <span {...listingPageData?.$?.view_button_text}>{listingPageData?.view_button_text}</span>
+                          <span {...listingPageData?.$?.view_button_text}>
+                            {listingPageData?.view_button_text}
+                          </span>
                         </Button>
                       </CardContent>
                     </Card>
                   );
                 })
-
-              )
-                : (
-                  <div className="col-span-full text-center py-10">
-                    <p className="text-gray-600 mb-4">
-                      No properties found matching your criteria.
-                    </p>
-                    <Button
-                      onClick={() => {
-                        setSearch("");
-                        setLocation("all");
-                        setPrice("none");
-                        setCollege("all");
-                      }}
-                      variant="outline"
-                      className="mt-4"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
+              ) : (
+                <div className="col-span-full text-center py-10">
+                  <p className="text-gray-600 mb-4">
+                    No properties found matching your criteria.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setSearch("");
+                      setLocation("all");
+                      setPrice("none");
+                      setCollege("all");
+                    }}
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
             </div>
-
           </TooltipProvider>
           {filteredHostels.length > itemsPerPage && (
-            <div className="flex justify-center">
+            <div className="flex justify-center hover:cursor-pointer">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
                     <PaginationLink
                       onClick={goToPreviousPage}
                       disabled={page === 1}
+                      className={`${page === 1 ? "cursor-not-allowed" : ""}`}
                     >
-                      Previous
+                      <ChevronLeft />
                     </PaginationLink>
                   </PaginationItem>
                   {[...Array(totalPages)].map((_, i) => (
@@ -575,10 +566,14 @@ export default function FindHostel() {
                       <PaginationLink
                         onClick={() => setPage(i + 1)}
                         className={
-                          i + 1 === page ? "bg-[var(--primary)] text-white" : ""
+                          i + 1 === page
+                            ? "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]"
+                            : ""
                         }
                       >
-                        {i + 1}
+                        <span className="">
+                          {i + 1}
+                        </span>
                       </PaginationLink>
                     </PaginationItem>
                   ))}
@@ -586,8 +581,9 @@ export default function FindHostel() {
                     <PaginationLink
                       onClick={goToNextPage}
                       disabled={page === totalPages}
+                      className={`${page === totalPages ? "cursor-not-allowed" : ""}`}
                     >
-                      Next
+                      <ChevronRight />
                     </PaginationLink>
                   </PaginationItem>
                 </PaginationContent>
@@ -597,7 +593,6 @@ export default function FindHostel() {
         </main>
         <Footer />
       </div>
-
     </TooltipProvider>
   );
 }
