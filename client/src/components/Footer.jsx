@@ -88,15 +88,15 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-black text-white">
+    <footer className="bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 border-t border-gray-200">
       <Toaster/>
       <div className="container mx-auto px-4 py-12
     grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
 
         {/* Brand */}
         <div>
-          <h2 className="text-2xl md:text-4xl font-bold pacifico-regular" {...footerData?.$?.title}>{footerData?.title}</h2>
-          <p className="mt-3 text-gray-400 text-sm leading-relaxed" {...footerData?.$?.subtext}>
+          <h2 className="text-2xl md:text-4xl font-bold pacifico-regular text-gray-900" {...footerData?.$?.title}>{footerData?.title}</h2>
+          <p className="mt-3 text-gray-600 text-sm leading-relaxed" {...footerData?.$?.subtext}>
             {footerData?.subtext}
           </p>
         </div>
@@ -104,15 +104,15 @@ const Footer = () => {
         {/* CMS Sections */}
         {footerData?.section_group?.map((section) => (
           <div key={section._metadata.uid}>
-            <h3 className="text-lg font-semibold mb-4" {...section?.$?.group_title}>
+            <h3 className="text-lg font-semibold mb-4 text-gray-900" {...section?.$?.group_title}>
               {section?.group_title}
             </h3>
-            <ul className="space-y-3 text-sm text-gray-400">
+            <ul className="space-y-3 text-sm text-gray-600">
               {section.link_group?.map((item) => (
                 <li key={item._metadata.uid}>
                   <a
                     href={item?.link?.href}
-                    className="hover:text-white transition"
+                    className="hover:text-gray-900 transition"
                     {...item?.link?.$?.title}
                   >
                     {item?.link?.title}
@@ -125,7 +125,7 @@ const Footer = () => {
 
         {/* Subscribe */}
         <div>
-          <h3 className="text-lg font-semibold mb-4" {...footerData?.$?.email_title}>
+          <h3 className="text-lg font-semibold mb-4 text-gray-900" {...footerData?.$?.email_title}>
             {footerData?.email_title}
           </h3>
 
@@ -135,7 +135,7 @@ const Footer = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={footerData?.email_placeholder}
-              className="w-full bg-gray-800 text-white px-4 py-1 rounded-md outline-none"
+              className="w-full bg-white border border-gray-300 text-gray-900 px-4 py-1 rounded-md outline-none focus:border-gray-400"
               {...footerData?.$?.email_placeholder}
             />
             <Button
@@ -149,19 +149,19 @@ const Footer = () => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-800 mt-6 pb-28 py-4 text-center text-xs text-gray-500 px-4">
+      <div className="border-t border-gray-300 mt-6 pb-28 py-4 text-center text-xs text-gray-500 px-4">
         <p {...footerData?.$?.copyright_text}>{footerData?.copyright_text}</p>
         <div className="mt-2 flex justify-center gap-4 flex-wrap">
           <a
             href={footerData?.terms_of_service_link?.href}
-            className="hover:text-white"
+            className="hover:text-gray-900"
             {...footerData?.terms_of_service_link?.$?.title}
           >
             {footerData?.terms_of_service_link?.title}
           </a>
           <a
             href={footerData?.privacy_policy_link?.href}
-            className="hover:text-white"
+            className="hover:text-gray-900"
             {...footerData?.privacy_policy_link?.$?.title}
           >
             {footerData?.privacy_policy_link?.title}
