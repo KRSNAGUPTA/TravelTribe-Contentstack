@@ -59,7 +59,12 @@ export default function HomePage() {
     onEntryChange(fetchData);
   }, []);
 
-  const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: false }));
+  const hostelsPlugin = useRef(
+    Autoplay({ delay: 2000 })
+  );
+  const testimonialsPlugin = useRef(
+    Autoplay({ delay: 2000 })
+  );
   const navigate = useNavigate();
 
   if (!landingData) {
@@ -202,9 +207,9 @@ export default function HomePage() {
             <Carousel
               className="cursor-grab active:cursor-grabbing"
               opts={{ align: "start", loop: true }}
-              plugins={[plugin.current]}
-              onMouseEnter={() => plugin.current?.stop()}
-              onMouseLeave={() => plugin.current?.play()}
+              plugins={[hostelsPlugin.current]}
+              onMouseEnter={() => hostelsPlugin.current?.stop()}
+              onMouseLeave={() => hostelsPlugin.current?.play()}
             >
               <CarouselContent className="flex py-8">
                 {featuredHostels.map((hostel) => {
@@ -282,9 +287,9 @@ export default function HomePage() {
           <Carousel
             className="max-w-6xl mx-auto"
             opts={{ align: "start", loop: true }}
-            plugins={[plugin.current]}
-            onMouseEnter={() => plugin.current?.stop()}
-            onMouseLeave={() => plugin.current?.play()}
+              plugins={[testimonialsPlugin.current]}
+              onMouseEnter={() => testimonialsPlugin.current?.stop()}
+              onMouseLeave={() => testimonialsPlugin.current?.play()}
           >
             <CarouselContent className="md:basis-1/2 lg:basis-1/3 pl-4 flex py-8">
               {testimonialsSection?.testimonials?.map((data, index) => (
