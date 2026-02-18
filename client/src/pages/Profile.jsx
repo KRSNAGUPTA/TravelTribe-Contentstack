@@ -50,6 +50,13 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
+import { Eye } from "lucide-react";
+import { Ellipsis } from "lucide-react";
+import { EllipsisVertical } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import BookingReceipt from "@/components/BookingReceipt";
+import { Download } from "lucide-react";
+import { generateBookingPDF } from "@/lib/printPdf";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});
@@ -63,6 +70,10 @@ export default function ProfilePage() {
     password: "",
     isPasswordChanged: false,
   });
+
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const data = {
     entryUid: "bltc76b51f6a5d5e5e2",
     contenttype: "profile_page",
@@ -161,6 +172,18 @@ export default function ProfilePage() {
     }));
   };
 
+  const handleDownloadClick = async (booking) => {
+    setSelectedBooking(booking);
+    setIsGenerating(true);
+
+    // Wait for component to render
+    setTimeout(async () => {
+      await generateBookingPDF(booking);
+      // setIsGenerating(false);
+      // setSelectedBooking(null);
+    }, 300);
+  };
+
   if (!userData || !profileData) return <Loading />;
 
   return (
@@ -173,6 +196,7 @@ export default function ProfilePage() {
 
       <section className="pt-20 pb-28 px-6 text-center">
         <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 bg-[var(--accent)]  shadow-xl">
+          {/* {console.log(userData)} */}
           <AvatarImage
             src={userData?.avatar || "/icon.png"}
             draggable="false"
@@ -252,7 +276,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-3">
                 <LucideAppWindow className="w-4 text-purple-600" />
                 <span>
-                  Joined {new Date(userData.createdAt).toLocaleDateString()}
+                  Joined {new Date(userData.createdAt).toLocaleDateString("en-IN")}
                 </span>
               </div>
             </div>
@@ -297,6 +321,7 @@ export default function ProfilePage() {
                     <TableHead>Check-out</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
 
@@ -310,10 +335,10 @@ export default function ProfilePage() {
                       <TableCell>{booking.hostelId}</TableCell>
                       <TableCell>{booking.roomSelection}</TableCell>
                       <TableCell>
-                        {new Date(booking.checkInDate).toLocaleDateString()}
+                        {new Date(booking.checkInDate).toLocaleDateString("en-IN")}
                       </TableCell>
                       <TableCell>
-                        {new Date(booking.checkOutDate).toLocaleDateString()}
+                        {new Date(booking.checkOutDate).toLocaleDateString("en-IN")}
                       </TableCell>
                       <TableCell className="font-semibold">
                         ₹{booking.amount}
@@ -327,6 +352,25 @@ export default function ProfilePage() {
                           {booking.status}
                         </span>
                       </TableCell>
+                      <TableCell>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <EllipsisVertical className="w-4 h-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-40 rounded-lg">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadClick(booking)}
+                            >
+                              <Download className="w-4 h-4" />
+                              Download PDF
+                            </Button>
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -335,6 +379,14 @@ export default function ProfilePage() {
           )}
         </div>
       </section>
+
+      {selectedBooking && (
+        <div className="fixed top-0 left-0 w-full h-full bg-black/50 z-100">
+          <div className="flex items-center justify-center h-full">
+            <BookingReceipt booking={selectedBooking} userData={userData} isGenerating={isGenerating} />
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

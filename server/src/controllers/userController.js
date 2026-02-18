@@ -21,6 +21,7 @@ export const handleGoogleLogin = async (req, res) => {
     });
 
     const { email, name, picture, sub } = ticket.getPayload();
+    console.log(email, name, picture, sub);
 
     let user = await User.findOne({ email });
     if (!user) {
@@ -44,7 +45,7 @@ export const handleGoogleLogin = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    await sendNotification("login", user);
+    // await sendNotification("login", user);
 
     res.json({ jwtToken, user });
   } catch (error) {
