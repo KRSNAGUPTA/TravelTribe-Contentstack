@@ -179,8 +179,8 @@ export default function ProfilePage() {
     // Wait for component to render
     setTimeout(async () => {
       await generateBookingPDF(booking);
-      // setIsGenerating(false);
-      // setSelectedBooking(null);
+      setIsGenerating(false);
+      setSelectedBooking(null);
     }, 300);
   };
 
