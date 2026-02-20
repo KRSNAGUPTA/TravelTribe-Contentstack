@@ -52,12 +52,15 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
         entryQuery = entryQuery.includeReference(ref);
       }
       const [entries] = await entryQuery.toJSON().find();
-      addEditableTags(
-        entries,
-        contentType,
-        true,
-        import.meta.env.VITE_CS_LOCALE,
-      );
+      entries.map((entry)=>addEditableTags(entry,contentType,true, import.meta.env.VITE_CS_LOCALE))
+      console.log("entries", entries);
+      
+      // addEditableTags(
+      //   entries,
+      //   contentType,
+      //   true,
+      //   import.meta.env.VITE_CS_LOCALE,
+      // );
       return entries;
     } catch (error) {
       console.error("Error fetching entries via SDK", error);
