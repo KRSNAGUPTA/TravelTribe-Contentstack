@@ -53,7 +53,7 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
       }
       const [entries] = await entryQuery.toJSON().find();
       entries.map((entry)=>addEditableTags(entry,contentType,true, import.meta.env.VITE_CS_LOCALE))
-      console.log("entries", entries);
+      // console.log("entries", entries);
       
       // addEditableTags(
       //   entries,

@@ -21,14 +21,13 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import Loading from "./Loading";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntries,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
+import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
+import { AuthContext } from "@/context/AuthContext";
+import { useContext } from "react";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
-
+  const { user } = useContext(AuthContext);
   useEffect(() => {
     const fetchData = async () => {
       const entry = (
@@ -59,12 +58,8 @@ export default function HomePage() {
     onEntryChange(fetchData);
   }, []);
 
-  const hostelsPlugin = useRef(
-    Autoplay({ delay: 2000 })
-  );
-  const testimonialsPlugin = useRef(
-    Autoplay({ delay: 2000 })
-  );
+  const hostelsPlugin = useRef(Autoplay({ delay: 2000 }));
+  const testimonialsPlugin = useRef(Autoplay({ delay: 2000 }));
   const navigate = useNavigate();
 
   if (!landingData) {
@@ -118,11 +113,22 @@ export default function HomePage() {
               {heroSection?.subtext}
             </p>
           </div>
-
           <Button
-            onClick={() =>
-              heroSection?.cta?.href && navigate(heroSection.cta.href)
-            }
+            onClick={() => {
+              heroSection?.cta?.href && navigate(heroSection.cta.href);
+
+              try {
+                jstag.send({
+                  __event: "CTA Clicked!",
+                  stream: "default",
+                  userId: `${user?._id}`,
+                  email: `${user?.email}`,
+                });
+                console.log("CTA Clicked event sent to Lytics with user data", jstag);
+              } catch (error) {
+                console.error("Error sending event to Lytics:", error);
+              }
+            }}
             className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
             {...heroSection?.cta?.$?.title}
           >
@@ -287,9 +293,9 @@ export default function HomePage() {
           <Carousel
             className="max-w-6xl mx-auto"
             opts={{ align: "start", loop: true }}
-              plugins={[testimonialsPlugin.current]}
-              onMouseEnter={() => testimonialsPlugin.current?.stop()}
-              onMouseLeave={() => testimonialsPlugin.current?.play()}
+            plugins={[testimonialsPlugin.current]}
+            onMouseEnter={() => testimonialsPlugin.current?.stop()}
+            onMouseLeave={() => testimonialsPlugin.current?.play()}
           >
             <CarouselContent className="md:basis-1/2 lg:basis-1/3 pl-4 flex py-8">
               {testimonialsSection?.testimonials?.map((data, index) => (
