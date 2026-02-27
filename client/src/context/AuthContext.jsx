@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
+import { identifyUser } from "@/Lytics/config.js";
 
 export const AuthContext = createContext();
 
@@ -57,6 +58,10 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(response.data.token);
       setUser(response.data.user);
       localStorage.setItem("user", JSON.stringify(response.data.user));
+      identifyUser(response.data.user.id, {
+        email: response.data.user.email,
+        name: response.data.user.name,
+      });
 
       return response.data.user;
     } catch (error) {
