@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
       return response.data;
     } catch (error) {
-      console.log("Signup Error:", error.message);
+      console.error("Signup Error:", error.message);
       throw error;
     }
   };
