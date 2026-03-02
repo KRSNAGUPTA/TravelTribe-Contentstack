@@ -42,12 +42,20 @@ export const handleGoogleLogin = async (req, res) => {
     const jwtToken = jwt.sign(
       { id: user._id.toString(), role: "user", email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     // await sendNotification("login", user);
 
-    res.json({ jwtToken, user });
+    res.json({
+      jwtToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+      },
+    });
   } catch (error) {
     console.error("Error in Google Login:", error);
     res.status(500).json({ message: "Server error", error: error.message });
@@ -70,12 +78,20 @@ export const registerUser = async (req, res) => {
 
     await newUser.save();
     const token = jwt.sign(
-      { id: newUser._id, role: "user" },
+      { id: newUser._id, role: "user", name: name, email: email },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
     await sendNotification("register", newUser);
-    res.status(201).json({ message: "User registered successfully", token });
+    res.status(201).json({
+      message: "User registered successfully",
+      user: {
+        name: newUser.name,
+        email: newUser.email,
+        id: newUser._id,
+      },
+      token,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -96,7 +112,7 @@ export const loginUser = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     res.cookie("token", token, {
@@ -108,7 +124,12 @@ export const loginUser = async (req, res) => {
     res.json({
       message: "Login successful",
       token,
-      user: { id: user._id, name: user.name, role: user.role },
+      user: {
+        id: user._id,
+        name: user.name,
+        role: user.role,
+        email: user.email,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });

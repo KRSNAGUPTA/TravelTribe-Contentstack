@@ -7,6 +7,7 @@ import {
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import Footer from "@/components/Footer";
+import { pageview } from "@vercel/analytics/*";
 
 export default function PrivacyPolicy() {
   const [privacyData, setPrivacyData] = useState(null);
@@ -31,6 +32,8 @@ export default function PrivacyPolicy() {
         console.error("Error fetching privacy page data", error);
       }
     };
+
+    pageview("Privacy Policy Page");
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);

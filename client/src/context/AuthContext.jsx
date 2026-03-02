@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
+import { identifyUser, trackEvent } from "@/Lytics/config.js";
 
 export const AuthContext = createContext();
 
@@ -58,6 +59,20 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
+
+      if(!response.data.user.email || !response.data.user.name || !response.data.user.id){
+        throw new Error("Login: Incomplete user data");
+      }
+      identifyUser(response.data.user.id, {
+        email: response.data.user.email,
+        name: response.data.user.name,
+      });
+
+      trackEvent("login", {
+        email: response.data.user.email,
+        name: response.data.user.name,
+      });
+
       return response.data.user;
     } catch (error) {
       console.error("Login error details:", {
@@ -69,16 +84,32 @@ export const AuthProvider = ({ children }) => {
       throw error;
     }
   };
-  
+
   const signupUser = async (userData) => {
     try {
       const response = await api.post("/api/user/signup", {
         ...userData,
       });
+      if (
+        !response.data.user.email ||
+        !response.data.user.id ||
+        !response.data.user.name
+      ) {
+        console.error("Signup: Incomplete user data in response:", response.data);
+      }
+      identifyUser(response.data.user.id, {
+        email: response.data.user.email,
+        name: response.data.user.name,
+      });
+      trackEvent("register", {
+        email: response.data.user.email,
+        name: response.data.user.name,
+      });
+      // console.log(response.data);
 
       return response.data;
     } catch (error) {
-      console.log(error.message);
+      console.error("Signup Error:", error.message);
       throw error;
     }
   };
@@ -102,7 +133,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     signupUser,
     setUser,
-    setAuthToken
+    setAuthToken,
   };
 
   return (

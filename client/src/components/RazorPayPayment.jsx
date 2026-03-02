@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
+import { trackEvent } from '@/Lytics/config';
 const RazorPayPayment = ({hostelId, formData, validateForm }) => {
   const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,7 +18,18 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
         receiptId
       };
       
+      trackEvent("booking_initiated", {
+        hostelId,
+        amount: formData.amount,
+        hostel_name: formData.hostelName,
+      });
       const res = await api.post("/api/booking/", bookingData);
+
+      trackEvent("booking_successful", {
+        hostelId,
+        amount: formData.amount,
+        hostel_name: formData.hostelName,
+      });
       
       toast({
         title: "Booking successful",

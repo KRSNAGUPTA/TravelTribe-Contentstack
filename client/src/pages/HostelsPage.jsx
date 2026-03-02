@@ -63,6 +63,7 @@ import {
 } from "@/contentstack/utils";
 import { ChevronRight } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
+import { pageView } from "@/Lytics/config";
 
 const base = "mr-1 h-4 w-4";
 
@@ -195,6 +196,7 @@ export default function FindHostel() {
         console.error("Failed to fetch room availability", err);
       }
     };
+    pageView("Hostel Listing Page");
     fetchRoomAvailability();
     fetchHostels();
   }, []);

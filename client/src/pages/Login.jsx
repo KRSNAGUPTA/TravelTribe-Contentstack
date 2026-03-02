@@ -18,6 +18,7 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
+import { identifyUser, pageView, trackEvent } from "@/Lytics/config";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
@@ -49,6 +50,8 @@ const Login = () => {
         console.error("Error fetching auth page data", error);
       }
     };
+
+    pageView("Auth Page");
     onEntryChange(fetchData);
     setDataForChromeExtension(data);
   }, []);
@@ -105,9 +108,10 @@ const Login = () => {
           ? "User already exists"
           : err.status === 400
             ? "Invalid credentials"
-            : "Something went wrong";
+            : "Login: Something went wrong";
 
       setError(message);
+      console.log("Authentication error details:", err)
 
       toast({
         title: "Authentication Failed",
@@ -153,6 +157,17 @@ const Login = () => {
                 setAuthToken(data.data.jwtToken);
 
                 toast({ title: "Login Successful" });
+                // console.log("final data obj",data.data)
+                identifyUser(data.data.user.id, {
+                  email: data.data.user.email,
+                  name: data.data.user.name,
+                });
+
+                trackEvent("google_login", {
+                  email: data.data.user.email,
+                  name: data.data.user.name,
+                });
+                
                 navigate("/");
               }}
               onError={() =>

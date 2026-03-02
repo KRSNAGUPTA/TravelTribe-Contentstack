@@ -57,6 +57,7 @@ import { AlertCircle } from "lucide-react";
 import BookingReceipt from "@/components/BookingReceipt";
 import { Download } from "lucide-react";
 import { generateBookingPDF } from "@/lib/printPdf";
+import { pageView } from "@/Lytics/config";
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState({});
@@ -109,6 +110,7 @@ export default function ProfilePage() {
         console.error("Error fetching user profile or bookings:", error);
       }
     };
+    pageView("Profile Page");
     fetchUserData();
   }, []);
 

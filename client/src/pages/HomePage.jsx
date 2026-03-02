@@ -24,6 +24,7 @@ import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
+import { pageView, trackEvent } from "@/Lytics/config";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -53,6 +54,8 @@ export default function HomePage() {
       };
       setDataForChromeExtension(data);
     };
+
+    pageView("Home Page");
 
     fetchData();
     onEntryChange(fetchData);
@@ -116,18 +119,9 @@ export default function HomePage() {
           <Button
             onClick={() => {
               heroSection?.cta?.href && navigate(heroSection.cta.href);
-
-              try {
-                jstag.send({
-                  __event: "CTA Clicked!",
-                  stream: "default",
-                  userId: `${user?._id}`,
-                  email: `${user?.email}`,
-                });
-                console.log("CTA Clicked event sent to Lytics with user data", jstag);
-              } catch (error) {
-                console.error("Error sending event to Lytics:", error);
-              }
+              trackEvent("hero_cta_clicked", {
+                ctaTitle: heroSection?.cta?.title || "Unknown CTA",
+              });
             }}
             className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
             {...heroSection?.cta?.$?.title}
@@ -264,7 +258,13 @@ export default function HomePage() {
                           </div>
 
                           <Button
-                            onClick={() => navigate(`/hostel/${hostel.uid}`)}
+                            onClick={() => {
+                              trackEvent("hero_hostel_viewed", {
+                                hostelId: hostel.uid,
+                                hostelTitle: hostel.title,
+                              });
+                              navigate(`/hostel/${hostel.uid}`);
+                            }}
                             className=" rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active) "
                           >
                             View
