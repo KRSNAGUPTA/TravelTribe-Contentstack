@@ -7,7 +7,7 @@ import {
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import Footer from "@/components/Footer";
-import { pageview } from "@vercel/analytics/*";
+import { pageView } from "@/Lytics/config";
 
 export default function PrivacyPolicy() {
   const [privacyData, setPrivacyData] = useState(null);
@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
       }
     };
 
-    pageview("Privacy Policy Page");
+    pageView("Privacy Policy Page");
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);
