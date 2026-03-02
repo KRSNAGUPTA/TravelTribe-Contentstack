@@ -31,6 +31,7 @@ import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import cmsClient from "@/contentstack/contentstackClient";
+import { pageView } from "@/Lytics/config";
 
 export default function HostelBooking() {
   const { id } = useParams();
@@ -91,6 +92,7 @@ export default function HostelBooking() {
         });
       }
     };
+    pageView("Hostel Booking Page");
 
     fetchData();
   }, [id, toast]);

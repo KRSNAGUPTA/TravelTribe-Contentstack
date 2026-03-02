@@ -72,13 +72,13 @@ import { toast } from "@/hooks/use-toast";
 import Loading from "./Loading";
 import { Toaster } from "@/components/ui/toaster";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import cmsClient from "@/contentstack/contentstackClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
+import { pageView, trackEvent } from "@/Lytics/config";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -115,6 +115,10 @@ export default function HostelDetails() {
           null,
         );
         setHostel(entry);
+        trackEvent("hostel_viewed", {
+          hostelId: entry.uid,
+          hostelTitle: entry.title,
+        });
       } catch (error) {
         console.error("Error fetching hostel data", error);
         setHostel(null);
@@ -122,6 +126,8 @@ export default function HostelDetails() {
         setLoading(false);
       }
     };
+
+    pageView("Hostel Details Page");
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);

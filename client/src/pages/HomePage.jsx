@@ -24,7 +24,7 @@ import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
-import { trackEvent, trackPage } from "@/Lytics/config";
+import { pageView, trackEvent } from "@/Lytics/config";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -55,10 +55,10 @@ export default function HomePage() {
       setDataForChromeExtension(data);
     };
 
+    pageView("Home Page");
+
     fetchData();
     onEntryChange(fetchData);
-
-    trackPage("Home Page");
   }, []);
 
   const hostelsPlugin = useRef(Autoplay({ delay: 2000 }));
@@ -119,7 +119,7 @@ export default function HomePage() {
           <Button
             onClick={() => {
               heroSection?.cta?.href && navigate(heroSection.cta.href);
-              trackEvent("Hero CTA Clicked", {
+              trackEvent("hero_cta_clicked", {
                 ctaTitle: heroSection?.cta?.title || "Unknown CTA",
               });
             }}
@@ -258,7 +258,13 @@ export default function HomePage() {
                           </div>
 
                           <Button
-                            onClick={() => navigate(`/hostel/${hostel.uid}`)}
+                            onClick={() => {
+                              trackEvent("hero_hostel_viewed", {
+                                hostelId: hostel.uid,
+                                hostelTitle: hostel.title,
+                              });
+                              navigate(`/hostel/${hostel.uid}`);
+                            }}
                             className=" rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active) "
                           >
                             View
