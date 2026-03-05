@@ -63,7 +63,7 @@ import {
 } from "@/contentstack/utils";
 import { ChevronRight } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
-import { pageView } from "@/Lytics/config";
+import { pageView, trackEvent } from "@/Lytics/config";
 
 const base = "mr-1 h-4 w-4";
 
@@ -518,7 +518,9 @@ export default function FindHostel() {
                         </div>
 
                         <Button
-                          onClick={() => navigate(`/hostel/${hostel.uid}`)}
+                          onClick={() => {
+                            navigate(`/hostel/${hostel.uid}`);
+                          }}
                           className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md transition-transform duration-700 hover:rounded-xl "
                         >
                           <span {...listingPageData?.$?.view_button_text}>
@@ -573,9 +575,7 @@ export default function FindHostel() {
                             : ""
                         }
                       >
-                        <span className="">
-                          {i + 1}
-                        </span>
+                        <span className="">{i + 1}</span>
                       </PaginationLink>
                     </PaginationItem>
                   ))}

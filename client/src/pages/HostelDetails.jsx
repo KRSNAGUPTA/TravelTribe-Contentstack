@@ -86,9 +86,7 @@ export default function HostelDetails() {
   const [roomAvailability, setRoomAvailability] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
-  const plugin = useRef(
-    Autoplay({ delay: 2000, stopOnInteraction: true })
-  );
+  const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: true }));
   const data = {
     entryUid: id,
     contenttype: "hostel",
@@ -115,9 +113,10 @@ export default function HostelDetails() {
           null,
         );
         setHostel(entry);
-        trackEvent("hostel_viewed", {
+
+        trackEvent("viewed_hostel", {
           hostelId: entry.uid,
-          hostelTitle: entry.title,
+          hostelName: entry.title,
         });
       } catch (error) {
         console.error("Error fetching hostel data", error);
@@ -133,7 +132,6 @@ export default function HostelDetails() {
     setDataForChromeExtension(data);
     fetchAPIData();
   }, [id]);
-
 
   const mergedRooms = useMemo(() => {
     if (!hostel?.room_types || !roomAvailability?.room_types) return [];
@@ -155,10 +153,9 @@ export default function HostelDetails() {
     });
   }, [hostel, roomAvailability]);
 
-
   useEffect(() => {
-    document.title = `${hostel?.title} | Travel Tribe`
-  }, [hostel])
+    document.title = `${hostel?.title} | Travel Tribe`;
+  }, [hostel]);
 
   const navigate = useNavigate();
 
@@ -276,7 +273,6 @@ export default function HostelDetails() {
     },
   };
 
-
   const HOSTEL_TYPE_MAP = {
     Boys: {
       label: "Boys Only",
@@ -295,14 +291,12 @@ export default function HostelDetails() {
     },
   };
 
-
   const minRoom = hostel.room_types.reduce((min, room) =>
-    room.base_price < min.base_price ? room : min
+    room.base_price < min.base_price ? room : min,
   );
 
   const minPrice = minRoom.base_price;
   const minRoomType = minRoom.room_key;
-
 
   return (
     <TooltipProvider>
@@ -313,10 +307,16 @@ export default function HostelDetails() {
         <div className="max-w-5xl mx-auto p-4 sm:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-1" {...hostel?.$?.title}>
+              <h1
+                className="text-3xl font-bold text-gray-800 mb-1"
+                {...hostel?.$?.title}
+              >
                 {hostel?.title}
               </h1>
-              <div className="flex items-center text-sm text-gray-500" {...hostel?.$?.address}>
+              <div
+                className="flex items-center text-sm text-gray-500"
+                {...hostel?.$?.address}
+              >
                 <MapPin className="w-4 h-4 mr-1" />
                 <p className="max-w-lg">{hostel?.address}</p>
               </div>
@@ -369,7 +369,6 @@ export default function HostelDetails() {
               <Card>
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
                     {/* Hostel Information */}
                     <div>
                       <h3 className="flex items-center gap-2 text-lg font-semibold mb-4">
@@ -378,19 +377,24 @@ export default function HostelDetails() {
                       </h3>
 
                       <div className="rounded-xl bg-gray-50 p-4 space-y-3 text-sm text-gray-700">
-                        {hostel?.type && HOSTEL_TYPE_MAP[hostel.type] && (() => {
-                          const { icon: Icon, label, color } = HOSTEL_TYPE_MAP[hostel.type];
+                        {hostel?.type &&
+                          HOSTEL_TYPE_MAP[hostel.type] &&
+                          (() => {
+                            const {
+                              icon: Icon,
+                              label,
+                              color,
+                            } = HOSTEL_TYPE_MAP[hostel.type];
 
-                          return (
-                            <div className="flex items-center gap-2">
-                              <Icon className={`w-4 h-4 ${color}`} />
-                              <span className="font-medium">Type:</span>
-                              <span>{label}</span>
-                            </div>
-                          );
-                        })()}
+                            return (
+                              <div className="flex items-center gap-2">
+                                <Icon className={`w-4 h-4 ${color}`} />
+                                <span className="font-medium">Type:</span>
+                                <span>{label}</span>
+                              </div>
+                            );
+                          })()}
                       </div>
-
                     </div>
 
                     {/* Contact Information */}
@@ -405,7 +409,9 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <User className="w-4 h-4 text-black" />
                             <span className="font-medium">Name:</span>
-                            <span {...hostel?.contact?.$?.name}>{hostel.contact.name}</span>
+                            <span {...hostel?.contact?.$?.name}>
+                              {hostel.contact.name}
+                            </span>
                           </div>
                         )}
 
@@ -413,7 +419,10 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <Phone className="w-4 h-4 text-black" />
                             <span className="font-medium">Phone:</span>
-                            <span {...hostel?.contact?.$?.phone}> +91 {hostel.contact.phone}</span>
+                            <span {...hostel?.contact?.$?.phone}>
+                              {" "}
+                              +91 {hostel.contact.phone}
+                            </span>
                           </div>
                         )}
 
@@ -421,7 +430,9 @@ export default function HostelDetails() {
                           <div className="flex items-center gap-2">
                             <Mail className="w-4 h-4 text-black" />
                             <span className="font-medium">Email:</span>
-                            <span {...hostel?.contact?.$?.email}>{hostel.contact.email}</span>
+                            <span {...hostel?.contact?.$?.email}>
+                              {hostel.contact.email}
+                            </span>
                           </div>
                         )}
 
@@ -430,19 +441,19 @@ export default function HostelDetails() {
                             variant="outline"
                             size="sm"
                             className="mt-2 w-fit flex items-center gap-2 rounded-full"
-                            onClick={() => window.open(hostel.google_map_link, "_blank")}
+                            onClick={() =>
+                              window.open(hostel.google_map_link, "_blank")
+                            }
                           >
                             <MapPin className="w-4 h-4 text-purple-600" />
-                            View on  Maps
+                            View on Maps
                           </Button>
                         )}
                       </div>
                     </div>
-
                   </div>
                 </CardContent>
               </Card>
-
 
               {hostel?.nearby_college && hostel?.nearby_college.length > 0 && (
                 <Card>
@@ -454,18 +465,19 @@ export default function HostelDetails() {
                   </CardHeader>
                   <CardContent className="p-6 pt-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {hostel?.nearby_college ? hostel.nearby_college.map((college, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 bg-blue-50 p-3 rounded-lg transition-all hover:bg-blue-100"
-                        >
-                          <School className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                          <span className="text-blue-800 font-medium">
-                            {college}
-                          </span>
-                        </div>
-                      )
-                      ) : "No Nearby College Available"}
+                      {hostel?.nearby_college
+                        ? hostel.nearby_college.map((college, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 bg-blue-50 p-3 rounded-lg transition-all hover:bg-blue-100"
+                            >
+                              <School className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                              <span className="text-blue-800 font-medium">
+                                {college}
+                              </span>
+                            </div>
+                          ))
+                        : "No Nearby College Available"}
                     </div>
                   </CardContent>
                 </Card>
@@ -482,7 +494,6 @@ export default function HostelDetails() {
                 <CardContent>
                   {hostel.food_info?.available ? (
                     <div className="rounded-xl border border-green-100 bg-green-50/50 p-4 space-y-4">
-
                       {/* Status */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-green-700 font-semibold">
@@ -530,7 +541,9 @@ export default function HostelDetails() {
                     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-start gap-3">
                       <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="font-medium text-gray-700">Food not available</p>
+                        <p className="font-medium text-gray-700">
+                          Food not available
+                        </p>
                         <p className="text-xs text-gray-500">
                           Residents need to arrange meals independently
                         </p>
@@ -538,10 +551,7 @@ export default function HostelDetails() {
                     </div>
                   )}
                 </CardContent>
-
-
               </Card>
-
 
               {hostel?.house_rules?.length > 0 && (
                 <Card>
@@ -569,7 +579,6 @@ export default function HostelDetails() {
                   </CardContent>
                 </Card>
               )}
-
             </TabsContent>
 
             {/* Rooms Tab */}
@@ -579,29 +588,36 @@ export default function HostelDetails() {
                   {mergedRooms.map((room) => (
                     <Card key={room.room_key}>
                       <CardContent className="p-5 space-y-3">
-
                         {/* Header */}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <BedSingle className="w-5 h-5 text-purple-500" />
-                            <h3 className="text-lg font-semibold" {...room?.$?.room_name}>{room.room_name}</h3>
+                            <h3
+                              className="text-lg font-semibold"
+                              {...room?.$?.room_name}
+                            >
+                              {room.room_name}
+                            </h3>
                           </div>
 
                           <span
-                            className={`text-xs font-medium px-2 py-1 rounded-full ${room.is_available
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                              }`}
+                            className={`text-xs font-medium px-2 py-1 rounded-full ${
+                              room.is_available
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
                           >
                             {room.is_available ? "Available" : "Sold Out"}
                           </span>
                         </div>
 
                         {/* Description */}
-                        <p className="text-sm text-gray-600 min-h-[1.2rem]" {...room?.$?.description}>
+                        <p
+                          className="text-sm text-gray-600 min-h-[1.2rem]"
+                          {...room?.$?.description}
+                        >
                           {room.description || ""}
                         </p>
-
 
                         {/* Availability */}
                         <div className="flex items-center justify-between text-sm text-gray-700">
@@ -612,7 +628,10 @@ export default function HostelDetails() {
                             </span>
                           </span>
 
-                          <span className="font-semibold text-gray-900" {...room?.$?.base_price}>
+                          <span
+                            className="font-semibold text-gray-900"
+                            {...room?.$?.base_price}
+                          >
                             ₹{room.base_price} / day
                           </span>
                         </div>
@@ -621,15 +640,18 @@ export default function HostelDetails() {
                         <Button
                           disabled={!room.is_available}
                           onClick={() =>
-                            navigate(`/hostel/${hostel.uid}/book?room=${room.room_key}`)
+                            navigate(
+                              `/hostel/${hostel.uid}/book?room=${room.room_key}`,
+                            )
                           }
                           className={`
     w-full rounded-full text-white font-medium
     transition-all duration-300
-    ${room.is_available
-                              ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-2 active:translate-y-4 transition-all hover:scale-105 shadow-md hover:shadow-lg"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            }
+    ${
+      room.is_available
+        ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-2 active:translate-y-4 transition-all hover:scale-105 shadow-md hover:shadow-lg"
+        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+    }
   `}
                         >
                           {room.is_available ? (
@@ -644,8 +666,6 @@ export default function HostelDetails() {
                             </span>
                           )}
                         </Button>
-
-
                       </CardContent>
                     </Card>
                   ))}
@@ -654,7 +674,6 @@ export default function HostelDetails() {
                 <p className="text-gray-600">No room information available.</p>
               )}
             </TabsContent>
-
 
             <TabsContent value="facilities" className="space-y-6">
               <Card>
@@ -687,7 +706,6 @@ export default function HostelDetails() {
                   ) : (
                     <p>No facilities available</p>
                   )}
-
                 </CardContent>
               </Card>
             </TabsContent>
@@ -698,9 +716,7 @@ export default function HostelDetails() {
                 <Card>
                   <CardContent className="p-6 text-center space-y-3">
                     <Star className="w-10 h-10 text-gray-300 mx-auto" />
-                    <p className="text-gray-600 font-medium">
-                      No reviews yet
-                    </p>
+                    <p className="text-gray-600 font-medium">No reviews yet</p>
                     <p className="text-sm text-gray-500">
                       Be the first to share your experience
                     </p>
@@ -765,7 +781,6 @@ export default function HostelDetails() {
                 ""
               )}
             </TabsContent>
-
           </Tabs>
 
           <div className="sticky bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-lg border-t z-10 md:relative md:shadow-none md:p-0 md:border-0">
@@ -775,16 +790,18 @@ export default function HostelDetails() {
                   <div className="ml-4 m-2">
                     <p className="text-sm text-gray-500">Starts from</p>
                     <p className="text-xl font-bold text-gray-800">
-                      {minPrice && minPrice > 0 ? 
-                      `₹ ${minPrice}
+                      {minPrice && minPrice > 0
+                        ? `₹ ${minPrice}
                       / day`
-                      : "Not Available"}
+                        : "Not Available"}
                     </p>
                   </div>
                 )}
               </div>
               <Button
-                onClick={() => navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`)}
+                onClick={() =>
+                  navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`)
+                }
                 className="w-full sm:w-auto flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--on-primary)] px-8 py-6 rounded-full"
               >
                 <Calendar className="w-5 h-5" />

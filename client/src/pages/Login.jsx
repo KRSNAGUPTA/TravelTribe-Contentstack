@@ -157,11 +157,8 @@ const Login = () => {
                 setAuthToken(data.data.jwtToken);
 
                 toast({ title: "Login Successful" });
-                // console.log("final data obj",data.data)
-                identifyUser(data.data.user.id, {
-                  email: data.data.user.email,
-                  name: data.data.user.name,
-                });
+                
+                identifyUser(data.data.user.email)
 
                 trackEvent("google_login", {
                   email: data.data.user.email,

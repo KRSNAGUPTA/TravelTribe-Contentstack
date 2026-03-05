@@ -63,10 +63,7 @@ export const AuthProvider = ({ children }) => {
       if(!response.data.user.email || !response.data.user.name || !response.data.user.id){
         throw new Error("Login: Incomplete user data");
       }
-      identifyUser(response.data.user.id, {
-        email: response.data.user.email,
-        name: response.data.user.name,
-      });
+      identifyUser(response.data.user.email)
 
       trackEvent("login", {
         email: response.data.user.email,
@@ -97,10 +94,7 @@ export const AuthProvider = ({ children }) => {
       ) {
         console.error("Signup: Incomplete user data in response:", response.data);
       }
-      identifyUser(response.data.user.id, {
-        email: response.data.user.email,
-        name: response.data.user.name,
-      });
+      identifyUser(response.data.user.email)
       trackEvent("register", {
         email: response.data.user.email,
         name: response.data.user.name,

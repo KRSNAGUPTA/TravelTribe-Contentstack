@@ -28,12 +28,12 @@ export const trackEvent = (eventName, properties = {}) => {
     // stream:"test stream"
   });
 };
-
-export const identifyUser = (userId, traits = {}) => {
-  jstag.identify(userId, traits);
-}
-
-export const pageView = (pageName) =>{
+export const identifyUser = (email, traits = {}) => {
+  jstag.identify({
+    email: email,
+    ...traits,
+  });
+};
+export const pageView = (pageName) => {
   jstag.pageView(pageName);
-}
-
+};
