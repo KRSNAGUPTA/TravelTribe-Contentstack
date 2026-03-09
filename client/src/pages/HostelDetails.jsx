@@ -64,7 +64,7 @@ import {
   House,
   TvMinimalPlayIcon,
 } from "lucide-react";
-import Autoplay from "embla-carousel-autoplay"
+import Autoplay from "embla-carousel-autoplay";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import api from "@/api";
@@ -79,6 +79,9 @@ import {
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import { trackEvent } from "@/Lytics/config";
+import RecentlyViewedHostel from "@/components/RecentlyViewedHostel";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -86,12 +89,19 @@ export default function HostelDetails() {
   const [roomAvailability, setRoomAvailability] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState(null);
   const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: true }));
   const data = {
     entryUid: id,
     contenttype: "hostel",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
+
+  const { user } = useContext(AuthContext);
+
+  useEffect(() => {
+    setUserData(user);
+  }, [user]);
 
   useEffect(() => {
     const fetchAPIData = async () => {
@@ -124,12 +134,11 @@ export default function HostelDetails() {
           _e: "viewed_hostel",
           hostelId: entry.uid,
           hostelName: entry.title,
-          email: JSON.parse(localStorage.getItem("user"))?.email || null,
+          email: user?.email || null,
         });
-        
+
         // console.log("Entiry", jstag.getEntity());
         // console.log(jstag.getid(id=>console.log("ID", id)));
-
       } catch (error) {
         console.error("Error fetching hostel data", error);
         setHostel(null);
@@ -137,7 +146,6 @@ export default function HostelDetails() {
         setLoading(false);
       }
     };
-
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);
@@ -822,6 +830,16 @@ export default function HostelDetails() {
           </div>
 
           <Toaster />
+
+          {/* recent hostel */}
+
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Recently Viewed Hostels
+            </h2>
+
+            <RecentlyViewedHostel email={user?.email || null} />
+          </div>
         </div>
         <Footer />
       </div>

@@ -6,7 +6,7 @@ import hostelRoutes from "./routes/hostelRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import webHookRoutes from "./routes/webHookRoutes.js";
-
+import lyticsRoutes from "./routes/lyticsRoutes.js";
 import cors from "cors";
 import axios from "axios";
 dotenv.config();
@@ -49,6 +49,7 @@ app.use("/api/hostel", hostelRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/hook", webHookRoutes)
+app.use("/api/lytics", lyticsRoutes)
 
 //for email notification
 app.post("/api/support", async (req, res) => {
