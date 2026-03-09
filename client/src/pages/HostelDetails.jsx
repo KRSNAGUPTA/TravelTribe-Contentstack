@@ -78,7 +78,7 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { pageView, trackEvent } from "@/Lytics/config";
+import { trackEvent } from "@/Lytics/config";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -114,10 +114,22 @@ export default function HostelDetails() {
         );
         setHostel(entry);
 
-        trackEvent("viewed_hostel", {
+        // console.log("email",JSON.parse(localStorage.getItem("user"))?.email)
+        // jstag.send({
+        //   _e: "test_event",
+        //   hostelId: entry.uid,
+        // })
+
+        jstag.send({
+          _e: "viewed_hostel",
           hostelId: entry.uid,
           hostelName: entry.title,
+          email: JSON.parse(localStorage.getItem("user"))?.email || null,
         });
+        
+        // console.log("Entiry", jstag.getEntity());
+        // console.log(jstag.getid(id=>console.log("ID", id)));
+
       } catch (error) {
         console.error("Error fetching hostel data", error);
         setHostel(null);
@@ -126,7 +138,6 @@ export default function HostelDetails() {
       }
     };
 
-    pageView("Hostel Details Page");
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);

@@ -8,7 +8,6 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { pageView } from "@/Lytics/config";
 
 function About() {
   const [about, setAbout] = useState(null);
@@ -35,8 +34,6 @@ function About() {
         console.error("Error fetching about page data", error);
       }
     };
-    pageView("About Page");
-    pageView("page_view");
 
     onEntryChange(fetchData);
     setDataForChromeExtension(data);

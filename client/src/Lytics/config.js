@@ -11,7 +11,6 @@
 //     jstag.init({
 //       cid: import.meta.env.VITE_LYTICS_CID, // Connects to your Lytics account
 //       stream: import.meta.env.VITE_LYTICS_STREAM, // Target data stream
-//       pageView: true, // Enable/Disable auto page tracking
 //       sessecs: 1800, // Session timeout (seconds)
 //     });
 //   } catch (error) {
@@ -25,15 +24,11 @@ export const trackEvent = (eventName, properties = {}) => {
   jstag.send({
     _e: eventName,
     ...properties,
-    // stream:"test stream"
-  });
+  });  
 };
 export const identifyUser = (email, traits = {}) => {
   jstag.identify({
     email: email,
     ...traits,
   });
-};
-export const pageView = (pageName) => {
-  jstag.pageView(pageName);
 };

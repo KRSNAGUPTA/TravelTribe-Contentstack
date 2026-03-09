@@ -31,7 +31,6 @@ import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import cmsClient from "@/contentstack/contentstackClient";
-import { pageView } from "@/Lytics/config";
 
 export default function HostelBooking() {
   const { id } = useParams();
@@ -65,13 +64,16 @@ export default function HostelBooking() {
     totalAmount: 0,
   });
   useEffect(() => {
-    if (!user) return;
+      if (!user) return;
+      console.log("user",user)
 
     setFormData((prev) => ({
       ...prev,
       name: user.name || prev.name,
       email: user.email || prev.email,
+      phone: user.phone || prev.phone,
     }));
+    
   }, [user]);
 
   useEffect(() => {
@@ -92,7 +94,6 @@ export default function HostelBooking() {
         });
       }
     };
-    pageView("Hostel Booking Page");
 
     fetchData();
   }, [id, toast]);
@@ -239,6 +240,12 @@ export default function HostelBooking() {
     }
 
     if (!validateDates()) return false;
+
+
+    jstag.send({
+      cell: formData.phone,
+      gender: formData.gender
+    })
     return true;
   };
 

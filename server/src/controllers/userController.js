@@ -45,8 +45,6 @@ export const handleGoogleLogin = async (req, res) => {
       { expiresIn: "7d" },
     );
 
-    // await sendNotification("login", user);
-
     res.json({
       jwtToken,
       user: {
@@ -129,6 +127,7 @@ export const loginUser = async (req, res) => {
         name: user.name,
         role: user.role,
         email: user.email,
+        phone: user?.phone,
       },
     });
   } catch (error) {

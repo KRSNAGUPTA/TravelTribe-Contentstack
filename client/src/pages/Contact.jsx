@@ -22,7 +22,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Loader } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
-import { pageView } from "@/Lytics/config";
 
 function Contact() {
   const [contactData, setContactData] = useState(null);
@@ -51,7 +50,6 @@ function Contact() {
           import.meta.env.VITE_SDK,
           null,
         );
-        pageView("Contact Page");
         setContactData(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {

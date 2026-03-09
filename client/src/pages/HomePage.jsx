@@ -24,7 +24,7 @@ import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
-import { pageView, trackEvent } from "@/Lytics/config";
+import { trackEvent } from "@/Lytics/config";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -55,7 +55,6 @@ export default function HomePage() {
       setDataForChromeExtension(data);
     };
 
-    pageView("Home Page");
 
     fetchData();
     onEntryChange(fetchData);
@@ -82,6 +81,29 @@ export default function HomePage() {
     (s) => s.testimonials_section,
   )?.testimonials_section;
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
+
+
+
+
+jstag.on('pathfora.publish.done', function(topic, event){
+  // here we initialize a new Pathfora "Message" experience
+  var module = new pathfora.Message({
+    id: 'welcome-message', // unique id for the experience
+    layout:'slideout',
+    headline: 'Welcome to Travel Tribe!',
+    msg: 'Testing Lytics integration with Pathfora.',
+  });
+
+  var modules = {
+    target: [{
+      segment: "anonymous_profiles", 
+      widgets: [module]
+    }]
+  };
+
+  pathfora.initializeWidgets(modules); // initialize the campaign
+});
+
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">

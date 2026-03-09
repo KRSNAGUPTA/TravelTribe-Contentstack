@@ -8,7 +8,6 @@ import {
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import { Home } from "lucide-react";
-import { pageView } from "@/Lytics/config";
 
 export default function NotFound() {
   const [pageData, setPageData] = useState(null);
@@ -34,7 +33,6 @@ export default function NotFound() {
         console.error("Error fetching 404 page data", error);
       }
     };
-    pageView("404 Not Found Page");
     onEntryChange(fetchData);
     setDataForChromeExtension(data);
   }, []);

@@ -18,7 +18,7 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { identifyUser, pageView, trackEvent } from "@/Lytics/config";
+import { identifyUser, trackEvent } from "@/Lytics/config";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
@@ -51,7 +51,6 @@ const Login = () => {
       }
     };
 
-    pageView("Auth Page");
     onEntryChange(fetchData);
     setDataForChromeExtension(data);
   }, []);
@@ -111,7 +110,7 @@ const Login = () => {
             : "Login: Something went wrong";
 
       setError(message);
-      console.log("Authentication error details:", err)
+      console.log("Authentication error details:", err);
 
       toast({
         title: "Authentication Failed",
@@ -157,14 +156,14 @@ const Login = () => {
                 setAuthToken(data.data.jwtToken);
 
                 toast({ title: "Login Successful" });
-                
-                identifyUser(data.data.user.email)
 
-                trackEvent("google_login", {
+                identifyUser(data.data.user.email);
+                jstag.send("google_login", {
                   email: data.data.user.email,
                   name: data.data.user.name,
                 });
-                
+
+                // console.log("Google login successful, user data:", data.data);
                 navigate("/");
               }}
               onError={() =>

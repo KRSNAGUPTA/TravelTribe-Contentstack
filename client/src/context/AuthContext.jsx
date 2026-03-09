@@ -59,11 +59,14 @@ export const AuthProvider = ({ children }) => {
       setUser(response.data.user);
       localStorage.setItem("user", JSON.stringify(response.data.user));
 
-
-      if(!response.data.user.email || !response.data.user.name || !response.data.user.id){
+      if (
+        !response.data.user.email ||
+        !response.data.user.name ||
+        !response.data.user.id
+      ) {
         throw new Error("Login: Incomplete user data");
       }
-      identifyUser(response.data.user.email)
+      identifyUser(response.data.user.email);
 
       trackEvent("login", {
         email: response.data.user.email,
@@ -84,21 +87,26 @@ export const AuthProvider = ({ children }) => {
 
   const signupUser = async (userData) => {
     try {
+      if (
+        !userData.email ||
+        !userData.name ||
+        !userData.phone ||
+        !userData.password
+      ) {
+        console.error(
+          "Signup: Incomplete user data in response:",
+          userData.data,
+        );
+      }
       const response = await api.post("/api/user/signup", {
         ...userData,
       });
-      if (
-        !response.data.user.email ||
-        !response.data.user.id ||
-        !response.data.user.name
-      ) {
-        console.error("Signup: Incomplete user data in response:", response.data);
-      }
-      identifyUser(response.data.user.email)
-      trackEvent("register", {
-        email: response.data.user.email,
-        name: response.data.user.name,
-      });
+      identifyUser(response.data.user.email);
+      jstag.send({
+        email: userData.email,
+        name: userData.name,
+        cell: userData.phone,
+      })
       // console.log(response.data);
 
       return response.data;
