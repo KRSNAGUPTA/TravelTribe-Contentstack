@@ -55,7 +55,6 @@ export default function HomePage() {
       setDataForChromeExtension(data);
     };
 
-
     fetchData();
     onEntryChange(fetchData);
   }, []);
@@ -82,28 +81,27 @@ export default function HomePage() {
   )?.testimonials_section;
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
 
+  // jstag.on("pathfora.publish.done", function (topic, event) {
+  //   // here we initialize a new Pathfora "Message" experience
+  //   var module = new pathfora.Message({
+  //     id: "welcome-message", // unique id for the experience
+  //     layout: "slideout",
+  //     headline: "Welcome to Travel Tribe!",
+  //     msg: "We use cookies to improve your experience. By continuing, you agree to our cookie policy. Disable ad blockers for personalized content.",
+  //     cancelShow: false,
+  //   });
 
+  //   var modules = {
+  //     target: [
+  //       {
+  //         segment: "anonymous_profiles",
+  //         widgets: [module],
+  //       },
+  //     ],
+  //   };
 
-
-jstag.on('pathfora.publish.done', function(topic, event){
-  // here we initialize a new Pathfora "Message" experience
-  var module = new pathfora.Message({
-    id: 'welcome-message', // unique id for the experience
-    layout:'slideout',
-    headline: 'Welcome to Travel Tribe!',
-    msg: 'Testing Lytics integration with Pathfora.',
-  });
-
-  var modules = {
-    target: [{
-      segment: "anonymous_profiles", 
-      widgets: [module]
-    }]
-  };
-
-  pathfora.initializeWidgets(modules); // initialize the campaign
-});
-
+  //   pathfora.initializeWidgets(modules); // initialize the campaign
+  // });
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">

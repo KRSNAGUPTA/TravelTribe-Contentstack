@@ -12,6 +12,7 @@ import {
   CarouselItem,
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "./ui/skeleton";
 
 export function RecentlyViewedHostel({ email }) {
   const [hostelDetails, setHostelDetails] = useState([]);
@@ -52,7 +53,10 @@ export function RecentlyViewedHostel({ email }) {
         if (isMounted) {
           setHostelDetails([]);
         }
-        console.error("Failed to fetch recently viewed hostels:", error);
+        if (error.status === 404) {
+          return console.warn("Lytics profile not found for email:", email);
+        }
+        console.error("Failed to fetch recently viewed hostels:", error.message || error);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -71,79 +75,114 @@ export function RecentlyViewedHostel({ email }) {
 
   return (
     <>
-    
       <Toaster />
-      
 
-        {loading && <div className="text-center">Loading recently viewed hostels...</div>}
+      {loading && (
+        <div className="relative max-w-full mx-auto px-8">
+          <Carousel
+            className="cursor-grab active:cursor-grabbing"
+            opts={{ align: "start", loop: true }}
+            plugins={[hostelsPlugin.current]}
+            onMouseEnter={() => hostelsPlugin.current?.stop()}
+            onMouseLeave={() => hostelsPlugin.current?.play()}
+          >
+            <CarouselContent className="flex py-8">
+              {[1, 2, 3].map((index) => (
+                <CarouselItem className="max-w-md mx-auto" key={index}>
+                  <Card className="overflow-hidden bg-white shadow-md">
+                    <div className="relative h-64 w-full overflow-hidden">
+                      <Skeleton className="h-full w-full animate-pulse bg-gray-100" />
+                    </div>
 
-        {!loading && hostelDetails.length > 0 && (
-          <div className="relative max-w-full mx-auto px-8">
-            <Carousel
-              className="cursor-grab active:cursor-grabbing"
-              opts={{ align: "start", loop: true }}
-              plugins={[hostelsPlugin.current]}
-              onMouseEnter={() => hostelsPlugin.current?.stop()}
-              onMouseLeave={() => hostelsPlugin.current?.play()}
-            >
-              <CarouselContent className="flex py-8">
-                {hostelDetails.map((hostel) => {
-                  const minPrice =
-                    hostel?.room_types?.length > 0
-                      ? Math.min(...hostel.room_types.map((r) => r.base_price || 0))
-                      : 0;
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-20 bg-gray-100 animate-pulse" />
+                        <Skeleton className="h-6 w-16 bg-gray-100 animate-pulse" />
+                      </div>
+                      <Skeleton className="h-10 w-20 rounded-full bg-gray-100 animate-pulse" />
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
+        </div>
+      )}
 
-                  return (
-                    <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
-                      <Card className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
-                        <div className="relative h-64 w-full overflow-hidden">
-                          <img
-                            src={hostel.images?.[0]?.url}
-                            alt={hostel.title}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
+      {!loading && hostelDetails.length > 0 && (
+        <div className="relative max-w-full mx-auto px-8">
+          <Carousel
+            className="cursor-grab active:cursor-grabbing"
+            opts={{ align: "start", loop: true }}
+            plugins={[hostelsPlugin.current]}
+            onMouseEnter={() => hostelsPlugin.current?.stop()}
+            onMouseLeave={() => hostelsPlugin.current?.play()}
+          >
+            <CarouselContent className="flex py-8">
+              {hostelDetails.map((hostel) => {
+                const minPrice =
+                  hostel?.room_types?.length > 0
+                    ? Math.min(
+                        ...hostel.room_types.map((r) => r.base_price || 0),
+                      )
+                    : 0;
 
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+                return (
+                  <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
+                    <Card  className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
+                      <div className="relative h-64 w-full overflow-hidden">
+                        <img
+                          src={hostel.images?.[0]?.url}
+                          alt={hostel.title}
+                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
 
-                          <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug">
-                            {hostel.title?.length > 32
-                              ? `${hostel.title.slice(0, 32)}...`
-                              : hostel.title}
-                          </h3>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+
+                        <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug">
+                          {hostel.title?.length > 32
+                            ? `${hostel.title.slice(0, 32)}...`
+                            : hostel.title}
+                        </h3>
+                      </div>
+
+                      <CardContent className="p-5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-[var(--text-muted)]">
+                            Starting from
+                          </p>
+                          <p className="text-lg font-bold text-[var(--text-dark)]">
+                            ₹{minPrice}
+                          </p>
                         </div>
 
-                        <CardContent className="p-5 flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-[var(--text-muted)]">Starting from</p>
-                            <p className="text-lg font-bold text-[var(--text-dark)]">₹{minPrice}</p>
-                          </div>
+                        <Button
+                          onClick={() => {
+                            trackEvent("recently_viewed_hostel_opened", {
+                              hostelId: hostel.uid,
+                              hostelTitle: hostel.title,
+                            });
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            navigate(`/hostel/${hostel.uid}`);
+                          }}
+                          className="rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
+                        >
+                          View
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+          </Carousel>
+        </div>
+      )}
 
-                          <Button
-                            onClick={() => {
-                              trackEvent("recently_viewed_hostel_opened", {
-                                hostelId: hostel.uid,
-                                hostelTitle: hostel.title,
-                              });
-                              navigate(`/hostel/${hostel.uid}`);
-                            }}
-                            className="rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
-                          >
-                            View
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    </CarouselItem>
-                  );
-                })}
-              </CarouselContent>
-            </Carousel>
-          </div>
-        )}
-
-        {!loading && !hostelDetails.length && (
-          <div className="text-center">No recently viewed hostels found.</div>
-        )}
-        </>
+      {!loading && !hostelDetails.length && (
+        <div className="text-center">No recently viewed hostels found.</div>
+      )}
+    </>
   );
 }
 
