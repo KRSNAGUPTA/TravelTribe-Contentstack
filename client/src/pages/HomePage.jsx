@@ -25,10 +25,21 @@ import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import { trackEvent } from "@/Lytics/config";
+import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
   const { user } = useContext(AuthContext);
+
+  const searchParams = new URLSearchParams(window.location.search);
+  if(searchParams.get("action") === "unsubscribe" && searchParams.get("email")) {
+    return <NewsletterUnsubscribe email={searchParams.get("email")} />
+  }
+
+
+
+
+
   useEffect(() => {
     const fetchData = async () => {
       const entry = (
@@ -102,6 +113,8 @@ export default function HomePage() {
 
   //   pathfora.initializeWidgets(modules); // initialize the campaign
   // });
+
+
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">

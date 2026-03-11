@@ -7,17 +7,22 @@ import cmsClient from "@/contentstack/contentstackClient";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import { setDataForChromeExtension } from "@/contentstack/utils";
 import { addEditableTags } from "@contentstack/utils";
+import { trackEvent } from "@/Lytics/config";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
   const [footerData, setFooterData] = useState({});
-  
+
+  const {user} = useContext(AuthContext);
+
   useEffect(() => {
     const fetchCDAData = async () => {
       try {
         const entry = (
           await cmsClient.get(
-            "/content_types/footer/entries/bltf643a3bf4a1a7316"
+            "/content_types/footer/entries/bltf643a3bf4a1a7316",
           )
         ).data.entry;
         setFooterData(entry);
@@ -28,31 +33,36 @@ const Footer = () => {
 
     const fetchSDKData = async () => {
       try {
-        const entry = await Stack
-          .ContentType("footer")
+        const entry = await Stack.ContentType("footer")
           .Entry("bltf643a3bf4a1a7316")
           .toJSON()
           .fetch();
-        addEditableTags(entry, "footer", true, 'en-us')
+        addEditableTags(entry, "footer", true, "en-us");
         setFooterData(entry);
 
-        // for live preview 
+        // for live preview
         const data = {
-          "entryUid": "bltf643a3bf4a1a7316",
-          "contenttype": "footer",
-          "locale": "en-us"
-        }
-        setDataForChromeExtension(data)
+          entryUid: "bltf643a3bf4a1a7316",
+          contenttype: "footer",
+          locale: "en-us",
+        };
+        setDataForChromeExtension(data);
       } catch (error) {
         console.error("SDK: Failed to fetch footer data", error);
       }
     };
 
     if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
+      fetchSDKData();
       onEntryChange(fetchSDKData);
     } else {
       fetchCDAData();
+    }
+
+
+
+    if(user?.email) {
+      setEmail(user.email);
     }
   }, []);
 
@@ -70,10 +80,14 @@ const Footer = () => {
         title: "Please, Enter a valid email",
       });
     }
+    trackEvent("newsletter_subscribe", {
+      newsletter_email: email,
+    });
+
     try {
       await api.post("/api/subscribe", {
         email,
-        url:`${window.location.origin}`
+        url: `${window.location.origin}`,
       });
       toast({
         title: "Thank you for subscribing to TravelTribe!",
@@ -89,14 +103,23 @@ const Footer = () => {
 
   return (
     <footer className="bg-black text-white">
-      <Toaster/>
-      <div className="container mx-auto px-4 py-12
-    grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-
+      <Toaster />
+      <div
+        className="container mx-auto px-4 py-12
+    grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+      >
         {/* Brand */}
         <div>
-          <h2 className="text-2xl md:text-4xl font-bold pacifico-regular" {...footerData?.$?.title}>{footerData?.title}</h2>
-          <p className="mt-3 text-gray-400 text-sm leading-relaxed" {...footerData?.$?.subtext}>
+          <h2
+            className="text-2xl md:text-4xl font-bold pacifico-regular"
+            {...footerData?.$?.title}
+          >
+            {footerData?.title}
+          </h2>
+          <p
+            className="mt-3 text-gray-400 text-sm leading-relaxed"
+            {...footerData?.$?.subtext}
+          >
             {footerData?.subtext}
           </p>
         </div>
@@ -104,7 +127,10 @@ const Footer = () => {
         {/* CMS Sections */}
         {footerData?.section_group?.map((section) => (
           <div key={section._metadata.uid}>
-            <h3 className="text-lg font-semibold mb-4" {...section?.$?.group_title}>
+            <h3
+              className="text-lg font-semibold mb-4"
+              {...section?.$?.group_title}
+            >
               {section?.group_title}
             </h3>
             <ul className="space-y-3 text-sm text-gray-400">
@@ -125,7 +151,10 @@ const Footer = () => {
 
         {/* Subscribe */}
         <div>
-          <h3 className="text-lg font-semibold mb-4" {...footerData?.$?.email_title}>
+          <h3
+            className="text-lg font-semibold mb-4"
+            {...footerData?.$?.email_title}
+          >
             {footerData?.email_title}
           </h3>
 
@@ -142,7 +171,9 @@ const Footer = () => {
               onClick={handleSubscribe}
               className="w-full sm:w-auto bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md"
             >
-              <span {...footerData?.$?.subscribe_button_text}>{footerData?.subscribe_button_text}</span>
+              <span {...footerData?.$?.subscribe_button_text}>
+                {footerData?.subscribe_button_text}
+              </span>
             </Button>
           </div>
         </div>
@@ -169,8 +200,6 @@ const Footer = () => {
         </div>
       </div>
     </footer>
-
-
   );
 };
 
