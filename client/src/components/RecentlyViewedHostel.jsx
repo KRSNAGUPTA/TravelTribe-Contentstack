@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "./ui/toaster";
 import api from "@/api";
 import { fetchEntryById } from "@/contentstack/utils";
-import { trackEvent } from "@/Lytics/config";
+import { getLyticsProfile, trackEvent } from "@/Lytics/config";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -21,23 +21,29 @@ export function RecentlyViewedHostel({ email }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
+    let mounted = true;
 
-    const fetchRecentlyViewed = async () => {
-      if (!email) {
-        setHostelDetails([]);
-        return;
-      }
-
+    const getProfile = async () => {
       setLoading(true);
-      try {
-        const profile = await api.get(`/api/lytics/profile/email/${email}`);
-        const viewedIds = profile?.data?.viewed_hostel || [];
 
-        if (!isMounted) return;
+      try {
+        // console.log("This line execute in ad block")
+        const profile = await getLyticsProfile();
+        // console.log("not reached here")
+        if(!profile || !profile.user) {
+          if (mounted) {
+            setHostelDetails([]);
+            setLoading(false);
+          }
+        }
+        const viewedIds = profile?.user?.viewed_hostel || [];
 
         if (!viewedIds.length) {
-          setHostelDetails([]);
+          if (mounted) {
+            setHostelDetails([]);
+            setLoading(false);
+          }
+          console.warn("No viewed hostels found in Lytics profile.");
           return;
         }
 
@@ -47,31 +53,86 @@ export function RecentlyViewedHostel({ email }) {
           ),
         );
 
-        if (!isMounted) return;
-        setHostelDetails(entries.filter(Boolean));
+        if (mounted) {
+          setHostelDetails(entries.filter(Boolean));
+          setLoading(false);
+        }
       } catch (error) {
-        if (isMounted) {
+        console.error("Failed to fetch recently viewed hostels:", error);
+
+        if (mounted) {
           setHostelDetails([]);
-        }
-        if (error.status === 404) {
-          return console.warn("Lytics profile not found for email:", email);
-        }
-        console.error("Failed to fetch recently viewed hostels:", error.message || error);
-      } finally {
-        if (isMounted) {
           setLoading(false);
         }
       }
     };
 
-    fetchRecentlyViewed();
+    getProfile();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
-  }, [email]);
+  }, []);
 
-  if (!email) return <div>Please log in to see recently viewed hostels.</div>;
+  // useEffect(() => {
+  //   let isMounted = true;
+
+  //   const fetchRecentlyViewed = async () => {
+  //     if (!email) {
+  //       setHostelDetails([]);
+  //       return;
+  //     }
+
+  //     // console.log("Enity", jstag.getEntity());
+
+  //     setLoading(true);
+  //     try {
+  //       const profile = await api.get(`/api/lytics/profile/email/${email}`);
+  //       const viewedIds = profile?.data?.viewed_hostel || [];
+  //       // const viewedIds = jstag.getEntity();
+  //       // console.log("Viewed Hostel IDs from Lytics:", viewedIds);
+
+  //       if (!isMounted) return;
+
+  //       if (!viewedIds.length) {
+  //         setHostelDetails([]);
+  //         return;
+  //       }
+
+  //       const entries = await Promise.all(
+  //         viewedIds.map((hostelId) =>
+  //           fetchEntryById("hostel", hostelId, import.meta.env.VITE_SDK, null),
+  //         ),
+  //       );
+
+  //       if (!isMounted) return;
+  //       setHostelDetails(entries.filter(Boolean));
+  //     } catch (error) {
+  //       if (isMounted) {
+  //         setHostelDetails([]);
+  //       }
+  //       if (error.status === 404) {
+  //         return console.warn("Lytics profile not found for email:", email);
+  //       }
+  //       console.error(
+  //         "Failed to fetch recently viewed hostels:",
+  //         error.message || error,
+  //       );
+  //     } finally {
+  //       if (isMounted) {
+  //         setLoading(false);
+  //       }
+  //     }
+  //   };
+
+  //   fetchRecentlyViewed();
+
+  //   return () => {
+  //     isMounted = false;
+  //   };
+  // }, [email]);
+
+  // if (!email) return <div>Please log in to see recently viewed hostels.</div>;
 
   return (
     <>
@@ -129,7 +190,7 @@ export function RecentlyViewedHostel({ email }) {
 
                 return (
                   <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
-                    <Card  className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
+                    <Card className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
                       <div className="relative h-64 w-full overflow-hidden">
                         <img
                           src={hostel.images?.[0]?.url}
@@ -162,7 +223,7 @@ export function RecentlyViewedHostel({ email }) {
                               hostelId: hostel.uid,
                               hostelTitle: hostel.title,
                             });
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            window.scrollTo({ top: 0, behavior: "smooth" });
                             navigate(`/hostel/${hostel.uid}`);
                           }}
                           className="rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"

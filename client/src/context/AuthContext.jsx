@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
-import { identifyUser, trackEvent } from "@/Lytics/config.js";
+import { trackEvent } from "@/Lytics/config.js";
 
 export const AuthContext = createContext();
 
@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
       ) {
         throw new Error("Login: Incomplete user data");
       }
-      identifyUser(response.data.user.email);
+      // identifyUser(response.data.user.email);
 
       trackEvent("login", {
         email: response.data.user.email,
@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post("/api/user/signup", {
         ...userData,
       });
-      identifyUser(response.data.user.email);
+      // identifyUser(response.data.user.email);
       jstag.send({
         email: userData.email,
         name: userData.name,
