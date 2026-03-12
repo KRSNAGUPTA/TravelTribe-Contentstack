@@ -8,6 +8,8 @@ import cmsClient from "./contentstack/contentstackClient";
 import { applyTheme } from "./lib/applyTheme";
 import Stack from "./contentstack/contentstackSDK";
 import { fetchEntryById } from "./contentstack/utils";
+import detectAdBlocker from "./lib/detectAdBlocker";
+import AdBlockNotice from "./components/AdBlockNotice";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const HostelPage = lazy(() => import("./pages/HostelsPage"));
@@ -21,6 +23,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Contact = lazy(() => import("./pages/Contact"));
 
 function App() {
+  const [adBlockDetected, setAdBlockDetected] = useState(false);
+
   useEffect(() => {
     let mounted = true;
     async function loadTheme() {
@@ -47,6 +51,32 @@ function App() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const runDetection = async () => {
+      const blocked = await detectAdBlocker();
+      if (mounted) {
+        setAdBlockDetected(blocked);
+      }
+    };
+
+    runDetection();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const retryAdBlockCheck = async () => {
+    const blocked = await detectAdBlocker();
+    setAdBlockDetected(blocked);
+  };
+
+  if (adBlockDetected) {
+    return <AdBlockNotice onRetry={retryAdBlockCheck} />;
+  }
 
   return (
     <Router>
