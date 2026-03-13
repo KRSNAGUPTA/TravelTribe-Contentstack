@@ -26,6 +26,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import { trackEvent } from "@/Lytics/config";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
+import { personalizeSdk } from "@/contentstack/personalizeSdk";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -151,10 +152,17 @@ export default function HomePage() {
           </div>
           <Button
             onClick={() => {
-              heroSection?.cta?.href && navigate(heroSection.cta.href);
               trackEvent("hero_cta_clicked", {
                 cta_title: heroSection?.cta?.title || "Unknown CTA",
               });
+
+              void personalizeSdk
+                ?.triggerEvent?.("click")
+                ?.catch((error) => console.error("Personalize click event failed", error));
+
+              if (heroSection?.cta?.href) {
+                navigate(heroSection.cta.href);
+              }
             }}
             className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
             {...heroSection?.cta?.$?.title}
