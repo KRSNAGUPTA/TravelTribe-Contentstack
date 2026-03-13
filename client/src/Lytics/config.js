@@ -23,7 +23,10 @@
 // initLytics();
 
 export const trackEvent = (eventName, properties = {}) => {
-  jstag.send(eventName, properties);
+  jstag.send({
+    _e: eventName,
+    ...properties,
+  });
 };
 
 // no official source found for this
