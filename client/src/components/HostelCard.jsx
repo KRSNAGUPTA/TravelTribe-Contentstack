@@ -6,7 +6,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { trackEvent } from "@/Lytics/config";
 import {
   Cctv,
   Droplets,
@@ -86,14 +85,16 @@ export default function HostelCard({
 
   const handleOpen = () => {
     if (source === "home") {
-      trackEvent("hero_hostel_viewed", {
+      jstag.send({
+        _e: "hero_hostel_viewed",
         hostel_id: hostel?.uid,
         hostel_title: hostel?.title,
       });
     }
 
     if (source === "recently_viewed") {
-      trackEvent("recently_viewed_hostel_opened", {
+      jstag.send({
+        _e: "recently_viewed_hostel_opened",
         hostel_id: hostel?.uid,
         hostel_title: hostel?.title,
       });

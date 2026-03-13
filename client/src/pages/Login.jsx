@@ -18,7 +18,6 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { trackEvent } from "@/Lytics/config";
 
 const Login = () => {
   const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
@@ -158,7 +157,8 @@ const Login = () => {
                 toast({ title: "Login Successful" });
 
                 // identifyUser(data.data.user.email);
-                trackEvent("google_login", {
+                jstag.send({
+                  _e: "google_login",
                   email: data.data.user.email,
                   name: data.data.user.name,
                 });

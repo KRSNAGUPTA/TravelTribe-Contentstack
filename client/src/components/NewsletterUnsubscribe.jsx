@@ -2,7 +2,6 @@ import React, { useMemo, useState } from "react";
 import { MailCheck, MailX, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { trackEvent } from "@/Lytics/config";
 
 const unsubscribeReasons = [
   "Too many emails",
@@ -32,7 +31,8 @@ function NewsletterUnsubscribe({ email: propEmail = "" }) {
 
     setIsSubmitting(true);
 
-    trackEvent("newsletter_unsubscribe", {
+    jstag.send({
+      _e: "newsletter_unsubscribe",
       newsletter_email: emailValue,
       reason: selectedReason,
       feedback_provided: feedback.trim() !== "",

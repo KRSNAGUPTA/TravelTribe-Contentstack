@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import api from "@/api";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntryById, setDataForChromeExtension } from "@/contentstack/utils";
-import { trackEvent } from "@/Lytics/config";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -117,7 +116,8 @@ const Footer = () => {
         title: "Please, Enter a valid email",
       });
     }
-    trackEvent("newsletter_subscribe", {
+    jstag.send({
+      _e: "newsletter_subscribe",
       newsletter_email: email,
     });
 

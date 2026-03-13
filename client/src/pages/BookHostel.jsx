@@ -31,7 +31,6 @@ import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import cmsClient from "@/contentstack/contentstackClient";
-import { trackEvent } from "@/Lytics/config";
 import { useContext } from "react";
 import { LyticsContext } from "@/context/LyticsContext";
 
@@ -103,7 +102,8 @@ export default function HostelBooking() {
 
     fetchData();
 
-    trackEvent("booking_page_viewed", {
+    jstag.send({
+      _e: "booking_page_viewed",
       hostel_id: id,
     });
   }, [id, toast]);
@@ -245,7 +245,8 @@ export default function HostelBooking() {
 
     if (!validateDates()) return false;
 
-    trackEvent("user_profile_updated", {
+    jstag.send({
+      _e: "user_profile_updated",
       phone: formData.phone,
       gender: formData.gender,
     });
@@ -255,7 +256,8 @@ export default function HostelBooking() {
   const nextStep = () => {
     if (currentStep === 1 && validateDates()) {
       if (!hasTrackedBookingStarted) {
-        trackEvent("booking_started", {
+        jstag.send({
+          _e: "booking_started",
           hostel_id: id,
           hostel_name: hostel?.title || "Unknown",
           room_type: bookingSummary.roomType || "Unknown",

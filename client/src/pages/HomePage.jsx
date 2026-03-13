@@ -24,7 +24,6 @@ import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
-import { trackEvent } from "@/Lytics/config";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 import { personalizeSdk } from "@/contentstack/personalizeSdk";
 
@@ -152,7 +151,8 @@ export default function HomePage() {
           </div>
           <Button
             onClick={() => {
-              trackEvent("hero_cta_clicked", {
+              jstag.send({
+                _e: "hero_cta_clicked",
                 cta_title: heroSection?.cta?.title || "Unknown CTA",
               });
 
@@ -300,7 +300,8 @@ export default function HomePage() {
 
                           <Button
                             onClick={() => {
-                              trackEvent("hero_hostel_viewed", {
+                              jstag.send({
+                                _e: "hero_hostel_viewed",
                                 hostel_id: hostel.uid,
                                 hostel_title: hostel.title,
                               });

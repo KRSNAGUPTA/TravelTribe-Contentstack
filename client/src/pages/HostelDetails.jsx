@@ -78,7 +78,6 @@ import {
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { trackEvent } from "@/Lytics/config";
 import RecentlyViewedHostel from "@/components/RecentlyViewedHostel";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
@@ -131,7 +130,8 @@ export default function HostelDetails() {
         //   hostelId: entry.uid,
         // })
 
-        trackEvent("viewed_hostel", {
+        jstag.send({
+          _e: "viewed_hostel",
           hostel_id: entry.uid,
           hostel_name: entry.title,
           email: user?.email || null,

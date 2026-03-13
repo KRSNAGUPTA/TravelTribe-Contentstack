@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api.js";
-import { trackEvent } from "@/Lytics/config.js";
 
 export const AuthContext = createContext();
 
@@ -68,7 +67,8 @@ export const AuthProvider = ({ children }) => {
       }
       // identifyUser(response.data.user.email);
 
-      trackEvent("user_login", {
+      jstag.send({
+        _e: "user_login",
         email: response.data.user.email,
         name: response.data.user.name,
       });
@@ -102,7 +102,8 @@ export const AuthProvider = ({ children }) => {
         ...userData,
       });
       // identifyUser(response.data.user.email);
-      trackEvent("user_signup", {
+      jstag.send({
+        _e: "user_signup",
         email: userData.email,
         name: userData.name,
         phone: userData.phone,

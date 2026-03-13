@@ -64,7 +64,6 @@ import {
 } from "@/contentstack/utils";
 import { ChevronRight } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
-import { trackEvent } from "@/Lytics/config";
 
 const base = "mr-1 h-4 w-4";
 

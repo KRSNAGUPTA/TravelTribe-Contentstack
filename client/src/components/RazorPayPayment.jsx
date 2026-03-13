@@ -4,7 +4,6 @@ import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
-import { trackEvent } from '@/Lytics/config';
 import { track } from '@vercel/analytics/react';
 const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateForm }) => {
   const navigate = useNavigate()
@@ -22,7 +21,8 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       
       const res = await api.post("/api/booking/", bookingData);
 
-      trackEvent("booking_successful", {
+      jstag.send({
+        _e: "booking_successful",
         hostel_id: hostelId,
         total_amount: formData.amount,
         hostel_name: hostelName,
@@ -52,7 +52,8 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       return;
     }
 
-    trackEvent("booking_initiated", {
+    jstag.send({
+      _e: "booking_initiated",
       hostel_id: hostelId,
       hostel_name: hostelName,
       room_type: roomType,
@@ -68,7 +69,8 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         currency: "INR",
         hostelId: `${hostelId}`,
       });
-      trackEvent("currency_selected", {
+      jstag.send({
+        _e: "currency_selected",
         currency: "INR"
       });
 
@@ -91,7 +93,8 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
                 title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
               });
-              trackEvent("payment_successful", {
+              jstag.send({
+                _e: "payment_successful",
                 hostel_id: hostelId,
                 total_amount: formData.amount,
                 hostel_name: hostelName,
