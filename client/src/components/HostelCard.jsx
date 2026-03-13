@@ -156,14 +156,6 @@ export default function HostelCard({
                 {statusMeta.label}
               </Badge>
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    className="rounded-full bg-[var(--hero-grad-start)] px-2 py-1 text-xs font-medium text-[var(--primary)] hover:bg-[var(--hero-grad-start)] transition-transform duration-200 group-hover:scale-105"
-                  >
-                    {typeIcon}
-                    <span className="sr-only">{hostelType }</span>
-                  </Badge>
-                </TooltipTrigger>
                 <TooltipContent className="rounded-full border bg-white/95 px-3 py-1.5 text-xs font-semibold text-black">
                   {hostelType}
                 </TooltipContent>

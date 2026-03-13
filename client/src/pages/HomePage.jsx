@@ -26,7 +26,6 @@ import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import { trackEvent } from "@/Lytics/config";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
-import HostelCard from "@/components/HostelCard";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -246,11 +245,68 @@ export default function HomePage() {
               onMouseLeave={() => hostelsPlugin.current?.play()}
             >
               <CarouselContent className="flex py-8">
-                {featuredHostels.map((hostel) => (
-                  <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
-                    <HostelCard hostel={hostel} source="home" variant="compact" />
-                  </CarouselItem>
-                ))}
+                {featuredHostels.map((hostel) => {
+                  const minPrice = Math.min(
+                    ...hostel.room_types.map((r) => r.base_price),
+                  );
+
+                  return (
+                    <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
+                      <Card className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
+                        {/* Image */}
+                        <div className="relative h-64 w-full overflow-hidden">
+                          <img
+                            src={hostel.images?.[0]?.url}
+                            alt={hostel.title}
+                            className="
+                        h-full w-full object-cover
+                        transition-transform duration-500
+                        group-hover:scale-110
+                      "
+                          />
+
+                          {/* Gradient Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+
+                          {/* Title */}
+                          <h3
+                            className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug"
+                            {...hostel?.$?.title}
+                          >
+                            {hostel.title.length > 32
+                              ? `${hostel.title.slice(0, 32)}...`
+                              : hostel.title}
+                          </h3>
+                        </div>
+
+                        {/* Content */}
+                        <CardContent className="p-5 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-[var(--text-muted)]">
+                              Starting from
+                            </p>
+                            <p className="text-lg font-bold text-[var(--text-dark)]">
+                              ₹{minPrice}
+                            </p>
+                          </div>
+
+                          <Button
+                            onClick={() => {
+                              trackEvent("hero_hostel_viewed", {
+                                hostel_id: hostel.uid,
+                                hostel_title: hostel.title,
+                              });
+                              navigate(`/hostel/${hostel.uid}`);
+                            }}
+                            className=" rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active) "
+                          >
+                            View
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  );
+                })}
               </CarouselContent>
             </Carousel>
           </div>

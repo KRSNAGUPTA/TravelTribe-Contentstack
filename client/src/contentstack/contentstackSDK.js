@@ -1,7 +1,7 @@
 import Contentstack from "contentstack";
 import ContentstackLivePreview from "@contentstack/live-preview-utils";
 import Personalize from "@contentstack/personalize-edge-sdk";
-// let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
+let projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
 const Stack = Contentstack.Stack({
   api_key: import.meta.env.VITE_CS_API_KEY,
   delivery_token: import.meta.env.VITE_CS_ACCESS_TOKEN,
@@ -14,9 +14,7 @@ const Stack = Contentstack.Stack({
   },
 });
 
-// const personalizeSdk =  Personalize.init(projectUid);
-// const experiences =  personalizeSdk.getExperiences();
-// console.log(personalizeSdk.getActiveVariant(experiences[0].activeVariantShortUid))
+export const personalizeSdk = await Personalize.init(projectUid);
 
 if (import.meta.env.VITE_CS_DEV_API_HOST) {
   Stack.setHost(import.meta.env.VITE_CS_DEV_API_HOST);

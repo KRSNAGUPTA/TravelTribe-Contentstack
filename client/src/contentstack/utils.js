@@ -1,6 +1,13 @@
 import { addEditableTags } from "@contentstack/utils";
-import Stack from "./contentstackSDK";
+import Stack, { personalizeSdk } from "./contentstackSDK";
 import cmsClient from "./contentstackClient";
+
+const getVariantHeaders = () => {
+    const variants = personalizeSdk?.getVariantAliases?.() || [];
+    return {
+      "x-cs-variant-uid": variants.join(","),
+    };
+  };
 
 export const getEntryByUrl = async (contentTypeUid, locale, entryUrl) => {
   try {
@@ -44,6 +51,8 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
     console.error("fetchEntries: Missing required parameters");
     return [];
   }
+
+  // console.log("Active variant for home_page_test:", variants);
   if (viaSdk === "true") {
     try {
       let entryQuery = Stack.ContentType(contentType).Query();
@@ -51,16 +60,20 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
       if (ref) {
         entryQuery = entryQuery.includeReference(ref);
       }
-      const [entries] = await entryQuery.toJSON().find();
-      entries.map((entry)=>addEditableTags(entry,contentType,true, import.meta.env.VITE_CS_LOCALE))
+      const [entries] = await entryQuery.toJSON().find({
+        headers: getVariantHeaders(),
+      });
+
+      entries.map((entry) =>
+        addEditableTags(
+          entry,
+          contentType,
+          true,
+          import.meta.env.VITE_CS_LOCALE,
+        ),
+      );
       // console.log("entries", entries);
-      
-      // addEditableTags(
-      //   entries,
-      //   contentType,
-      //   true,
-      //   import.meta.env.VITE_CS_LOCALE,
-      // );
+
       return entries;
     } catch (error) {
       console.error("Error fetching entries via SDK", error);
@@ -96,7 +109,11 @@ export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
         entryQuery = entryQuery.includeReference(ref);
       }
 
-      const entry = await entryQuery.toJSON().fetch();
+      const entry = await entryQuery.toJSON().fetch({
+        headers: {
+          "x-cs-variant-uid": getVariantHeaders(),
+        }
+      });
 
       addEditableTags(entry, contentType, true, import.meta.env.VITE_CS_LOCALE);
 
