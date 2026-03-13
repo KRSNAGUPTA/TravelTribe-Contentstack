@@ -18,6 +18,7 @@ import {
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { useNavigate } from "react-router-dom";
+import HostelCard from "@/components/HostelCard";
 import cmsClient from "@/contentstack/contentstackClient";
 import {
   Tooltip,
@@ -446,88 +447,14 @@ export default function FindHostel() {
                   const isAvailable = hasAvailableRooms(backendRooms);
 
                   return (
-                    <Card
+                    <HostelCard
                       key={hostel.uid}
-                      className="overflow-hidden hover:shadow-lg transition-shadow"
-                    >
-                      <div className="relative h-48 overflow-hidden">
-                        <img
-                          src={
-                            hostel?.images?.length > 0
-                              ? hostel.images[0].url
-                              : "/placeholder-hostel.jpg"
-                          }
-                          alt={hostel?.title}
-                          className="w-full h-full object-cover"
-                        />
-
-                        {isAvailable && lowestPrice !== null ? (
-                          <div className="absolute top-2 right-2 bg-white/20 text-[var(--primary)] border-1 px-3 py-1 rounded-full text-sm font-bold">
-                            ₹ {lowestPrice} / day
-                          </div>
-                        ) : (
-                          <div className="absolute top-2 right-2 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            Full
-                          </div>
-                        )}
-
-                        {hostel.type && (
-                          <Tooltip>
-                            <TooltipTrigger className="absolute top-2 left-2  bg-white/80 p-2 rounded-full text-xs font-medium capitalize">
-                              {hostelTypeIcon[hostel.type]}
-                            </TooltipTrigger>
-                            <TooltipContent className="rounded-full bg-white/10 text-black px-4 py-2 border mb-5 font-semibold">
-                              {hostel.type}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-
-                      <CardContent className="p-4">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                          {hostel.title}
-                        </h3>
-
-                        <p className="text-gray-600 text-sm mb-2 flex items-center">
-                          <MapPin className="h-4 w-4 mr-1 text-gray-400 overflow-hidden" />
-                          {hostel.address.length > 40
-                            ? hostel.address.slice(0, 40) + "..."
-                            : hostel.address}
-                        </p>
-
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {getKeyFacilities(hostel.facilities).map(
-                            (facility) => (
-                              <Tooltip key={facility}>
-                                <TooltipTrigger asChild>
-                                  <span className="cursor-help hover:scale-125 transition-transform inline-flex items-center justify-center rounded bg-purple-50 p-1 text-purple-700 ">
-                                    {facilityIcons[facility] ?? (
-                                      <Shield className="h-4 w-4" />
-                                    )}
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-white/90 text-purple-600 font-semibold rounded-full border ">
-                                  {facility
-                                    .replace(/_/g, " ")
-                                    .replace(/\b\w/g, (c) => c.toUpperCase())}
-                                </TooltipContent>
-                              </Tooltip>
-                            ),
-                          )}
-                        </div>
-
-                        <Button
-                          onClick={() => {
-                            navigate(`/hostel/${hostel.uid}`);
-                          }}
-                          className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md transition-transform duration-700 hover:rounded-xl "
-                        >
-                          <span {...listingPageData?.$?.view_button_text}>
-                            {listingPageData?.view_button_text}
-                          </span>
-                        </Button>
-                      </CardContent>
-                    </Card>
+                      hostel={hostel}
+                      source="hostels_page"
+                      variant="detailed"
+                      lowestPrice={lowestPrice ?? undefined}
+                      isAvailable={isAvailable}
+                    />
                   );
                 })
               ) : (

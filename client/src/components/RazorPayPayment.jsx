@@ -5,7 +5,8 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { trackEvent } from '@/Lytics/config';
-const RazorPayPayment = ({hostelId, formData, validateForm }) => {
+import { track } from '@vercel/analytics/react';
+const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateForm }) => {
   const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -18,17 +19,14 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
         receiptId
       };
       
-      trackEvent("booking_initiated", {
-        hostelId,
-        amount: formData.amount,
-        hostel_name: formData.hostelName,
-      });
+      
       const res = await api.post("/api/booking/", bookingData);
 
       trackEvent("booking_successful", {
-        hostelId,
-        amount: formData.amount,
-        hostel_name: formData.hostelName,
+        hostel_id: hostelId,
+        total_amount: formData.amount,
+        hostel_name: hostelName,
+        room_type: roomType,
       });
       
       toast({
@@ -54,12 +52,24 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
       return;
     }
 
+    trackEvent("booking_initiated", {
+      hostel_id: hostelId,
+      hostel_name: hostelName,
+      room_type: roomType,
+      total_amount: formData.amount,
+      check_in: formData.checkIn,
+      check_out: formData.checkOut,
+    });
+
     setIsProcessing(true);
     try {
       const orderResponse = await api.post("/api/payment/create-order", {
         amount: parseFloat(formData.amount),
         currency: "INR",
         hostelId: `${hostelId}`,
+      });
+      trackEvent("currency_selected", {
+        currency: "INR"
       });
 
       const options = {
@@ -80,6 +90,12 @@ const RazorPayPayment = ({hostelId, formData, validateForm }) => {
               toast({
                 title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
+              });
+              trackEvent("payment_successful", {
+                hostel_id: hostelId,
+                total_amount: formData.amount,
+                hostel_name: hostelName,
+                room_type: roomType,
               });
               await handleBooking(orderResponse.data.receipt);
             }

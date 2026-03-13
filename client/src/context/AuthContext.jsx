@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
       }
       // identifyUser(response.data.user.email);
 
-      trackEvent("login", {
+      trackEvent("user_login", {
         email: response.data.user.email,
         name: response.data.user.name,
       });
@@ -102,11 +102,11 @@ export const AuthProvider = ({ children }) => {
         ...userData,
       });
       // identifyUser(response.data.user.email);
-      jstag.send({
+      trackEvent("user_signup", {
         email: userData.email,
         name: userData.name,
-        cell: userData.phone,
-      })
+        phone: userData.phone,
+      });
       // console.log(response.data);
 
       return response.data;

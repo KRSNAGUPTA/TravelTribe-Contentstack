@@ -31,6 +31,9 @@ import { Toaster } from "@/components/ui/toaster";
 import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
 import cmsClient from "@/contentstack/contentstackClient";
+import { trackEvent } from "@/Lytics/config";
+import { useContext } from "react";
+import { LyticsContext } from "@/context/LyticsContext";
 
 export default function HostelBooking() {
   const { id } = useParams();
@@ -39,6 +42,7 @@ export default function HostelBooking() {
 
   const { toast } = useToast();
   const { user } = useAuth();
+  const {profile, isLoading, error} = useContext(LyticsContext);
   const [cmsRooms, setCmsRooms] = useState([]);
   const [availabilityRooms, setAvailabilityRooms] = useState([]);
   const [hostel, setHostel] = useState(null);
@@ -63,25 +67,27 @@ export default function HostelBooking() {
     days: 0,
     totalAmount: 0,
   });
+  const [hasTrackedBookingStarted, setHasTrackedBookingStarted] = useState(false);
+
   useEffect(() => {
-      if (!user) return;
-      console.log("user",user)
+    if (!user) return;
+    // console.log("user", user);
 
     setFormData((prev) => ({
       ...prev,
       name: user.name || prev.name,
       email: user.email || prev.email,
-      phone: user.phone || prev.phone,
+      phone: user.phone || profile?.user?.phone || prev.phone || "",
+      gender: user?.gender || profile?.user?.gender || prev.gender || "",
     }));
-    
-  }, [user]);
+  }, [user,profile]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const apiRes = await api.get(`/api/hostel/${id}`);
         const cmsRes = await cmsClient.get(
-          `/content_types/hostel/entries/${id}`
+          `/content_types/hostel/entries/${id}`,
         );
 
         setAvailabilityRooms(apiRes.data.room_types || []);
@@ -96,6 +102,10 @@ export default function HostelBooking() {
     };
 
     fetchData();
+
+    trackEvent("booking_page_viewed", {
+      hostel_id: id,
+    });
   }, [id, toast]);
 
   const mergedRooms = useMemo(() => {
@@ -119,9 +129,7 @@ export default function HostelBooking() {
   useEffect(() => {
     if (!selectedRoomFromQuery || !mergedRooms.length) return;
 
-    const room = mergedRooms.find(
-      (r) => r.room_key === selectedRoomFromQuery
-    );
+    const room = mergedRooms.find((r) => r.room_key === selectedRoomFromQuery);
 
     if (!room || !room.is_available) return;
     setBookingSummary((prev) => ({
@@ -131,7 +139,6 @@ export default function HostelBooking() {
       roomType: room.room_name,
     }));
 
-
     setFormData((prev) => ({
       ...prev,
       roomSelection: room.room_key,
@@ -140,11 +147,7 @@ export default function HostelBooking() {
   }, [selectedRoomFromQuery, mergedRooms]);
 
   useEffect(() => {
-    if (
-      !formData.checkIn ||
-      !formData.checkOut ||
-      !formData.roomSelection
-    )
+    if (!formData.checkIn || !formData.checkOut || !formData.roomSelection)
       return;
 
     const checkIn = new Date(formData.checkIn);
@@ -152,13 +155,9 @@ export default function HostelBooking() {
 
     if (isNaN(checkIn) || isNaN(checkOut)) return;
 
-    const diffDays = Math.ceil(
-      (checkOut - checkIn) / (1000 * 60 * 60 * 24)
-    );
+    const diffDays = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-    const room = mergedRooms.find(
-      (r) => r.room_key === formData.roomSelection
-    );
+    const room = mergedRooms.find((r) => r.room_key === formData.roomSelection);
 
     if (!room) return;
 
@@ -177,7 +176,6 @@ export default function HostelBooking() {
       ...prev,
       amount: rentAmount + securityDeposit,
     }));
-
   }, [
     formData.checkIn,
     formData.checkOut,
@@ -187,12 +185,12 @@ export default function HostelBooking() {
 
   const validateDates = () => {
     // console.log("Worked")
-    if(!formData.checkIn || !formData.checkOut){
+    if (!formData.checkIn || !formData.checkOut) {
       toast({
         title: "Invalid dates",
         description: "Select Check-in and Check-out dates",
         variant: "destructive",
-      })
+      });
       return false;
     }
     const checkIn = new Date(formData.checkIn);
@@ -210,7 +208,12 @@ export default function HostelBooking() {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email || !formData.phone || !formData.gender) {
+    if (
+      !formData.name ||
+      !formData.email ||
+      !formData.phone ||
+      !formData.gender
+    ) {
       toast({
         title: "Incomplete details",
         description: "Please fill in all required fields to continue.",
@@ -219,7 +222,8 @@ export default function HostelBooking() {
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    const phoneRegex = /^[6-9]\d{9}$/;
+    // const phoneRegex = /^[6-9]\d{9}$/; // indian number
+    const phoneRegex = /^\d{10}$/; // only 10 digit any number
 
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -241,16 +245,26 @@ export default function HostelBooking() {
 
     if (!validateDates()) return false;
 
-
-    jstag.send({
-      cell: formData.phone,
-      gender: formData.gender
-    })
+    trackEvent("user_profile_updated", {
+      phone: formData.phone,
+      gender: formData.gender,
+    });
     return true;
   };
 
   const nextStep = () => {
     if (currentStep === 1 && validateDates()) {
+      if (!hasTrackedBookingStarted) {
+        trackEvent("booking_started", {
+          hostel_id: id,
+          hostel_name: hostel?.title || "Unknown",
+          room_type: bookingSummary.roomType || "Unknown",
+          total_amount: formData.amount || 0,
+          check_in: formData.checkIn,
+          check_out: formData.checkOut,
+        });
+        setHasTrackedBookingStarted(true);
+      }
       setCurrentStep(2);
     }
   };
@@ -283,12 +297,14 @@ export default function HostelBooking() {
               </h1>
               <div className="hidden md:flex items-center space-x-2">
                 <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
-                    }`}
+                  className={`h-2 w-12 rounded-full ${
+                    currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
+                  }`}
                 ></div>
                 <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
-                    }`}
+                  className={`h-2 w-12 rounded-full ${
+                    currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
+                  }`}
                 ></div>
               </div>
             </div>
@@ -296,7 +312,8 @@ export default function HostelBooking() {
               <span className="font-medium">Step {currentStep} of 2:</span>
               <span className="ml-2">
                 {currentStep === 1
-                  ? "Select Dates" : "Personal Details & Payment"}
+                  ? "Select Dates"
+                  : "Personal Details & Payment"}
               </span>
             </div>
           </div>
@@ -353,17 +370,16 @@ export default function HostelBooking() {
                             min={
                               formData.checkIn
                                 ? new Date(
-                                  new Date(formData.checkIn).setDate(
-                                    new Date(formData.checkIn).getDate() + 1
+                                    new Date(formData.checkIn).setDate(
+                                      new Date(formData.checkIn).getDate() + 1,
+                                    ),
                                   )
-                                )
-                                  .toISOString()
-                                  .split("T")[0]
+                                    .toISOString()
+                                    .split("T")[0]
                                 : new Date().toISOString().split("T")[0]
                             }
                             className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
                           />
-
                         </div>
                       </div>
 
@@ -380,8 +396,6 @@ export default function HostelBooking() {
                     </CardContent>
                   </Card>
                 )}
-
-
 
                 {/* Step 2: Personal Details */}
                 {currentStep === 2 && (
@@ -430,6 +444,7 @@ export default function HostelBooking() {
                             <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all">
                               <SelectValue placeholder="Select gender" />
                             </SelectTrigger>
+                            {/* {console.log(profile?.user?.gender)} */}
                             <SelectContent>
                               <SelectItem value="female">Female</SelectItem>
                               <SelectItem value="male">Male</SelectItem>
@@ -507,6 +522,8 @@ export default function HostelBooking() {
                           <RazorPayPayment
                             hostelId={id}
                             formData={formData}
+                            hostelName={hostel?.title || "Unknown"}
+                            roomType={bookingSummary.roomType || "Unknown"}
                             validateForm={validateForm}
                           />
                         </div>
@@ -539,7 +556,7 @@ export default function HostelBooking() {
                         <div className="flex justify-between">
                           <span className="text-gray-600">Duration</span>
                           <span className="font-medium text-black">
-                            {bookingSummary.days}{" "} Day
+                            {bookingSummary.days} Day
                           </span>
                         </div>
                       )}
@@ -569,9 +586,13 @@ export default function HostelBooking() {
 
                       <div className="pt-3 mt-3 border-t border-purple-200">
                         <div className="flex justify-between font-bold">
-                          <span className="text-[var(--primary)] ">Total Amount</span>
+                          <span className="text-[var(--primary)] ">
+                            Total Amount
+                          </span>
                           <span className="text-[var(--primary-active)] text-lg">
-                            ₹{bookingSummary?.totalAmount + bookingSummary?.securityDeposit}
+                            ₹
+                            {bookingSummary?.totalAmount +
+                              bookingSummary?.securityDeposit}
                           </span>
                         </div>
                       </div>
@@ -609,14 +630,14 @@ export default function HostelBooking() {
                           <span className="font-bold">
                             {new Date(formData.checkIn).toLocaleDateString(
                               "en-US",
-                              { day: "numeric", month: "short" }
+                              { day: "numeric", month: "short" },
                             )}
                           </span>
                           <span className="text-purple-300">→</span>
                           <span className="font-bold">
                             {new Date(formData.checkOut).toLocaleDateString(
                               "en-US",
-                              { day: "numeric", month: "short" }
+                              { day: "numeric", month: "short" },
                             )}
                           </span>
                         </div>

@@ -3,68 +3,105 @@ import { Button } from "./ui/button";
 import { Toaster } from "./ui/toaster";
 import { useEffect, useState } from "react";
 import api from "@/api";
-import cmsClient from "@/contentstack/contentstackClient";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import { setDataForChromeExtension } from "@/contentstack/utils";
-import { addEditableTags } from "@contentstack/utils";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
+import { fetchEntryById, setDataForChromeExtension } from "@/contentstack/utils";
 import { trackEvent } from "@/Lytics/config";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
   const [footerData, setFooterData] = useState({});
+  const navigate = useNavigate();
 
   const {user} = useContext(AuthContext);
 
-  useEffect(() => {
-    const fetchCDAData = async () => {
-      try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/footer/entries/bltf643a3bf4a1a7316",
-          )
-        ).data.entry;
-        setFooterData(entry);
-      } catch (error) {
-        console.error("CDA: Failed to fetch footer data from cms", error);
-      }
-    };
+  const isInternalLink = (href = "") => {
+    return href.startsWith("/") && !href.startsWith("//");
+  };
 
-    const fetchSDKData = async () => {
-      try {
-        const entry = await Stack.ContentType("footer")
-          .Entry("bltf643a3bf4a1a7316")
-          .toJSON()
-          .fetch();
-        addEditableTags(entry, "footer", true, "en-us");
-        setFooterData(entry);
+  const isExternalLink = (href = "") => {
+    return (
+      href.startsWith("http://") ||
+      href.startsWith("https://") ||
+      href.startsWith("//") ||
+      href.startsWith("mailto:") ||
+      href.startsWith("tel:")
+    );
+  };
 
-        // for live preview
-        const data = {
-          entryUid: "bltf643a3bf4a1a7316",
-          contenttype: "footer",
-          locale: "en-us",
-        };
-        setDataForChromeExtension(data);
-      } catch (error) {
-        console.error("SDK: Failed to fetch footer data", error);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData();
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
+  const getAnchorAttrs = (href = "") => {
+    if (isExternalLink(href)) {
+      return {
+        target: "_blank",
+        rel: "noopener noreferrer",
+      };
     }
 
+    return {};
+  };
 
+  const handleFooterLinkClick = (event, href) => {
+    if (!href) {
+      return;
+    }
 
-    if(user?.email) {
+    if (isInternalLink(href)) {
+      event.preventDefault();
+      navigate(href);
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+  };
+
+  const renderCmsLink = (item, className = "") => {
+    const href = item?.link?.href || "#";
+
+    return (
+      <a
+        href={href}
+        onClick={(event) => handleFooterLinkClick(event, href)}
+        className={className}
+        {...getAnchorAttrs(href)}
+        {...item?.link?.$?.title}
+      >
+        {item?.link?.title}
+      </a>
+    );
+  };
+
+  const footerEntryMeta = {
+    entryUid: "bltf643a3bf4a1a7316",
+    contenttype: "footer",
+    locale: import.meta.env.VITE_CS_LOCALE,
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const entry = await fetchEntryById(
+          footerEntryMeta.contenttype,
+          footerEntryMeta.entryUid,
+          import.meta.env.VITE_SDK,
+          null,
+        );
+        setFooterData(entry || {});
+      } catch (error) {
+        console.error("Error fetching footer data", error);
+      }
+    };
+
+    onEntryChange(fetchData);
+    setDataForChromeExtension(footerEntryMeta);
+  }, []);
+
+  useEffect(() => {
+    if (user?.email) {
       setEmail(user.email);
     }
-  }, []);
+  }, [user?.email]);
 
   const handleSubscribe = async () => {
     if (!email) {
@@ -102,22 +139,23 @@ const Footer = () => {
   };
 
   return (
-    <footer className="bg-black text-white">
+    <footer className="relative overflow-hidden bg-black text-white">
       <Toaster />
+      <div className="pointer-events-none absolute -top-20 -left-16 h-56 w-56 rounded-full bg-[var(--primary)]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 right-0 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
       <div
-        className="container mx-auto px-4 py-12
-    grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+        className="container relative  mx-auto grid grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4"
       >
         {/* Brand */}
         <div>
           <h2
-            className="text-2xl md:text-4xl font-bold pacifico-regular"
+            className="pacifico-regular text-3xl font-bold text-white md:text-4xl"
             {...footerData?.$?.title}
           >
             {footerData?.title}
           </h2>
           <p
-            className="mt-3 text-gray-400 text-sm leading-relaxed"
+            className="mt-4 max-w-xs text-sm leading-relaxed text-gray-300"
             {...footerData?.$?.subtext}
           >
             {footerData?.subtext}
@@ -128,21 +166,18 @@ const Footer = () => {
         {footerData?.section_group?.map((section) => (
           <div key={section._metadata.uid}>
             <h3
-              className="text-lg font-semibold mb-4"
+              className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-gray-200"
               {...section?.$?.group_title}
             >
               {section?.group_title}
             </h3>
-            <ul className="space-y-3 text-sm text-gray-400">
+            <ul className="space-y-2.5 text-sm text-gray-300">
               {section.link_group?.map((item) => (
                 <li key={item._metadata.uid}>
-                  <a
-                    href={item?.link?.href}
-                    className="hover:text-white transition"
-                    {...item?.link?.$?.title}
-                  >
-                    {item?.link?.title}
-                  </a>
+                  {renderCmsLink(
+                    item,
+                    "inline-block rounded-sm transition hover:-translate-y-[1px] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-black",
+                  )}
                 </li>
               ))}
             </ul>
@@ -152,24 +187,24 @@ const Footer = () => {
         {/* Subscribe */}
         <div>
           <h3
-            className="text-lg font-semibold mb-4"
+            className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-gray-200"
             {...footerData?.$?.email_title}
           >
             {footerData?.email_title}
           </h3>
 
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={footerData?.email_placeholder}
-              className="w-full bg-gray-800 text-white px-4 py-1 rounded-md outline-none"
+              className="h-10 w-full rounded-md border border-gray-700 bg-gray-900/80 px-4 text-sm text-white outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/40"
               {...footerData?.$?.email_placeholder}
             />
             <Button
               onClick={handleSubscribe}
-              className="w-full sm:w-auto bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md"
+              className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
             >
               <span {...footerData?.$?.subscribe_button_text}>
                 {footerData?.subscribe_button_text}
@@ -180,19 +215,27 @@ const Footer = () => {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-gray-800 mt-6 pb-28 py-4 text-center text-xs text-gray-500 px-4">
+      <div className="relative mt-4 border-t border-gray-800/80 px-4 py-5 pb-28 text-center text-xs text-gray-400">
         <p {...footerData?.$?.copyright_text}>{footerData?.copyright_text}</p>
-        <div className="mt-2 flex justify-center gap-4 flex-wrap">
+        <div className="mt-2 flex flex-wrap justify-center gap-4">
           <a
             href={footerData?.terms_of_service_link?.href}
-            className="hover:text-white"
+            onClick={(event) =>
+              handleFooterLinkClick(event, footerData?.terms_of_service_link?.href)
+            }
+            className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            {...getAnchorAttrs(footerData?.terms_of_service_link?.href)}
             {...footerData?.terms_of_service_link?.$?.title}
           >
             {footerData?.terms_of_service_link?.title}
           </a>
           <a
             href={footerData?.privacy_policy_link?.href}
-            className="hover:text-white"
+            onClick={(event) =>
+              handleFooterLinkClick(event, footerData?.privacy_policy_link?.href)
+            }
+            className="transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            {...getAnchorAttrs(footerData?.privacy_policy_link?.href)}
             {...footerData?.privacy_policy_link?.$?.title}
           >
             {footerData?.privacy_policy_link?.title}

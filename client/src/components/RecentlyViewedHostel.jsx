@@ -1,11 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Autoplay from "embla-carousel-autoplay";
-import { useNavigate } from "react-router-dom";
-import { Toaster } from "./ui/toaster";
-import api from "@/api";
 import { fetchEntryById } from "@/contentstack/utils";
-import { getLyticsProfile, trackEvent } from "@/Lytics/config";
-import { Button } from "@/components/ui/button";
+import { Toaster } from "./ui/toaster";
 import {
   Carousel,
   CarouselContent,
@@ -13,40 +9,35 @@ import {
 } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "./ui/skeleton";
+import { useContext } from "react";
+import { LyticsContext } from "@/context/LyticsContext";
+import HostelCard from "@/components/HostelCard";
 
 export function RecentlyViewedHostel({ email }) {
   const [hostelDetails, setHostelDetails] = useState([]);
   const [loading, setLoading] = useState(false);
   const hostelsPlugin = useRef(Autoplay({ delay: 2000 }));
-  const navigate = useNavigate();
+  const { profile, isLoading, error } = useContext(LyticsContext);
 
   useEffect(() => {
     let mounted = true;
 
-    const getProfile = async () => {
+    const fetchRecentlyViewedFromProfile = async () => {
+      if (isLoading) return;
+
+      const viewedIds = profile?.user?.viewed_hostel || [];
+
+      if (!viewedIds.length) {
+        if (mounted) {
+          setHostelDetails([]);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
 
       try {
-        // console.log("This line execute in ad block")
-        const profile = await getLyticsProfile();
-        // console.log("not reached here")
-        if(!profile || !profile.user) {
-          if (mounted) {
-            setHostelDetails([]);
-            setLoading(false);
-          }
-        }
-        const viewedIds = profile?.user?.viewed_hostel || [];
-
-        if (!viewedIds.length) {
-          if (mounted) {
-            setHostelDetails([]);
-            setLoading(false);
-          }
-          console.warn("No viewed hostels found in Lytics profile.");
-          return;
-        }
-
         const entries = await Promise.all(
           viewedIds.map((hostelId) =>
             fetchEntryById("hostel", hostelId, import.meta.env.VITE_SDK, null),
@@ -55,24 +46,25 @@ export function RecentlyViewedHostel({ email }) {
 
         if (mounted) {
           setHostelDetails(entries.filter(Boolean));
-          setLoading(false);
         }
-      } catch (error) {
-        console.error("Failed to fetch recently viewed hostels:", error);
-
+      } catch (fetchError) {
+        console.error("Failed to fetch recently viewed hostels:", fetchError);
         if (mounted) {
           setHostelDetails([]);
+        }
+      } finally {
+        if (mounted) {
           setLoading(false);
         }
       }
     };
 
-    getProfile();
+    fetchRecentlyViewedFromProfile();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [profile, isLoading]);
 
   // useEffect(() => {
   //   let isMounted = true;
@@ -181,57 +173,13 @@ export function RecentlyViewedHostel({ email }) {
           >
             <CarouselContent className="flex py-8">
               {hostelDetails.map((hostel) => {
-                const minPrice =
-                  hostel?.room_types?.length > 0
-                    ? Math.min(
-                        ...hostel.room_types.map((r) => r.base_price || 0),
-                      )
-                    : 0;
-
                 return (
                   <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
-                    <Card className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
-                      <div className="relative h-64 w-full overflow-hidden">
-                        <img
-                          src={hostel.images?.[0]?.url}
-                          alt={hostel.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
-                        <h3 className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug">
-                          {hostel.title?.length > 32
-                            ? `${hostel.title.slice(0, 32)}...`
-                            : hostel.title}
-                        </h3>
-                      </div>
-
-                      <CardContent className="p-5 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-[var(--text-muted)]">
-                            Starting from
-                          </p>
-                          <p className="text-lg font-bold text-[var(--text-dark)]">
-                            ₹{minPrice}
-                          </p>
-                        </div>
-
-                        <Button
-                          onClick={() => {
-                            trackEvent("recently_viewed_hostel_opened", {
-                              hostelId: hostel.uid,
-                              hostelTitle: hostel.title,
-                            });
-                            window.scrollTo({ top: 0, behavior: "smooth" });
-                            navigate(`/hostel/${hostel.uid}`);
-                          }}
-                          className="rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
-                        >
-                          View
-                        </Button>
-                      </CardContent>
-                    </Card>
+                    <HostelCard
+                      hostel={hostel}
+                      source="recently_viewed"
+                      variant="compact"
+                    />
                   </CarouselItem>
                 );
               })}

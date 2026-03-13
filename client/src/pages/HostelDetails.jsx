@@ -82,6 +82,7 @@ import { trackEvent } from "@/Lytics/config";
 import RecentlyViewedHostel from "@/components/RecentlyViewedHostel";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
+import { XCircle } from "lucide-react";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -130,10 +131,9 @@ export default function HostelDetails() {
         //   hostelId: entry.uid,
         // })
 
-        jstag.send({
-          _e: "viewed_hostel",
-          hostelId: entry.uid,
-          hostelName: entry.title,
+        trackEvent("viewed_hostel", {
+          hostel_id: entry.uid,
+          hostel_name: entry.title,
           email: user?.email || null,
         });
 
@@ -658,11 +658,12 @@ export default function HostelDetails() {
                         {/* Book room */}
                         <Button
                           disabled={!room.is_available}
-                          onClick={() =>
-                            navigate(
+                          onClick={() => {
+                            (navigate(
                               `/hostel/${hostel.uid}/book?room=${room.room_key}`,
-                            )
-                          }
+                            ),
+                              window.scrollTo({ top: 0, behavior: "smooth" }));
+                          }}
                           className={`
     w-full rounded-full text-white font-medium
     transition-all duration-300
@@ -818,9 +819,10 @@ export default function HostelDetails() {
                 )}
               </div>
               <Button
-                onClick={() =>
-                  navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`)
-                }
+                onClick={() => {
+                  navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
                 className="w-full sm:w-auto flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--on-primary)] px-8 py-6 rounded-full"
               >
                 <Calendar className="w-5 h-5" />

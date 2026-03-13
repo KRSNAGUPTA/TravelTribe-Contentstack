@@ -10,6 +10,7 @@ import Stack from "./contentstack/contentstackSDK";
 import { fetchEntryById } from "./contentstack/utils";
 import detectAdBlocker from "./lib/detectAdBlocker";
 import AdBlockNotice from "./components/AdBlockNotice";
+import { LyticsProvider } from "./context/LyticsContext";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const HostelPage = lazy(() => import("./pages/HostelsPage"));
@@ -80,38 +81,40 @@ function App() {
 
   return (
     <Router>
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-        <AuthProvider>
-          <Suspense fallback={<Loading />}>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/hostel" element={<HostelPage />} />
-              <Route path="/hostel/:id" element={<HostelDetails />} />
-              <Route
-                path="/hostel/:id/book"
-                element={
-                  <ProtectedRoute>
-                    <HostelBooking />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/login" element={<Login />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </AuthProvider>
-      </GoogleOAuthProvider>
+      <LyticsProvider>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+          <AuthProvider>
+            <Suspense fallback={<Loading />}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/hostel" element={<HostelPage />} />
+                <Route path="/hostel/:id" element={<HostelDetails />} />
+                <Route
+                  path="/hostel/:id/book"
+                  element={
+                    <ProtectedRoute>
+                      <HostelBooking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/login" element={<Login />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </AuthProvider>
+        </GoogleOAuthProvider>
+      </LyticsProvider>
     </Router>
   );
 }
