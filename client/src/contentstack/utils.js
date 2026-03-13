@@ -3,11 +3,17 @@ import Stack, { personalizeSdk } from "./contentstackSDK";
 import cmsClient from "./contentstackClient";
 
 const getVariantHeaders = () => {
-    const variants = personalizeSdk?.getVariantAliases?.() || [];
-    return {
-      "x-cs-variant-uid": variants.join(","),
-    };
+  const variants = personalizeSdk?.getVariantAliases?.() || [];
+  const variantAliasHeader = variants.join(",");
+
+  if (!variantAliasHeader) {
+    return {};
+  }
+
+  return {
+    "x-cs-variant-uid": variantAliasHeader,
   };
+};
 
 export const getEntryByUrl = async (contentTypeUid, locale, entryUrl) => {
   try {
@@ -110,9 +116,7 @@ export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
       }
 
       const entry = await entryQuery.toJSON().fetch({
-        headers: {
-          "x-cs-variant-uid": getVariantHeaders(),
-        }
+        headers: getVariantHeaders(),
       });
 
       addEditableTags(entry, contentType, true, import.meta.env.VITE_CS_LOCALE);

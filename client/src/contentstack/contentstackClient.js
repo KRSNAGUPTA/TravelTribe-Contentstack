@@ -13,6 +13,13 @@ export default cmsClient;
 
 cmsClient.interceptors.request.use((config) => {
   const variants = personalizeSdk?.getVariantAliases?.() || [];
-  config.headers["x-cs-variant-uid"] = variants.join(",");
+  const variantAliasHeader = variants.join(",");
+
+  if (!variantAliasHeader) {
+    return config;
+  }
+
+  config.headers = config.headers || {};
+  config.headers["x-cs-variant-uid"] = variantAliasHeader;
   return config;
 });
