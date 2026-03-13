@@ -1,7 +1,14 @@
 // client/src/Lytics/config.js
 
-import axios from "axios";
-import { use } from "react";
+let hasWarnedMissingJstag = false;
+
+const getJstag = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.jstag || null;
+};
 
 
 // from the doc, but not recommended. Use the availabale script from Lytics setup to add in index.html
@@ -26,10 +33,26 @@ import { use } from "react";
 // initLytics();
 
 export const trackEvent = (eventName, properties = {}) => {
-  jstag.send({
-    _e: eventName,
-    ...properties,
-  });  
+  const jstag = getJstag();
+
+  if (!jstag || typeof jstag.send !== "function") {
+    if (!hasWarnedMissingJstag) {
+      hasWarnedMissingJstag = true;
+      console.warn("Lytics unavailable. Skipping trackEvent.");
+    }
+    return false;
+  }
+
+  try {
+    jstag.send({
+      _e: eventName,
+      ...properties,
+    });
+    return true;
+  } catch (error) {
+    console.error("Lytics trackEvent failed", error);
+    return false;
+  }
 };
 
 // no official source found for this
@@ -77,6 +100,14 @@ export const getLyticsProfile = () => {
 
     // 2. Try the Lytics call
     try {
+      const jstag = getJstag();
+
+      if (!jstag || typeof jstag.call !== "function") {
+        clearTimeout(timeout);
+        resolve({ user: { viewed_hostel: [] } });
+        return;
+      }
+
       jstag.call("entityReady", (profile) => {
         clearTimeout(timeout); // Cancel the timeout if Lytics actually responds
         // console.log("Lytics responded successfully");

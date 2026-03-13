@@ -26,7 +26,7 @@ import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import { trackEvent } from "@/Lytics/config";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
-import { personalizeReady } from "@/contentstack/personalizeSdk";
+import { personalizeSdk } from "@/contentstack/personalizeSdk";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -156,7 +156,7 @@ export default function HomePage() {
                 cta_title: heroSection?.cta?.title || "Unknown CTA",
               });
 
-              void personalizeReady
+              void personalizeSdk
                 ?.triggerEvent?.("click")
                 ?.catch((error) => console.error("Personalize click event failed", error));
 
