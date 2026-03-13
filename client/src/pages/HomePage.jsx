@@ -156,9 +156,9 @@ export default function HomePage() {
                 cta_title: heroSection?.cta?.title || "Unknown CTA",
               });
 
-              void personalizeSdk
-                ?.triggerEvent?.("click")
-                ?.catch((error) => console.error("Personalize click event failed", error));
+              // void personalizeSdk
+              //   ?.triggerEvent?.("click")
+              //   ?.catch((error) => console.error("Personalize click event failed", error));
 
               if (heroSection?.cta?.href) {
                 navigate(heroSection.cta.href);
