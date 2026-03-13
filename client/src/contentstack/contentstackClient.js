@@ -1,5 +1,5 @@
 import axios from "axios";
-import { personalizeSdk } from "./contentstackSDK";
+import { getVariantHeaders } from "./personalizeSdk";
 
 const cmsClient = axios.create({
     baseURL: import.meta.env.VITE_CS_BASE_URL,
@@ -12,8 +12,8 @@ const cmsClient = axios.create({
 export default cmsClient;
 
 cmsClient.interceptors.request.use((config) => {
-  const variants = personalizeSdk?.getVariantAliases?.() || [];
-  const variantAliasHeader = variants.join(",");
+  const variantHeaders = getVariantHeaders();
+  const variantAliasHeader = variantHeaders["x-cs-variant-uid"];
 
   if (!variantAliasHeader) {
     return config;

@@ -1,19 +1,7 @@
 import { addEditableTags } from "@contentstack/utils";
-import Stack, { personalizeSdk } from "./contentstackSDK";
+import Stack from "./contentstackSDK";
 import cmsClient from "./contentstackClient";
-
-const getVariantHeaders = () => {
-  const variants = personalizeSdk?.getVariantAliases?.() || [];
-  const variantAliasHeader = variants.join(",");
-
-  if (!variantAliasHeader) {
-    return {};
-  }
-
-  return {
-    "x-cs-variant-uid": variantAliasHeader,
-  };
-};
+import { getVariantHeaders } from "./personalizeSdk";
 
 export const getEntryByUrl = async (contentTypeUid, locale, entryUrl) => {
   try {
