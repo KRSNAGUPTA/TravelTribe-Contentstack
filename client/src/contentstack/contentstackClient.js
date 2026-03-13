@@ -12,7 +12,8 @@ const cmsClient = axios.create({
 export default cmsClient;
 
 cmsClient.interceptors.request.use((config) => {
-  const variantHeaders = getVariantHeaders();
+  const applyVariantHeaders = async () => {
+    const variantHeaders = await getVariantHeaders();
   const variantAliasHeader = variantHeaders["x-cs-variant-uid"];
 
   if (!variantAliasHeader) {
@@ -22,4 +23,7 @@ cmsClient.interceptors.request.use((config) => {
   config.headers = config.headers || {};
   config.headers["x-cs-variant-uid"] = variantAliasHeader;
   return config;
+  };
+
+  return applyVariantHeaders();
 });

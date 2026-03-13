@@ -4,31 +4,32 @@ const projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
 
 export let personalizeSdk = null;
 
-const initPersonalizeSdk = async () => {
+export const personalizeReady = (async () => {
   if (!projectUid) {
-    console.warn("Personalize init skipped: VITE_CS_PERSONALIZE_PROJECT_UID is missing");
-    return;
+    console.warn(
+      "Personalize init skipped: VITE_CS_PERSONALIZE_PROJECT_UID is missing"
+    );
+    return null;
   }
 
   try {
     personalizeSdk = await Personalize.init(projectUid);
+    return personalizeSdk;
   } catch (error) {
     console.error("Personalize init failed", error);
     personalizeSdk = null;
+    return null;
   }
-};
+})();
 
-void initPersonalizeSdk();
+export const getVariantHeaders = async () => {
+  await personalizeReady;
 
-export const getVariantHeaders = () => {
   const variants = personalizeSdk?.getVariantAliases?.() || [];
-  const variantAliasHeader = variants.join(",");
 
-  if (!variantAliasHeader) {
-    return {};
-  }
+  if (!variants.length) return {};
 
   return {
-    "x-cs-variant-uid": variantAliasHeader,
+    "x-cs-variant-uid": variants.join(","),
   };
 };

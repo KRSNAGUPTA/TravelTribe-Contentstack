@@ -37,6 +37,7 @@ function App() {
       );
       // console.log("Theme entry:", entry);
       const base = entry?.primary_color?.hex;
+      console.log("Theme base color:", base);
 
       if (!base) {
         console.warn("Theme color not found");

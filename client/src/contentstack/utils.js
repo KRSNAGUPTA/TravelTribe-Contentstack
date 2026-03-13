@@ -54,8 +54,9 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
       if (ref) {
         entryQuery = entryQuery.includeReference(ref);
       }
+      const variantHeaders = await getVariantHeaders();
       const [entries] = await entryQuery.toJSON().find({
-        headers: getVariantHeaders(),
+        headers: variantHeaders,
       });
 
       entries.map((entry) =>
@@ -102,9 +103,10 @@ export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
       if (ref) {
         entryQuery = entryQuery.includeReference(ref);
       }
+      const variantHeaders = await getVariantHeaders();
 
       const entry = await entryQuery.toJSON().fetch({
-        headers: getVariantHeaders(),
+        headers: variantHeaders,
       });
 
       addEditableTags(entry, contentType, true, import.meta.env.VITE_CS_LOCALE);
