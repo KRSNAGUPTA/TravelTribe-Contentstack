@@ -152,9 +152,9 @@ export default function HomePage() {
           </div>
           <Button
             onClick={() => {
-              // trackEvent("hero_cta_clicked", {
-              //   cta_title: heroSection?.cta?.title || "Unknown CTA",
-              // });
+              trackEvent("hero_cta_clicked", {
+                cta_title: heroSection?.cta?.title || "Unknown CTA",
+              });
 
               void personalizeSdk
                 ?.triggerEvent?.("click")
