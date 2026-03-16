@@ -25,7 +25,7 @@ import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
-import { personalizeSdk } from "@/contentstack/personalizeSdk";
+// import { personalizeSdk } from "@/contentstack/personalizeSdk";
 import { FocusCards } from "@/components/ui/focus-cards";
 import HostelCard from "@/components/HostelCard";
 
@@ -101,14 +101,14 @@ export default function HomePage() {
     descriptionProps: item?.$?.feature_description,
   }));
 
-  const sendPersonalizeEvent = async (eventName) => {
-    try {
-      const res = await personalizeSdk?.triggerEvent(eventName);
-      console.log(`Personalize ${eventName} event triggered`, res);
-    } catch (error) {
-      console.error(`Personalize ${eventName} event failed`, error);  
-    }
-   };
+  // const sendPersonalizeEvent = async (eventName) => {
+  //   try {
+  //     const res = await personalizeSdk?.triggerEvent(eventName);
+  //     console.log(`Personalize ${eventName} event triggered`, res);
+  //   } catch (error) {
+  //     console.error(`Personalize ${eventName} event failed`, error);  
+  //   }
+  //  };
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">
@@ -151,7 +151,7 @@ export default function HomePage() {
                   cta_title: heroSection?.cta?.title || "Unknown CTA",
                 });
 
-                sendPersonalizeEvent("click");
+                // sendPersonalizeEvent("click");
 
                 if (heroSection?.cta?.href) {
                   navigate(heroSection.cta.href);

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getVariantHeaders } from "./personalizeSdk";
+// import { getVariantHeaders } from "./personalizeSdk";
 
 const cmsClient = axios.create({
     baseURL: import.meta.env.VITE_CS_BASE_URL,
@@ -11,19 +11,19 @@ const cmsClient = axios.create({
 })
 export default cmsClient;
 
-cmsClient.interceptors.request.use((config) => {
-  const applyVariantHeaders = async () => {
-    const variantHeaders = await getVariantHeaders();
-  const variantAliasHeader = variantHeaders["x-cs-variant-uid"];
+// cmsClient.interceptors.request.use((config) => {
+//   const applyVariantHeaders = async () => {
+//     const variantHeaders = await getVariantHeaders();
+//   const variantAliasHeader = variantHeaders["x-cs-variant-uid"];
 
-  if (!variantAliasHeader) {
-    return config;
-  }
+//   if (!variantAliasHeader) {
+//     return config;
+//   }
 
-  config.headers = config.headers || {};
-  config.headers["x-cs-variant-uid"] = variantAliasHeader;
-  return config;
-  };
+//   config.headers = config.headers || {};
+//   config.headers["x-cs-variant-uid"] = variantAliasHeader;
+//   return config;
+//   };
 
-  return applyVariantHeaders();
-});
+//   return applyVariantHeaders();
+// });

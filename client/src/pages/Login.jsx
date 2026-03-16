@@ -126,7 +126,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)] px-4">
-      <Card className="w-full max-w-md rounded-3xl border border-[var(--border-subtle)] shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] backdrop-blur-sm bg-white/90">
+      <Card className="w-full max-w-md rounded-3xl   shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] backdrop-blur-sm bg-white/90">
         <Toaster />
 
         <CardContent className="p-8">
@@ -188,7 +188,7 @@ const Login = () => {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="mb-6 grid grid-cols-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--primary-soft)] p-1">
+            <TabsList className="mb-6 grid grid-cols-2 rounded-xl   bg-[var(--primary-soft)] p-1">
               <TabsTrigger
                 value="login"
                 className="rounded-lg text-[var(--text-muted)] data-[state=active]:bg-white data-[state=active]:text-[var(--text-dark)] data-[state=active]:shadow-sm"
@@ -222,7 +222,7 @@ const Login = () => {
                     name="email"
                     type="email"
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -235,7 +235,7 @@ const Login = () => {
                     name="password"
                     type="password"
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -268,7 +268,7 @@ const Login = () => {
                   <Input
                     name="name"
                     placeholder={authPageData.name_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -281,7 +281,7 @@ const Login = () => {
                     name="email"
                     type="email"
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -294,7 +294,7 @@ const Login = () => {
                     name="phone"
                     type="number"
                     placeholder={authPageData.phone_number_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -307,7 +307,7 @@ const Login = () => {
                     name="password"
                     type="password"
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>

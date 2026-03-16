@@ -1,7 +1,7 @@
 import { addEditableTags } from "@contentstack/utils";
 import Stack from "./contentstackSDK";
 import cmsClient from "./contentstackClient";
-import { getVariantHeaders } from "./personalizeSdk";
+// import { getVariantHeaders } from "./personalizeSdk";
 
 export const getEntryByUrl = async (contentTypeUid, locale, entryUrl) => {
   try {
@@ -56,7 +56,7 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
       }
       const variantHeaders = await getVariantHeaders();
       const [entries] = await entryQuery.toJSON().find({
-        headers: variantHeaders,
+        // headers: variantHeaders,
       });
 
       entries.map((entry) =>
@@ -103,10 +103,10 @@ export const fetchEntryById = async (contentType, entryId, viaSdk, ref) => {
       if (ref) {
         entryQuery = entryQuery.includeReference(ref);
       }
-      const variantHeaders = await getVariantHeaders();
+      // const variantHeaders = await getVariantHeaders();
 
       const entry = await entryQuery.toJSON().fetch({
-        headers: variantHeaders,
+        // headers: variantHeaders,
       });
 
       addEditableTags(entry, contentType, true, import.meta.env.VITE_CS_LOCALE);

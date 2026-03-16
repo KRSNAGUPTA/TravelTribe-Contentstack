@@ -4,9 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./middlewares/protectedRoutes";
 import Loading from "./pages/Loading";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import cmsClient from "./contentstack/contentstackClient";
 import { applyTheme } from "./lib/applyTheme";
-import Stack from "./contentstack/contentstackSDK";
 import { fetchEntryById } from "./contentstack/utils";
 import detectAdBlocker from "./lib/detectAdBlocker";
 import AdBlockNotice from "./components/AdBlockNotice";
@@ -83,7 +81,7 @@ function App() {
   return (
     <Router>
       <LyticsProvider>
-        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID} >
           <AuthProvider>
             <Suspense fallback={<Loading />}>
               <Routes>
