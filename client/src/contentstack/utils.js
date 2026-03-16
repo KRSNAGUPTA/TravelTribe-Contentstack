@@ -54,7 +54,7 @@ export const fetchEntries = async (contentType, viaSdk, ref) => {
       if (ref) {
         entryQuery = entryQuery.includeReference(ref);
       }
-      const variantHeaders = await getVariantHeaders();
+      // const variantHeaders = await getVariantHeaders();
       const [entries] = await entryQuery.toJSON().find({
         // headers: variantHeaders,
       });
