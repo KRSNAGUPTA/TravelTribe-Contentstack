@@ -177,7 +177,7 @@ export function RecentlyViewedHostel({ email }) {
                   <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
                     <HostelCard
                       hostel={hostel}
-                      source="recently_viewed"
+                      lytics_event="recently_viewed_hostel"
                       variant="compact"
                     />
                   </CarouselItem>

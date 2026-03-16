@@ -42,7 +42,7 @@ const facilityIconMap = {
 
 export default function HostelCard({
   hostel,
-  source = "default",
+  lytics_event = "default",
   variant = "compact",
   lowestPrice,
   isAvailable,
@@ -84,22 +84,12 @@ export default function HostelCard({
         };
 
   const handleOpen = () => {
-    if (source === "home") {
-      jstag.send({
-        _e: "hero_hostel_viewed",
-        hostel_id: hostel?.uid,
-        hostel_title: hostel?.title,
-      });
-    }
-
-    if (source === "recently_viewed") {
-      jstag.send({
-        _e: "recently_viewed_hostel_opened",
-        hostel_id: hostel?.uid,
-        hostel_title: hostel?.title,
-      });
-    }
-
+  
+    jstag.send({
+      _e: lytics_event,
+      hostelId: hostel?.uid,
+      hostelName: hostel?.title
+    })
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     if (hostel?.uid) {

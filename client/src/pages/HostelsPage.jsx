@@ -449,7 +449,7 @@ export default function FindHostel() {
                     <HostelCard
                       key={hostel.uid}
                       hostel={hostel}
-                      source="hostels_page"
+                      lytics_event="hostels_page"
                       variant="detailed"
                       lowestPrice={lowestPrice ?? undefined}
                       isAvailable={isAvailable}

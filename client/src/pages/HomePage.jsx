@@ -26,6 +26,8 @@ import { AuthContext } from "@/context/AuthContext";
 import { useContext } from "react";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 import { personalizeSdk } from "@/contentstack/personalizeSdk";
+import { FocusCards } from "@/components/ui/focus-cards";
+import HostelCard from "@/components/HostelCard";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -92,27 +94,14 @@ export default function HomePage() {
   )?.testimonials_section;
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
 
-  // jstag.on("pathfora.publish.done", function (topic, event) {
-  //   // here we initialize a new Pathfora "Message" experience
-  //   var module = new pathfora.Message({
-  //     id: "welcome-message", // unique id for the experience
-  //     layout: "slideout",
-  //     headline: "Welcome to Travel Tribe!",
-  //     msg: "We use cookies to improve your experience. By continuing, you agree to our cookie policy. Disable ad blockers for personalized content.",
-  //     cancelShow: false,
-  //   });
+  const featureCards = (featuresSection?.features || []).map((item) => ({
+    title: item?.feature_title || "Feature",
+    description: item?.feature_description || "",
+    src: item?.feature_image?.url || "",
+    titleProps: item?.$?.feature_title,
+    descriptionProps: item?.$?.feature_description,
+  }));
 
-  //   var modules = {
-  //     target: [
-  //       {
-  //         segment: "anonymous_profiles",
-  //         widgets: [module],
-  //       },
-  //     ],
-  //   };
-
-  //   pathfora.initializeWidgets(modules); // initialize the campaign
-  // });
 
 
 
@@ -201,36 +190,7 @@ export default function HomePage() {
             {featuresSection?.title}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-12">
-            {featuresSection?.features?.map((item, index) => (
-              <div
-                key={index}
-                className=" group flex flex-col items-center text-center p-8  rounded-xl shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 "
-              >
-                <div className=" mb-4 flex items-center justify-center w-16 h-16 rounded-full bg-[var(--accent)] transition-colors duration-300 group-hover:bg-white">
-                  <img
-                    src={item?.feature_icon?.url}
-                    alt={item?.feature_title}
-                    className="h-8 w-8 object-contain"
-                  />
-                </div>
-
-                <h3
-                  className="text-2xl font-semibold mb-3 text-[var(--text-dark)]"
-                  {...item?.$?.feature_title}
-                >
-                  {item?.feature_title}
-                </h3>
-
-                <p
-                  className="text-lg text-[var(--text-muted)] leading-relaxed"
-                  {...item?.$?.feature_description}
-                >
-                  {item?.feature_description}
-                </p>
-              </div>
-            ))}
-          </div>
+          <FocusCards cards={featureCards} />
         </div>
       </section>
 
@@ -260,59 +220,12 @@ export default function HomePage() {
 
                   return (
                     <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
-                      <Card className="group overflow-hidden bg-white shadow-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_var(--card-shadow-hover)] cursor-pointer">
-                        {/* Image */}
-                        <div className="relative h-64 w-full overflow-hidden">
-                          <img
-                            src={hostel.images?.[0]?.url}
-                            alt={hostel.title}
-                            className="
-                        h-full w-full object-cover
-                        transition-transform duration-500
-                        group-hover:scale-110
-                      "
-                          />
+                      <HostelCard
+                      hostel={hostel}
+                      lytics_event="home_page"
+                      variant="compact"
 
-                          {/* Gradient Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
-                          {/* Title */}
-                          <h3
-                            className="absolute bottom-4 left-4 right-4 text-white text-lg font-semibold leading-snug"
-                            {...hostel?.$?.title}
-                          >
-                            {hostel.title.length > 32
-                              ? `${hostel.title.slice(0, 32)}...`
-                              : hostel.title}
-                          </h3>
-                        </div>
-
-                        {/* Content */}
-                        <CardContent className="p-5 flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-[var(--text-muted)]">
-                              Starting from
-                            </p>
-                            <p className="text-lg font-bold text-[var(--text-dark)]">
-                              ₹{minPrice}
-                            </p>
-                          </div>
-
-                          <Button
-                            onClick={() => {
-                              jstag.send({
-                                _e: "hero_hostel_viewed",
-                                hostel_id: hostel.uid,
-                                hostel_title: hostel.title,
-                              });
-                              navigate(`/hostel/${hostel.uid}`);
-                            }}
-                            className=" rounded-full px-5 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active) "
-                          >
-                            View
-                          </Button>
-                        </CardContent>
-                      </Card>
+                      />
                     </CarouselItem>
                   );
                 })}
