@@ -34,6 +34,41 @@ export function applyTheme(primaryColor) {
   );
 
   document.documentElement.style.setProperty(
+    "--primary-soft",
+    base.alpha(0.12).toRgbString()
+  );
+
+  document.documentElement.style.setProperty(
+    "--bg-muted",
+    base.alpha(0.05).toRgbString()
+  );
+
+  document.documentElement.style.setProperty(
+    "--border-subtle",
+    base.alpha(0.16).toRgbString()
+  );
+
+  document.documentElement.style.setProperty(
+    "--border-strong",
+    base.alpha(0.28).toRgbString()
+  );
+
+  document.documentElement.style.setProperty(
+    "--card-shadow-hover",
+    base.alpha(0.20).toRgbString()
+  );
+
+  document.documentElement.style.setProperty(
+    "--text-inverse",
+    "#ffffff"
+  );
+
+  document.documentElement.style.setProperty(
+    "--overlay",
+    "rgba(15, 23, 42, 0.48)"
+  );
+
+  document.documentElement.style.setProperty(
     "--hero-grad-start",
     base.alpha(0.08).toRgbString()
   );

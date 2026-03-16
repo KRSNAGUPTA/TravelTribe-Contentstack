@@ -131,7 +131,7 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
     <Button 
       onClick={handlePayment} 
       disabled={isProcessing}
-      className="bg-purple-600 hover:bg-purple-700 text-white"
+      className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
     >
       {isProcessing ? (
         <>

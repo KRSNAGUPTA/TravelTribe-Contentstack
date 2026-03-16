@@ -6,15 +6,24 @@
   --primary: #000000;          /* default fallback */
   --primary-hover: #0b070b;
   --primary-active: #141015;
+  --primary-soft: rgba(0, 0, 0, 0.12);
   --text-secondary: #c0c0c0;
 
   /* Neutral text */
   --text-dark: #111827;
   --text-muted: #4b5563;
+  --text-inverse: #ffffff;
+  --bg-muted: rgba(0, 0, 0, 0.05);
 
   /* Accent (derived from primary) */
   --accent: rgba(124, 58, 237, 0.12);
   --accent-hover: rgba(124, 58, 237, 0.18);
+  --hero-grad-start: rgba(0, 0, 0, 0.08);
+  --hero-grad-end: #ffffff;
+  --card-shadow-hover: rgba(0, 0, 0, 0.20);
+  --border-subtle: rgba(0, 0, 0, 0.16);
+  --border-strong: rgba(0, 0, 0, 0.28);
+  --overlay: rgba(15, 23, 42, 0.48);
 
 
   /* Text & accents */

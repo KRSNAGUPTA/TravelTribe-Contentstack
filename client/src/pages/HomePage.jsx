@@ -34,13 +34,12 @@ export default function HomePage() {
   const { user } = useContext(AuthContext);
 
   const searchParams = new URLSearchParams(window.location.search);
-  if(searchParams.get("action") === "unsubscribe" && searchParams.get("email")) {
-    return <NewsletterUnsubscribe email={searchParams.get("email")} />
+  if (
+    searchParams.get("action") === "unsubscribe" &&
+    searchParams.get("email")
+  ) {
+    return <NewsletterUnsubscribe email={searchParams.get("email")} />;
   }
-
-
-
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,8 +101,14 @@ export default function HomePage() {
     descriptionProps: item?.$?.feature_description,
   }));
 
-
-
+  const sendPersonalizeEvent = async (eventName) => {
+    try {
+      const res = await personalizeSdk?.triggerEvent(eventName);
+      console.log(`Personalize ${eventName} event triggered`, res);
+    } catch (error) {
+      console.error(`Personalize ${eventName} event failed`, error);  
+    }
+   };
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">
@@ -138,27 +143,33 @@ export default function HomePage() {
               {heroSection?.subtext}
             </p>
           </div>
-          <Button
-            onClick={() => {
-              jstag.send({
-                _e: "hero_cta_clicked",
-                cta_title: heroSection?.cta?.title || "Unknown CTA",
-              });
+          <div className="flex flex-col items-start gap-3">
+            <Button
+              onClick={() => {
+                jstag.send({
+                  _e: "hero_cta_clicked",
+                  cta_title: heroSection?.cta?.title || "Unknown CTA",
+                });
 
-              void personalizeSdk
-                ?.triggerEvent?.("click")
-                ?.catch((error) => console.error("Personalize click event failed", error));
+                sendPersonalizeEvent("click");
 
-              if (heroSection?.cta?.href) {
-                navigate(heroSection.cta.href);
-              }
-            }}
-            className=" max-w-xs rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] px-7 py-5 text-base sm:text-lg shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300 hover:-translate-y-0.5"
-            {...heroSection?.cta?.$?.title}
-          >
-            {heroSection?.cta?.title}
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+                if (heroSection?.cta?.href) {
+                  navigate(heroSection.cta.href);
+                }
+              }}
+              className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-8 py-6 text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
+              {...heroSection?.cta?.$?.title}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
+              />
+              <span className="relative z-10 flex items-center">
+                {heroSection?.cta?.title}
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </span>
+            </Button>
+          </div>
         </div>
 
         <div className=" absolute bottom-0 right-0 hidden md:block w-[70vw] lg:w-[75vw] max-w-none z-0 pointer-events-none">
@@ -221,10 +232,9 @@ export default function HomePage() {
                   return (
                     <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
                       <HostelCard
-                      hostel={hostel}
-                      lytics_event="home_page"
-                      variant="compact"
-
+                        hostel={hostel}
+                        lytics_event="home_page"
+                        variant="compact"
                       />
                     </CarouselItem>
                   );

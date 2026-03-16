@@ -1,6 +1,7 @@
 import Personalize from "@contentstack/personalize-edge-sdk";
 
 const projectUid = import.meta.env.VITE_CS_PERSONALIZE_PROJECT_UID;
+console.log("Personalize project UID:", projectUid);
 
 export let personalizeSdk = null;
 

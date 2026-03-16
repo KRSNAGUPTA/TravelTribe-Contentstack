@@ -125,19 +125,19 @@ const Login = () => {
   if (!authPageData) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-100 px-4">
-      <Card className="w-full max-w-md rounded-3xl border border-purple-100/60 shadow-[0_20px_60px_-15px_rgba(88,28,135,0.25)] backdrop-blur-sm bg-white/90">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)] px-4">
+      <Card className="w-full max-w-md rounded-3xl border border-[var(--border-subtle)] shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] backdrop-blur-sm bg-white/90">
         <Toaster />
 
         <CardContent className="p-8">
           <div className="text-center space-y-2">
             <h2
-              className="pacifico-regular text-3xl font-semibold tracking-tight text-purple-700"
+              className="pacifico-regular text-3xl font-semibold tracking-tight text-[var(--primary)] md:text-4xl"
               {...authPageData?.$?.app_title}
             >
               {authPageData?.app_title}
             </h2>
-            <p className="text-sm text-gray-500" {...authPageData?.$?.subtitle}>
+            <p className="text-sm text-[var(--text-muted)]" {...authPageData?.$?.subtitle}>
               {authPageData?.subtitle}
             </p>
           </div>
@@ -177,7 +177,7 @@ const Login = () => {
 
           <div className="flex items-center gap-3 my-6">
             <Separator className="flex-1" />
-            <span className="text-xs uppercase tracking-wide text-gray-400">
+            <span className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
               OR
             </span>
             <Separator className="flex-1" />
@@ -188,16 +188,16 @@ const Login = () => {
             onValueChange={setActiveTab}
             className="w-full"
           >
-            <TabsList className="grid grid-cols-2 rounded-xl bg-purple-50 p-1 mb-6">
+            <TabsList className="mb-6 grid grid-cols-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--primary-soft)] p-1">
               <TabsTrigger
                 value="login"
-                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="rounded-lg text-[var(--text-muted)] data-[state=active]:bg-white data-[state=active]:text-[var(--text-dark)] data-[state=active]:shadow-sm"
               >
                 {authPageData.login_text}
               </TabsTrigger>
               <TabsTrigger
                 value="signup"
-                className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="rounded-lg text-[var(--text-muted)] data-[state=active]:bg-white data-[state=active]:text-[var(--text-dark)] data-[state=active]:shadow-sm"
               >
                 {authPageData.sign_up_text}
               </TabsTrigger>
@@ -215,27 +215,27 @@ const Login = () => {
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.email_label}
                   </Label>
                   <Input
                     name="email"
                     type="email"
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.password_label}
                   </Label>
                   <Input
                     name="password"
                     type="password"
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -243,7 +243,7 @@ const Login = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 shadow-md transition"
+                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
                 >
                   {loading ? "Signing in..." : authPageData.login_text}
                 </Button>
@@ -262,52 +262,52 @@ const Login = () => {
                 className="space-y-4"
               >
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.name_label}
                   </Label>
                   <Input
                     name="name"
                     placeholder={authPageData.name_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.email_label}
                   </Label>
                   <Input
                     name="email"
                     type="email"
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.phone_number_label}
                   </Label>
                   <Input
                     name="phone"
                     type="number"
                     placeholder={authPageData.phone_number_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-gray-600">
+                  <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.password_label}
                   </Label>
                   <Input
                     name="password"
                     type="password"
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                    className="rounded-xl border-[var(--border)] bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
                   />
                 </div>
@@ -315,7 +315,7 @@ const Login = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-purple-600 hover:bg-purple-700 shadow-md transition"
+                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
                 >
                   {loading ? "Creating account..." : authPageData.sign_up_text}
                 </Button>
