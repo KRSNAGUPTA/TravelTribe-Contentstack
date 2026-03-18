@@ -31,12 +31,12 @@ function NewsletterUnsubscribe({ email: propEmail = "" }) {
 
     setIsSubmitting(true);
 
-    jstag.send({
-      _e: "newsletter_unsubscribe",
-      newsletter_email: emailValue,
-      reason: selectedReason,
-      feedback_provided: feedback.trim() !== "",
-    });
+    // trackEvent("newsletter_unsubscribe", {
+    //   _e: "newsletter_unsubscribe",
+    //   newsletter_email: emailValue,
+    //   reason: selectedReason,
+    //   feedback_provided: feedback.trim() !== "",
+    // });
 
     try {
       await new Promise((resolve) => setTimeout(resolve, 800));

@@ -14,6 +14,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api from "@/api";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import { trackEvent } from "@/Lytics/config";
 import {
   fetchEntryById,
   setDataForChromeExtension,
@@ -157,8 +158,7 @@ const Login = () => {
                 toast({ title: "Login Successful" });
 
                 // identifyUser(data.data.user.email);
-                jstag.send({
-                  _e: "google_login",
+                trackEvent("google_login", {
                   email: data.data.user.email,
                   name: data.data.user.name,
                 });

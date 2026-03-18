@@ -75,13 +75,13 @@ export function RecentlyViewedHostel({ email }) {
   //       return;
   //     }
 
-  //     // console.log("Enity", jstag.getEntity());
+  //     // console.log("Entity from profile");
 
   //     setLoading(true);
   //     try {
   //       const profile = await api.get(`/api/lytics/profile/email/${email}`);
   //       const viewedIds = profile?.data?.viewed_hostel || [];
-  //       // const viewedIds = jstag.getEntity();
+  //       // const viewedIds = profile?.data?.viewed_hostel || [];
   //       // console.log("Viewed Hostel IDs from Lytics:", viewedIds);
 
   //       if (!isMounted) return;

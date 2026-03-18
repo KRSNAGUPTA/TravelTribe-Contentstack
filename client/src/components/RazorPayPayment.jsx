@@ -21,13 +21,13 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       
       const res = await api.post("/api/booking/", bookingData);
 
-      jstag.send({
-        _e: "booking_successful",
-        hostel_id: hostelId,
-        total_amount: formData.amount,
-        hostel_name: hostelName,
-        room_type: roomType,
-      });
+      // trackEvent("booking_successful", {
+      //   _e: "booking_successful",
+      //   hostel_id: hostelId,
+      //   total_amount: formData.amount,
+      //   hostel_name: hostelName,
+      //   room_type: roomType,
+      // });
       
       toast({
         title: "Booking successful",
@@ -52,15 +52,15 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       return;
     }
 
-    jstag.send({
-      _e: "booking_initiated",
-      hostel_id: hostelId,
-      hostel_name: hostelName,
-      room_type: roomType,
-      total_amount: formData.amount,
-      check_in: formData.checkIn,
-      check_out: formData.checkOut,
-    });
+    // trackEvent("booking_initiated", {
+    //   _e: "booking_initiated",
+    //   hostel_id: hostelId,
+    //   hostel_name: hostelName,
+    //   room_type: roomType,
+    //   total_amount: formData.amount,
+    //   check_in: formData.checkIn,
+    //   check_out: formData.checkOut,
+    // });
 
     setIsProcessing(true);
     try {
@@ -69,10 +69,10 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         currency: "INR",
         hostelId: `${hostelId}`,
       });
-      jstag.send({
-        _e: "currency_selected",
-        currency: "INR"
-      });
+      // trackEvent("currency_selected", {
+      //   _e: "currency_selected",
+      //   currency: "INR"
+      // });
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
@@ -93,13 +93,13 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
                 title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
               });
-              jstag.send({
-                _e: "payment_successful",
-                hostel_id: hostelId,
-                total_amount: formData.amount,
-                hostel_name: hostelName,
-                room_type: roomType,
-              });
+              // trackEvent("payment_successful", {
+              //   _e: "payment_successful",
+              //   hostel_id: hostelId,
+              //   total_amount: formData.amount,
+              //   hostel_name: hostelName,
+              //   room_type: roomType,
+              // });
               await handleBooking(orderResponse.data.receipt);
             }
           } catch (error) {

@@ -82,6 +82,7 @@ import RecentlyViewedHostel from "@/components/RecentlyViewedHostel";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { XCircle } from "lucide-react";
+import { trackEvent } from "@/Lytics/config";
 
 export default function HostelDetails() {
   const { id } = useParams();
@@ -125,20 +126,14 @@ export default function HostelDetails() {
         setHostel(entry);
 
         // console.log("email",JSON.parse(localStorage.getItem("user"))?.email)
-        // jstag.send({
-        //   _e: "test_event",
-        //   hostelId: entry.uid,
-        // })
 
-        jstag.send({
-          _e: "viewed_hostel",
+        trackEvent("viewed_hostel", {
           hostel_id: entry.uid,
           hostel_name: entry.title,
           email: user?.email || null,
         });
 
-        // console.log("Entiry", jstag.getEntity());
-        // console.log(jstag.getid(id=>console.log("ID", id)));
+        // console.log("Viewed hostel tracked");
       } catch (error) {
         console.error("Error fetching hostel data", error);
         setHostel(null);

@@ -116,10 +116,10 @@ const Footer = () => {
         title: "Please, Enter a valid email",
       });
     }
-    jstag.send({
-      _e: "newsletter_subscribe",
-      newsletter_email: email,
-    });
+    // trackEvent("newsletter_subscribe", {
+    //   _e: "newsletter_subscribe",
+    //   newsletter_email: email,
+    // });
 
     try {
       await api.post("/api/subscribe", {

@@ -21,6 +21,7 @@ import {
   Wifi,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { trackEvent } from "@/Lytics/config";
 
 const typeIconMap = {
   Boys: <Mars className="h-4 w-4 text-blue-600" aria-hidden="true" />,
@@ -84,12 +85,10 @@ export default function HostelCard({
         };
 
   const handleOpen = () => {
-  
-    jstag.send({
-      _e: lytics_event,
+    trackEvent(lytics_event, {
       hostelId: hostel?.uid,
-      hostelName: hostel?.title
-    })
+      hostelName: hostel?.title,
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
 
     if (hostel?.uid) {
