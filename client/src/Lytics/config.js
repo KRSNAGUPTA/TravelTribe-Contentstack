@@ -1,5 +1,25 @@
 // client/src/Lytics/config.js
 
+
+export const trackEvent = (eventName, properties = {}) => {
+  // const jstag = getJstag();
+  if (!jstag?.send) {
+    console.warn("Lytics unavailable. Skipping trackEvent.");
+    return false;
+  }
+  
+  try {
+    jstag.send({
+      _e: eventName,
+      ...properties,
+    });
+    // return true;
+  } catch (error) {
+    console.error("Lytics trackEvent failed", error);
+    // return false;
+  }
+};
+
 // let hasWarnedMissingJstag = false;
 
 // const getJstag = () => {
@@ -30,26 +50,6 @@
 // };
 
 // initLytics();
-
-export const trackEvent = (eventName, properties = {}) => {
-  // const jstag = getJstag();
-  if (!jstag?.send) {
-    console.warn("Lytics unavailable. Skipping trackEvent.");
-    return false;
-  }
-
-  try {
-    jstag.send({
-      _e: eventName,
-      ...properties,
-    });
-    return true;
-  } catch (error) {
-    console.error("Lytics trackEvent failed", error);
-    return false;
-  }
-};
-
 {
   /*
 
