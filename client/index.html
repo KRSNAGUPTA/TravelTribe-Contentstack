@@ -62,6 +62,7 @@
       // - The setup below will disable the automatic sending of Page Analysis Information (to prevent duplicative sends, as this same information will be included in the jstag.pageView() call below, by default)
       jstag.init({
         src: "https://c.lytics.io/api/tag/6a03218477b4c778f5bda02df0347688/latest.min.js",
+        channel: "web"
       });
 
       // You may need to send a page view, depending on your use-case
