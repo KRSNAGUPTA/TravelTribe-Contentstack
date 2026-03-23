@@ -209,7 +209,7 @@ const Footer = () => {
               className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
             >
               <span {...footerData?.$?.subscribe_button_text}>
-                {console.log(profile?.user)}
+                {/* {console.log(profile?.user)} */}
                 {profile && profile.user.newsletter_subscribed ? "Subscribed" : footerData?.subscribe_button_text}
               </span>
             </Button>
