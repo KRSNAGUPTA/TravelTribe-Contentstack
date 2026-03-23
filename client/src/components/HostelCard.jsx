@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { trackEvent } from "@/Lytics/config";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 const typeIconMap = {
   Boys: <Mars className="h-4 w-4 text-blue-600" aria-hidden="true" />,
@@ -49,6 +51,7 @@ export default function HostelCard({
   isAvailable,
 }) {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
   const computedMinPrice =
     hostel?.room_types?.length > 0
@@ -88,6 +91,8 @@ export default function HostelCard({
     trackEvent(lytics_event, {
       hostelId: hostel?.uid,
       hostelName: hostel?.title,
+      email: user?.email || null,
+      name: user?.name || null,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
 

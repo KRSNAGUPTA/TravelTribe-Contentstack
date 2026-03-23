@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
 import { track } from '@vercel/analytics/react';
+import { trackEvent } from '@/Lytics/config';
 const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateForm }) => {
   const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(false);
@@ -21,13 +22,14 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       
       const res = await api.post("/api/booking/", bookingData);
 
-      // trackEvent("booking_successful", {
-      //   _e: "booking_successful",
-      //   hostel_id: hostelId,
-      //   total_amount: formData.amount,
-      //   hostel_name: hostelName,
-      //   room_type: roomType,
-      // });
+      trackEvent("booking_successful", {
+        hostel_id: hostelId,
+        total_amount: formData.amount,
+        hostel_name: hostelName,
+        room_type: roomType,
+        email: formData.email || null,
+        name: formData.name || null,
+      });
       
       toast({
         title: "Booking successful",
@@ -52,15 +54,17 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       return;
     }
 
-    // trackEvent("booking_initiated", {
-    //   _e: "booking_initiated",
-    //   hostel_id: hostelId,
-    //   hostel_name: hostelName,
-    //   room_type: roomType,
-    //   total_amount: formData.amount,
-    //   check_in: formData.checkIn,
-    //   check_out: formData.checkOut,
-    // });
+    trackEvent("booking_initiated", {
+      _e: "booking_initiated",
+      hostel_id: hostelId,
+      hostel_name: hostelName,
+      room_type: roomType,
+      total_amount: formData.amount,
+      check_in: formData.checkIn,
+      check_out: formData.checkOut,
+      email: formData.email || null,
+      name: formData.name || null,
+    });
 
     setIsProcessing(true);
     try {
@@ -69,11 +73,14 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         currency: "INR",
         hostelId: `${hostelId}`,
       });
-      // trackEvent("currency_selected", {
-      //   _e: "currency_selected",
-      //   currency: "INR"
-      // });
+      trackEvent("currency_selected", {
+        _e: "currency_selected",
+        currency: "INR",
+        email: formData.email || null,
+        name: formData.name || null,
+      });
 
+      const cleanPhone = formData.phone?.replace(/\D/g, '').slice(-10) || "";
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderResponse.data.amount,
@@ -81,6 +88,9 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         name: "Travel Tribe",
         description: "Hostel Booking Payment",
         order_id: orderResponse.data.id,
+        theme: {
+          color: "var(--primary)",
+        },
         handler: async (response) => {
           try {
             const verifyResponse = await api.post(
@@ -93,13 +103,15 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
                 title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
               });
-              // trackEvent("payment_successful", {
-              //   _e: "payment_successful",
-              //   hostel_id: hostelId,
-              //   total_amount: formData.amount,
-              //   hostel_name: hostelName,
-              //   room_type: roomType,
-              // });
+              trackEvent("payment_successful", {
+                _e: "payment_successful",
+                hostel_id: hostelId,
+                total_amount: formData.amount,
+                hostel_name: hostelName,
+                room_type: roomType,
+                email: formData.email || null,
+                name: formData.name || null,
+              });
               await handleBooking(orderResponse.data.receipt);
             }
           } catch (error) {

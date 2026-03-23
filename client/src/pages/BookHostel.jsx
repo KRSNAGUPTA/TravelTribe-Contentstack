@@ -105,6 +105,8 @@ export default function HostelBooking() {
 
     trackEvent("booking_page_viewed", {
       hostel_id: id,
+      email: user?.email || null,
+      name: user?.name || null,
     });
   }, [id, toast]);
 
@@ -246,6 +248,8 @@ export default function HostelBooking() {
     if (!validateDates()) return false;
 
     trackEvent("user_profile_updated", {
+      email: formData.email,
+      name: formData.name,
       phone: formData.phone,
       gender: formData.gender,
     });
@@ -262,6 +266,8 @@ export default function HostelBooking() {
           total_amount: formData.amount || 0,
           check_in: formData.checkIn,
           check_out: formData.checkOut,
+          email: formData.email,
+          name: formData.name,
         });
         setHasTrackedBookingStarted(true);
       }

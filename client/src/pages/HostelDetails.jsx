@@ -131,6 +131,7 @@ export default function HostelDetails() {
           hostel_id: entry.uid,
           hostel_name: entry.title,
           email: user?.email || null,
+          name: user?.name || null,
         });
 
         // console.log("Viewed hostel tracked");
@@ -172,6 +173,26 @@ export default function HostelDetails() {
   }, [hostel]);
 
   const navigate = useNavigate();
+
+  const goToBooking = ({ roomKey, roomPrice, source }) => {
+    if (!roomKey || !hostel?.uid) {
+      return;
+    }
+
+    trackEvent("cart_add", {
+      hostel_id: hostel.uid,
+      hostel_name: hostel.title,
+      room_type: roomKey,
+      room_price_per_day: roomPrice ?? null,
+      email: user?.email || null,
+      name: user?.name || null,
+      hostel_link: window.location.href,
+      source,
+    });
+
+    navigate(`/hostel/${hostel.uid}/book?room=${roomKey}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -653,12 +674,13 @@ export default function HostelDetails() {
                         {/* Book room */}
                         <Button
                           disabled={!room.is_available}
-                          onClick={() => {
-                            (navigate(
-                              `/hostel/${hostel.uid}/book?room=${room.room_key}`,
-                            ),
-                              window.scrollTo({ top: 0, behavior: "smooth" }));
-                          }}
+                          onClick={() =>
+                            goToBooking({
+                              roomKey: room.room_key,
+                              roomPrice: room.base_price,
+                              source: "room_card",
+                            })
+                          }
                           className={`
     w-full rounded-full text-white font-medium
     transition-all duration-300
@@ -814,10 +836,13 @@ export default function HostelDetails() {
                 )}
               </div>
               <Button
-                onClick={() => {
-                  navigate(`/hostel/${hostel?.uid}/book?room=${minRoomType}`);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onClick={() =>
+                  goToBooking({
+                    roomKey: minRoomType,
+                    roomPrice: minPrice,
+                    source: "sticky_book_now",
+                  })
+                }
                 className="w-full sm:w-auto flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--on-primary)] px-8 py-6 rounded-full"
               >
                 <Calendar className="w-5 h-5" />

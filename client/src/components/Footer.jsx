@@ -8,6 +8,8 @@ import { fetchEntryById, setDataForChromeExtension } from "@/contentstack/utils"
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { LyticsContext } from "@/context/LyticsContext";
+import { trackEvent } from "@/Lytics/config";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -15,6 +17,7 @@ const Footer = () => {
   const navigate = useNavigate();
 
   const {user} = useContext(AuthContext);
+  const { profile } = useContext(LyticsContext);
 
   const isInternalLink = (href = "") => {
     return href.startsWith("/") && !href.startsWith("//");
@@ -116,10 +119,11 @@ const Footer = () => {
         title: "Please, Enter a valid email",
       });
     }
-    // trackEvent("newsletter_subscribe", {
-    //   _e: "newsletter_subscribe",
-    //   newsletter_email: email,
-    // });
+    trackEvent("newsletter_subscribe", {
+      _e: "newsletter_subscribe",
+      email: email,
+      name: user?.name || null,
+    });
 
     try {
       await api.post("/api/subscribe", {
@@ -205,7 +209,8 @@ const Footer = () => {
               className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
             >
               <span {...footerData?.$?.subscribe_button_text}>
-                {footerData?.subscribe_button_text}
+                {console.log(profile?.user)}
+                {profile && profile.user.newsletter_subscribed ? "Subscribed" : footerData?.subscribe_button_text}
               </span>
             </Button>
           </div>

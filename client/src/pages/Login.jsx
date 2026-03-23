@@ -29,8 +29,14 @@ const Login = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("login");
   const [authPageData, setAuthPageData] = useState(null);
+  const [data, setData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
 
-  const data = {
+  const pageData = {
     entryUid: "bltcb7c69182a4d93ca",
     contenttype: "auth_page",
     locale: import.meta.env.VITE_CS_LOCALE,
@@ -39,8 +45,8 @@ const Login = () => {
     const fetchData = async () => {
       try {
         const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
+          pageData.contenttype,
+          pageData.entryUid,
           import.meta.env.VITE_SDK,
           null,
         );
@@ -52,47 +58,55 @@ const Login = () => {
     };
 
     onEntryChange(fetchData);
-    setDataForChromeExtension(data);
+    setDataForChromeExtension(pageData);
   }, []);
+
+  const handleDataChange = (e) => {
+    const { name, value } = e.target;
+    setData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleAuth = async (e, type) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
+    const formData = { ...data };
 
     try {
       if (type === "signup") {
-        if (data.phone.length < 10) {
+        if (formData.phone.length < 10) {
+          setLoading(false);
           return toast({
             title: "Invalid phone number",
             variant: "destructive",
           });
         }
 
-        if (data.password.length < 8) {
+        if (formData.password.length < 8) {
+          setLoading(false);
           return toast({
             title: "Password must be at least 8 characters",
             variant: "destructive",
           });
         }
 
-        await signupUser(data);
+        await signupUser(formData);
 
         toast({
           title: authPageData.sign_up_text,
-          description: `Welcome ${data.name}`,
+          description: `Welcome ${formData.name}`,
           icon: <CheckCircle className="text-green-500" />,
         });
 
-        e.target.reset();
         setActiveTab("login");
         return;
       }
 
-      await login(data.email, data.password);
+      await login(formData.email, formData.password);
 
       toast({
         title: authPageData.login_text,
@@ -221,6 +235,8 @@ const Login = () => {
                   <Input
                     name="email"
                     type="email"
+                    value={data.email}
+                    onChange={handleDataChange}
                     placeholder={authPageData.email_placeholder}
                     className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
@@ -234,6 +250,8 @@ const Login = () => {
                   <Input
                     name="password"
                     type="password"
+                    value={data.password}
+                    onChange={handleDataChange}
                     placeholder={authPageData.password_placeholder}
                     className="rounded-xl bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
@@ -267,6 +285,8 @@ const Login = () => {
                   </Label>
                   <Input
                     name="name"
+                    value={data.name}
+                    onChange={handleDataChange}
                     placeholder={authPageData.name_placeholder}
                     className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
@@ -280,6 +300,8 @@ const Login = () => {
                   <Input
                     name="email"
                     type="email"
+                    value={data.email}
+                    onChange={handleDataChange}
                     placeholder={authPageData.email_placeholder}
                     className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
@@ -293,6 +315,8 @@ const Login = () => {
                   <Input
                     name="phone"
                     type="number"
+                    value={data.phone}
+                    onChange={handleDataChange}
                     placeholder={authPageData.phone_number_placeholder}
                     className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required
@@ -306,6 +330,8 @@ const Login = () => {
                   <Input
                     name="password"
                     type="password"
+                    value={data.password}
+                    onChange={handleDataChange}
                     placeholder={authPageData.password_placeholder}
                     className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                     required

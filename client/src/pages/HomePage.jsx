@@ -139,6 +139,8 @@ export default function HomePage() {
               onClick={() => {
                 trackEvent("hero_cta_clicked", {
                   cta_title: heroSection?.cta?.title || "Unknown CTA",
+                  email: user?.email || null,
+                  name: user?.name || null,
                 });
 
                 if (heroSection?.cta?.href) {
