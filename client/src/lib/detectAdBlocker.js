@@ -2,9 +2,9 @@ const AD_BAIT_CLASS = "adsbox ads ad-banner ad-placement";
 const BAIT_STYLE =
 	"position:absolute;left:-9999px;top:-9999px;height:1px;width:1px;pointer-events:none;";
 const PROBE_URLS = [
-	"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
-	"https://c.lytics.io/static/pathfora.min.js",
-	"https://c.lytics.io/static/io.min.js",
+	// "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js",
+	// "https://c.lytics.io/static/pathfora.min.js",
+	// "https://c.lytics.io/static/io.min.js",
 ];
 
 const checkBaitElementBlocked = () => {

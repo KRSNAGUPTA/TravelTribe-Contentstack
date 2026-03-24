@@ -1,4 +1,6 @@
 import axios from "axios";
+
+// not using
 const fetchLyticsProfile = async (req, res) => {
     const {email} = req.params;
     if(!email){
