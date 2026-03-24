@@ -1,133 +1,84 @@
-// client/src/Lytics/config.js
-
-
+/**
+ * Safe wrapper for jstag.send (Events)
+ * Uses window prefix to prevent ReferenceErrors if Lytics is blocked or slow.
+ */
 export const trackEvent = (eventName, properties = {}) => {
-  // const jstag = getJstag();
-  if (!jstag?.send) {
-    console.warn("Lytics unavailable. Skipping trackEvent.");
+  const lib = window.jstag;
+
+  if (!lib || typeof lib.send !== "function") {
+    console.warn(`Lytics not loaded. Skipping event: ${eventName}`);
     return false;
   }
   
   try {
-    jstag.send({
+    lib.send({
       _e: eventName,
       ...properties,
     });
-    // return true;
+    return true;
   } catch (error) {
-    console.error("Lytics trackEvent failed", error);
-    // return false;
+    console.error("Lytics trackEvent failed:", error);
+    return false;
   }
 };
 
-// let hasWarnedMissingJstag = false;
+/**
+ * Safe wrapper for jstag.identify (Identity) - NOT CURRENTLY USED
+ * No official docs found on this method, Right now all thing are managed via jstag.send 
+ */
+// export const identifyUser = (email, traits = {}) => {
+//   const lib = window.jstag;
 
-// const getJstag = () => {
-//   if (typeof window === "undefined") {
-//     return null;
-//   }
-
-//   return window.jstag || null;
-// };
-
-// from the doc, but not recommended. Use the availabale script from Lytics setup to add in index.html
-// const initLytics = async () => {
-//   if (!import.meta.env.VITE_LYTICS_CID || !import.meta.env.VITE_LYTICS_STREAM) {
-//     console.warn(
-//       "Lytics CID or Stream is not set. Skipping Lytics initialization.",
-//     );
+//   if (!lib || typeof lib.identify !== "function") {
+//     console.warn("Lytics not loaded. Skipping identify.");
 //     return;
 //   }
+
 //   try {
-//     jstag.init({
-//       cid: import.meta.env.VITE_LYTICS_CID, // Connects to your Lytics account
-//       stream: import.meta.env.VITE_LYTICS_STREAM, // Target data stream
-//       sessecs: 1800, // Session timeout (seconds)
+//     lib.identify({
+//       email: email,
+//       ...traits,
 //     });
 //   } catch (error) {
-//     console.error("Error initializing Lytics:", error);
+//     console.error("Lytics identify failed:", error);
 //   }
 // };
 
-// initLytics();
-{
-  /*
-
-No official source found for this
-export const identifyUser = (email, traits = {}) => {
-  jstag.identify({
-    email: email,
-    ...traits,
-  });
-};
-
-*/
-}
-
-{
-  /*
-not recommended to use this directly, as lytics provide a callback based approach. 
-export const fetchLyticsProfile = async (email) =>{
-  try {
-    const baseUrl = import.meta.env.VITE_LYTICS_BASE_URL;
-    const apiKey = import.meta.env.VITE_LYTICS_API_KEY;
-
-    if (!baseUrl || !apiKey) {
-      return console.warn("Lytics base URL or API key is not set. Cannot fetch profile.");
-    }
-
-    const res = await axios.get(`${baseUrl}/identity/user/email/${email}`, {
-      headers: {
-        Authorization: `${apiKey}`,
-      },
-    });
-
-    console.log("Lytics Profile Response", res.data);
-    return res.data;
-  } catch (error) {
-    console.error("Error fetching user profile from Lytics:", error);
-  }
-}
-
-This function now returns a Promise "wrapper"
-
-*/
-}
-
+/**
+ * Promise wrapper for jstag.call("entityReady") (Profiles)
+ * Resolves with profile data or a safe fallback if blocked/timed out.
+ */
 export const getLyticsProfile = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    // 1. Set a safety timeout so the app doesn't wait forever if blocked
     const timeout = setTimeout(() => {
-      console.warn(
-        "Lytics timed out (likely blocked by AdBlock). Please, turn off Adblocker for personalized experience!",
-      );
-      resolve({ user: { viewed_hostel: [] } }); // Resolve with empty data so the app doesn't crash
-    }, 2000); // 2 seconds is usually enough
+      console.warn("Lytics profile fetch timed out (likely AdBlock).");
+      resolve({ user: { viewed_hostel: [] } }); 
+    }, 2500);
 
-    // console.log("Calling jstag for entityReady");
-
-    // 2. Try the Lytics call
     try {
-      // const jstag = getJstag();
+      const lib = window.jstag;
 
-      if (!jstag || !jstag.call || typeof jstag.call !== "function") {
+      // 2. Check if lib exists and the 'call' method is ready
+      if (!lib || typeof lib.call !== "function") {
         clearTimeout(timeout);
         resolve({ user: { viewed_hostel: [] } });
         return;
       }
 
-      jstag.call("entityReady", (profile) => {
-        clearTimeout(timeout); // Cancel the timeout if Lytics actually responds
-        // console.log("Lytics responded successfully");
-
+      // 3. Request the profile via the Lytics 'entityReady' callback
+      lib.call("entityReady", (profile) => {
+        clearTimeout(timeout);
+        
         if (profile && profile.data) {
           resolve(profile.data);
         } else {
-          resolve({ user: { viewed_hostel: [] } }); // Fallback
+          resolve({ user: { viewed_hostel: [] } });
         }
       });
     } catch (e) {
       clearTimeout(timeout);
-      console.error("jstag is not defined or crashed:", e);
+      console.error("Lytics getLyticsProfile crashed:", e);
       resolve({ user: { viewed_hostel: [] } });
     }
   });

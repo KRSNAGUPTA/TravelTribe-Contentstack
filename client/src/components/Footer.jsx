@@ -10,6 +10,12 @@ import { AuthContext } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { LyticsContext } from "@/context/LyticsContext";
 import { trackEvent } from "@/Lytics/config";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
@@ -18,6 +24,7 @@ const Footer = () => {
 
   const {user} = useContext(AuthContext);
   const { profile } = useContext(LyticsContext);
+  const isAlreadySubscribed = Boolean(profile?.user?.newsletter_subscribed);
 
   const isInternalLink = (href = "") => {
     return href.startsWith("/") && !href.startsWith("//");
@@ -106,6 +113,12 @@ const Footer = () => {
   }, [user?.email]);
 
   const handleSubscribe = async () => {
+    if (isAlreadySubscribed) {
+      return toast({
+        title: "You are already subscribed.",
+      });
+    }
+
     if (!email) {
       return toast({
         variant: "destructive",
@@ -201,18 +214,39 @@ const Footer = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={footerData?.email_placeholder}
+              disabled={isAlreadySubscribed}
               className="h-10 w-full rounded-md border border-gray-700 bg-gray-900/80 px-4 text-sm text-white outline-none transition focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/40"
               {...footerData?.$?.email_placeholder}
             />
-            <Button
-              onClick={handleSubscribe}
-              className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
-            >
-              <span {...footerData?.$?.subscribe_button_text}>
-                {/* {console.log(profile?.user)} */}
-                {profile && profile.user.newsletter_subscribed ? "Subscribed" : footerData?.subscribe_button_text}
-              </span>
-            </Button>
+            {isAlreadySubscribed ? (
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full sm:w-auto">
+                      <Button
+                        onClick={handleSubscribe}
+                        disabled
+                        className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
+                      >
+                        <span {...footerData?.$?.subscribe_button_text}>Subscribed</span>
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="rounded-md border bg-white/95 px-3 py-1.5 text-xs font-semibold text-black">
+                    You are already subscribed to newsletter updates.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <Button
+                onClick={handleSubscribe}
+                className="h-10 w-full rounded-md bg-[var(--primary)] px-5 text-sm font-semibold transition hover:bg-[var(--primary-hover)] sm:w-auto"
+              >
+                <span {...footerData?.$?.subscribe_button_text}>
+                  {footerData?.subscribe_button_text}
+                </span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

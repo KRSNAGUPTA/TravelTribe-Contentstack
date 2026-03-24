@@ -1,27 +1,36 @@
-PORT = 5001
-NODE_ENV="development"
-MONGO_URI_PROD=""
-MONGO_URI ="mongodb://mongo:27017/travel_tribe"
+PORT=5001
+NODE_ENV="development" # production | development
+MONGO_URI_PROD="mongodb+srv://<username>:<password>@traveltribecluster.cexza.mongodb.net/?appName=TravelTribeCluster"
+MONGO_URI="mongodb://mongo:27017/travel_tribe"
 
 JWT_SECRET=""
-CORS_ORIGIN =""
+CORS_ORIGIN=""
 
 GOOGLE_CLIENT_ID=""
 
-RAZORPAY_KEY_ID = ""
-RAZORPAY_KEY_SECRET = ""
+RAZORPAY_KEY_ID=""
+RAZORPAY_KEY_SECRET=""
+
+CLOUDINARY_CLOUD_NAME=""
+CLOUDINARY_API_KEY=""
+CLOUDINARY_API_SECRET=""
 
 # webhook for authorised access to hook for cms room data update
-WEBHOOK_SECRET = ""
+WEBHOOK_SECRET=""
 
 # optional (for discord integration)
 DISCORD_BOT_WEBHOOK=""
 
 # Contentstack (CS) (region: North America) 
-CS_BASE_URL="https://cdn.contentstack.io/v3"
-CS_API_KEY=""
-CS_ACCESS_TOKEN="" # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
-CS_PREVIEW_TOKEN=""
+CS_BASE_URL=https://cdn.contentstack.io/v3
+CS_API_KEY=
+CS_ACCESS_TOKEN= # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
+CS_PREVIEW_TOKEN=
 
-# Contentstack's Automate
-EMAIL_AUTOMATE_KEY =""
+
+# Automate
+EMAIL_AUTOMATE_KEY=
+
+# Lytics
+LYTICS_BASE_URL=https://api.lytics.io/v2
+LYTICS_API_KEY=
