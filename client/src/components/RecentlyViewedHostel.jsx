@@ -24,6 +24,9 @@ export function RecentlyViewedHostel({ email }) {
 
     const fetchRecentlyViewedFromProfile = async () => {
       if (isLoading) return;
+      if(!profile){
+        console.warn("Lytics profile is not available yet");
+      }
 
       const viewedIds = profile?.user?.viewed_hostel || [];
 
