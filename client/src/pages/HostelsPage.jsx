@@ -1,7 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import {
+  InstantSearch,
+  Hits,
+  Configure,
+  Pagination,
+} from "react-instantsearch";
+import { searchClient } from "@/services/algoliaSearch";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import HostelCard from "@/components/HostelCard";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -9,26 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-} from "@/components/ui/pagination";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
-import { useNavigate } from "react-router-dom";
-import HostelCard from "@/components/HostelCard";
-import cmsClient from "@/contentstack/contentstackClient";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  fetchEntryById,
+  setDataForChromeExtension,
+} from "@/contentstack/utils";
 import api from "@/api";
 
-// Updated amenity icons based on the facilities in the data
+// Facility icons (keep your existing ones)
 import {
   Wifi,
   ParkingCircle,
@@ -53,59 +52,35 @@ import {
   Mars,
   Venus,
   VenusAndMars,
-  MapPin,
-  View,
+  ChevronLeft,
+  ChevronRight,
+  Search,
 } from "lucide-react";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntries,
-  fetchEntryById,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
-import { ChevronRight } from "lucide-react";
-import { ChevronLeft } from "lucide-react";
+import { useStats } from "react-instantsearch";
+import { useNavigate } from "react-router-dom";
 
 const base = "mr-1 h-4 w-4";
 
 export const facilityIcons = {
   wifi: <Wifi className={`${base} text-sky-500`} />,
-
   parking: <ParkingCircle className={`${base} text-slate-500`} />,
-
   cctv: <Cctv className={`${base} text-indigo-500`} />,
-
   security_guard: <ShieldCheck className={`${base} text-emerald-600`} />,
-
   drinking_water: <Droplets className={`${base} text-blue-500`} />,
-
   lockers: <LockKeyhole className={`${base} text-gray-600`} />,
-
   wheelchair_access: <Accessibility className={`${base} text-teal-600`} />,
-
   fire_safety: <Flame className={`${base} text-amber-500`} />,
-
   first_aid: <HeartPulse className={`${base} text-rose-500`} />,
-
   ac: <Snowflake className={`${base} text-cyan-500`} />,
-
   "non-ac": <Fan className={`${base} text-neutral-500`} />,
-
   hot_water: <ShowerHead className={`${base} text-orange-500`} />,
-
   laundry: <WashingMachine className={`${base} text-indigo-400`} />,
-
   power_backup: <BatteryCharging className={`${base} text-lime-600`} />,
-
   housekeeping: <House className={`${base} text-emerald-500`} />,
-
   study_area: <BookOpen className={`${base} text-violet-500`} />,
-
   tv: <TvMinimalPlayIcon className={`${base} text-fuchsia-500`} />,
-
   common_area: <Users className={`${base} text-purple-500`} />,
-
   kitchen: <CookingPot className={`${base} text-amber-600`} />,
-
   microwave: <Microwave className={`${base} text-pink-500`} />,
 };
 
@@ -124,23 +99,100 @@ const hostelTypeIcon = {
   Unisex: <VenusAndMars className="h-4 w-4 text-purple-600" />,
 };
 
-export default function FindHostel() {
-  const [hostels, setHostels] = useState([]);
-  const [filteredHostels, setFilteredHostels] = useState([]);
-  const [search, setSearch] = useState("");
-  const [location, setLocation] = useState("all");
-  const [college, setCollege] = useState("all");
-  const [price, setPrice] = useState("none");
-  const [page, setPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+function HostelHit({ hit }) {
   const [roomAvailability, setRoomAvailability] = useState({});
-  const [listingPageData, setListingPageData] = useState();
+
+  useEffect(() => {
+    const fetchRoomAvailability = async () => {
+      try {
+        const res = await api.get(`/api/hostel/${hit.uid}`);
+        setRoomAvailability(res.data);
+      } catch (err) {
+        console.error("Failed to fetch room availability", err);
+      }
+    };
+    fetchRoomAvailability();
+  }, [hit.uid]);
+
+  const backendRooms = roomAvailability.room_types || [];
+  const hasAvailableRooms = backendRooms.some((r) => r.available_beds > 0);
+
+  return (
+    <HostelCard
+      hostel={hit}
+      lytics_event="hostels_page"
+      variant="detailed"
+      isAvailable={hasAvailableRooms}
+    />
+  );
+}
+
+function ResultsCount() {
+  const { nbHits } = useStats();
+
+  return (
+    <div className="text-center mb-6 text-gray-600">
+      Found {nbHits || 0} stays
+    </div>
+  );
+}
+
+export default function HostelsPageWithAlgolia() {
   const navigate = useNavigate();
+  const [listingPageData, setListingPageData] = useState();
+  const indexName = import.meta.env.VITE_ALGOLIA_INDEX_NAME || "dev_index";
+  const autocompleteBoxRef = useRef(null);
+  const hasHydratedFiltersFromUrl = useRef(false);
+  const [filters, setFilters] = useState({
+    search: "",
+    college: "all",
+    location: "all",
+    maxPrice: "none",
+  });
+  const [suggestions, setSuggestions] = useState([]);
+  const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
+  const [isAutocompleteLoading, setIsAutocompleteLoading] = useState(false);
   const data = {
     entryUid: "blt637d48315eb69a7b",
     contenttype: "hostel_listing",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    setFilters((prev) => ({
+      ...prev,
+      search: params.get("q") || "",
+      college: params.get("college") || "all",
+      location: params.get("location") || "all",
+      maxPrice: params.get("price") || "none",
+    }));
+
+    hasHydratedFiltersFromUrl.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedFiltersFromUrl.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (filters.search) params.set("q", filters.search);
+    else params.delete("q");
+
+    if (filters.college !== "all") params.set("college", filters.college);
+    else params.delete("college");
+
+    if (filters.location !== "all") params.set("location", filters.location);
+    else params.delete("location");
+
+    if (filters.maxPrice !== "none") params.set("price", filters.maxPrice);
+    else params.delete("price");
+
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}`;
+    window.history.replaceState(null, "", nextUrl);
+  }, [filters]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -163,119 +215,129 @@ export default function FindHostel() {
   }, []);
 
   useEffect(() => {
-    const fetchHostels = async () => {
-      setIsLoading(true);
-      try {
-        const hostelsData = await fetchEntries(
-          "hostel",
-          import.meta.env.VITE_SDK,
-          "",
-        ); // array of hostels
-
-        setHostels(hostelsData);
-        setFilteredHostels(hostelsData);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setIsLoading(false);
+    const handleClickOutside = (event) => {
+      if (
+        autocompleteBoxRef.current &&
+        !autocompleteBoxRef.current.contains(event.target)
+      ) {
+        setIsAutocompleteOpen(false);
       }
     };
-    const fetchRoomAvailability = async () => {
-      try {
-        const res = await api.get("/api/hostel");
 
-        // Convert array → lookup map
-        // hostelId => room_types[]
-        const availabilityMap = {};
-        res.data.forEach((item) => {
-          availabilityMap[item.hostelId] = item.room_types;
-        });
+    document.addEventListener("mousedown", handleClickOutside);
 
-        setRoomAvailability(availabilityMap);
-      } catch (err) {
-        console.error("Failed to fetch room availability", err);
-      }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
-    fetchRoomAvailability();
-    fetchHostels();
   }, []);
 
-  const hasAvailableRooms = (rooms = []) =>
-    rooms.some((r) => r.available_beds > 0);
+  useEffect(() => {
+    const query = filters.search.trim();
 
-  const getLowestAvailablePrice = (cmsRooms = [], backendRooms = []) => {
-    const availableKeys = backendRooms
-      .filter((r) => r.available_beds > 0)
-      .map((r) => r.room_key);
+    if (query.length < 2) {
+      setSuggestions([]);
+      setIsAutocompleteLoading(false);
+      return;
+    }
 
-    const availableCmsRooms = cmsRooms.filter((r) =>
-      availableKeys.includes(r.room_key),
+    const debounceTimer = setTimeout(async () => {
+      try {
+        setIsAutocompleteLoading(true);
+        const response = await searchClient.search([
+          {
+            indexName,
+            query,
+            params: {
+              hitsPerPage: 5,
+              attributesToRetrieve: [
+                "uid",
+                "title",
+                "address",
+                "room_types",
+                "lowest_price",
+                "base_price",
+              ],
+            },
+          },
+        ]);
+
+        const hits = response?.results?.[0]?.hits || [];
+        setSuggestions(hits);
+      } catch (error) {
+        console.error("Autocomplete fetch failed", error);
+        setSuggestions([]);
+      } finally {
+        setIsAutocompleteLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(debounceTimer);
+  }, [filters.search, indexName]);
+
+  let priceFilter;
+  if (filters.maxPrice && filters.maxPrice !== "none") {
+    const maxPrice = Number(filters.maxPrice);
+    if (Number.isFinite(maxPrice)) {
+      // Support top-level and nested room pricing fields.
+      priceFilter = `(room_types.base_price <= ${maxPrice} OR lowest_price <= ${maxPrice} OR base_price <= ${maxPrice})`;
+    }
+  }
+
+  const composedQuery = [
+    filters.search,
+    filters.college !== "all" ? filters.college : "",
+    filters.location !== "all" ? filters.location : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const getSuggestionPrice = (item) => {
+    const roomPrices = Array.isArray(item?.room_types)
+      ? item.room_types
+          .map((room) => Number(room?.base_price))
+          .filter((price) => Number.isFinite(price) && price > 0)
+      : [];
+
+    if (roomPrices.length > 0) {
+      return Math.min(...roomPrices);
+    }
+
+    const fallback = [Number(item?.lowest_price), Number(item?.base_price)].find(
+      (price) => Number.isFinite(price) && price > 0,
     );
 
-    if (!availableCmsRooms.length) return null;
-
-    return Math.min(...availableCmsRooms.map((r) => r.base_price));
+    return fallback || null;
   };
 
-  const itemsPerPage = 6;
-  const totalPages = Math.ceil(filteredHostels.length / itemsPerPage);
-  const paginatedHostels = filteredHostels.slice(
-    (page - 1) * itemsPerPage,
-    page * itemsPerPage,
-  );
+  const highlightText = (text, query) => {
+    if (!text || !query) return text || "";
 
-  // Get priority key facilities to display
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(${escapedQuery})`, "ig");
+    const parts = text.split(pattern);
 
-  const getKeyFacilities = (facilities = []) =>
-    FACILITY_PRIORITY.filter((f) => facilities.includes(f)).slice(0, 4);
+    return parts.map((part, idx) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <mark
+          key={`${part}-${idx}`}
+          className="rounded bg-amber-100 px-0.5 text-amber-900"
+        >
+          {part}
+        </mark>
+      ) : (
+        <span key={`${part}-${idx}`}>{part}</span>
+      ),
+    );
+  };
 
-  useEffect(() => {
-    let filtered = hostels.filter((hostel) => {
-      const backendRooms = roomAvailability[hostel.uid] || [];
-
-      const matchesSearch =
-        search === "" ||
-        hostel.title.toLowerCase().includes(search.toLowerCase()) ||
-        hostel.address.toLowerCase().includes(search.toLowerCase());
-
-      const matchesLocation =
-        location === "all" ||
-        hostel.address.toLowerCase().includes(location.toLowerCase());
-
-      const matchesCollege =
-        college === "all" ||
-        hostel.nearby_college?.some((c) =>
-          c.toLowerCase().includes(college.toLowerCase()),
-        );
-
-      const lowestPrice = getLowestAvailablePrice(
-        hostel.room_types,
-        backendRooms,
-      );
-
-      const matchesPrice =
-        price === "none" ||
-        (lowestPrice !== null && lowestPrice <= Number(price));
-
-      return matchesSearch && matchesLocation && matchesCollege && matchesPrice;
+  const handleReset = () => {
+    setFilters({
+      search: "",
+      college: "all",
+      location: "all",
+      maxPrice: "none",
     });
-
-    setFilteredHostels(filtered);
-    setPage(1);
-  }, [search, location, college, price, hostels, roomAvailability]);
-
-  // Scroll to top when user changes pagination page
-  useEffect(() => {
-    try {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (e) {
-      // fallback for environments without window
-      if (typeof window !== "undefined") window.scrollTo(0, 0);
-    }
-  }, [page]);
-
-  const goToPreviousPage = () => setPage(Math.max(1, page - 1));
-  const goToNextPage = () => setPage(Math.min(totalPages, page + 1));
+  };
 
   return (
     <TooltipProvider>
@@ -283,242 +345,252 @@ export default function FindHostel() {
         <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
           <Header />
         </div>
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-center mb-12">
-            <h1
-              className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular"
-              {...listingPageData?.$?.title}
-            >
-              {listingPageData?.title}
-            </h1>
-            <p
-              className="text-gray-600 max-w-2xl mx-auto"
-              {...listingPageData?.$?.subtitle}
-            >
-              {listingPageData?.subtitle}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-4 justify-center mb-8">
-            <Input
-              type="text"
-              placeholder={listingPageData?.search_placeholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-72 rounded-full border-purple-200 focus:ring-purple-500"
-              {...listingPageData?.$?.search_placeholder}
-            />
-            <Select value={college} onValueChange={setCollege}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Select College" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Colleges</SelectItem>
-                <SelectItem value="Thakur College of Engineering and Technology">
-                  Thakur College of Engineering and Technology
-                </SelectItem>
-                <SelectItem value="iitb">IIT Bombay</SelectItem>
-                <SelectItem value="vjti">VJTI Mumbai</SelectItem>
-                <SelectItem value="ict">
-                  Institute of Chemical Technology (ICT)
-                </SelectItem>
-                <SelectItem value="Sardar Patel Institute of Technology">
-                  Sardar Patel Institute of Technology
-                </SelectItem>
-                <SelectItem value="K.J. Somaiya College of Science & Commerce">
-                  K.J. Somaiya College of Science & Commerce
-                </SelectItem>
-                <SelectItem value="DJ Sanghvi College of Engineering">
-                  DJ Sanghvi College of Engineering
-                </SelectItem>
-                <SelectItem value="Mukesh Patel School of Technology">
-                  Mukesh Patel School of Technology
-                </SelectItem>
-                <SelectItem value="NMIMS University">
-                  NMIMS University
-                </SelectItem>
-                <SelectItem value="rait">
-                  Ramrao Adik Institute of Technology (RAIT)
-                </SelectItem>
-                <SelectItem value="St. Francis Institute of Technology">
-                  St. Francis Institute of Technology
-                </SelectItem>
-                <SelectItem value="SIES Graduate School of Technology">
-                  SIES Graduate School of Technology
-                </SelectItem>
-                <SelectItem value="Don Bosco Institute of Technology">
-                  Don Bosco Institute of Technology
-                </SelectItem>
-                <SelectItem value="Xavier Institute of Engineering">
-                  Xavier Institute of Engineering
-                </SelectItem>
-                <SelectItem value="Thakur Polytechnic">
-                  Thakur Polytechnic
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={location} onValueChange={setLocation}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Select Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="Mumbai">Mumbai</SelectItem>
-                <SelectItem value="Delhi">Delhi</SelectItem>
-                <SelectItem value="Bangalore">Bangalore</SelectItem>
-                <SelectItem value="Hyderabad">Hyderabad</SelectItem>
-                <SelectItem value="Chennai">Chennai</SelectItem>
-                <SelectItem value="Kolkata">Kolkata</SelectItem>
-                <SelectItem value="Pune">Pune</SelectItem>
-                <SelectItem value="Ahmedabad">Ahmedabad</SelectItem>
-                <SelectItem value="Jaipur">Jaipur</SelectItem>
-                <SelectItem value="Kota">Kota</SelectItem>
-                <SelectItem value="Lucknow">Lucknow</SelectItem>
-                <SelectItem value="Kanpur">Kanpur</SelectItem>
-                <SelectItem value="Nagpur">Nagpur</SelectItem>
-                <SelectItem value="Indore">Indore</SelectItem>
-                <SelectItem value="Thane">Thane</SelectItem>
-                <SelectItem value="Bhopal">Bhopal</SelectItem>
-                <SelectItem value="Prayagraj">Prayagraj</SelectItem>
-                <SelectItem value="Patna">Patna</SelectItem>
-                <SelectItem value="Varanasi">Varanasi</SelectItem>
-                <SelectItem value="Surat">Surat</SelectItem>
-                <SelectItem value="Coimbatore">Coimbatore</SelectItem>
-                <SelectItem value="Guwahati">Guwahati</SelectItem>
-                <SelectItem value="Bhubaneswar">Bhubaneswar</SelectItem>
-                <SelectItem value="Dehradun">Dehradun</SelectItem>
-                <SelectItem value="Mysore">Mysore</SelectItem>
-                <SelectItem value="Chandigarh">Chandigarh</SelectItem>
-                <SelectItem value="Vijayawada">Vijayawada</SelectItem>
-                <SelectItem value="Ranchi">Ranchi</SelectItem>
-                <SelectItem value="Raipur">Raipur</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={price} onValueChange={setPrice}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Price Range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No Limit</SelectItem>
-                <SelectItem value="500">Under ₹500</SelectItem>
-                <SelectItem value="1000">Under ₹1000</SelectItem>
-                <SelectItem value="1500">Under ₹1500</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex justify-center mb-6 ">
-            <Button
-              onClick={() => {
-                setSearch("");
-                setLocation("all");
-                setPrice("none");
-                setCollege("all");
-              }}
-              className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
-            >
-              <span {...listingPageData?.$?.reset_button_text}>
-                {listingPageData?.reset_button_text}
-              </span>
-            </Button>
-          </div>
-          <div className="text-center mb-6 text-gray-600">
-            Found {filteredHostels.length} stays
-          </div>
-          <TooltipProvider delayDuration={100}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-              {isLoading ? (
-                [...Array(6)].map((_, index) => (
-                  <Card key={index} className="overflow-hidden animate-pulse">
-                    <div className="h-48 bg-gray-200"></div>
-                    <CardContent className="p-4">
-                      <div className="h-6 bg-gray-200 mb-2 rounded"></div>
-                      <div className="h-4 bg-gray-200 mb-4 rounded w-3/4"></div>
-                      <div className="h-10 bg-gray-200 rounded"></div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : paginatedHostels.length > 0 ? (
-                paginatedHostels.map((hostel) => {
-                  const backendRooms = roomAvailability[hostel.uid] || [];
-                  const lowestPrice = getLowestAvailablePrice(
-                    hostel.room_types,
-                    backendRooms,
-                  );
-                  const isAvailable = hasAvailableRooms(backendRooms);
 
-                  return (
-                    <HostelCard
-                      key={hostel.uid}
-                      hostel={hostel}
-                      lytics_event="hostels_page"
-                      variant="detailed"
-                      lowestPrice={lowestPrice ?? undefined}
-                      isAvailable={isAvailable}
-                    />
-                  );
-                })
-              ) : (
-                <div className="col-span-full text-center py-10">
-                  <p className="text-gray-600 mb-4">
-                    No properties found matching your criteria.
-                  </p>
-                  <Button
-                    onClick={() => {
-                      setSearch("");
-                      setLocation("all");
-                      setPrice("none");
-                      setCollege("all");
-                    }}
-                    variant="outline"
-                    className="mt-4"
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              )}
+        <InstantSearch
+          searchClient={searchClient}
+          indexName={indexName}
+          routing={{
+            stateMapping: {
+              stateToRoute(uiState) {
+                const indexUiState = uiState[indexName] || {};
+
+                return {
+                  q: indexUiState.query,
+                  page: indexUiState.page,
+                  sort: indexUiState.sortBy,
+                };
+              },
+              routeToState(routeState) {
+                return {
+                  [indexName]: {
+                    query: routeState.q || "",
+                    page: routeState.page ? Number(routeState.page) : 1,
+                    sortBy: routeState.sort,
+                  },
+                };
+              },
+            },
+          }}
+        >
+          <main className="container mx-auto px-4 py-8">
+            <div className="text-center mb-12">
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular">
+                {listingPageData?.title}
+              </h1>
+              <p className="text-gray-600 max-w-2xl mx-auto">
+                {listingPageData?.subtitle}
+              </p>
             </div>
-          </TooltipProvider>
-          {filteredHostels.length > itemsPerPage && (
-            <div className="flex justify-center hover:cursor-pointer">
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationLink
-                      onClick={goToPreviousPage}
-                      disabled={page === 1}
-                      className={`${page === 1 ? "cursor-not-allowed" : ""}`}
-                    >
-                      <ChevronLeft />
-                    </PaginationLink>
-                  </PaginationItem>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <PaginationItem key={i}>
-                      <PaginationLink
-                        onClick={() => setPage(i + 1)}
-                        className={
-                          i + 1 === page
-                            ? "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]"
-                            : ""
-                        }
-                      >
-                        <span className="">{i + 1}</span>
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
-                  <PaginationItem>
-                    <PaginationLink
-                      onClick={goToNextPage}
-                      disabled={page === totalPages}
-                      className={`${page === totalPages ? "cursor-not-allowed" : ""}`}
-                    >
-                      <ChevronRight />
-                    </PaginationLink>
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+
+            <div className="flex flex-wrap gap-4 justify-center mb-8">
+              <div className="relative w-72" ref={autocompleteBoxRef}>
+                <Search className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder={
+                    listingPageData?.search_placeholder || "Search hostels..."
+                  }
+                  value={filters.search}
+                  onFocus={() => setIsAutocompleteOpen(true)}
+                  onChange={(e) => {
+                    setFilters((prev) => ({ ...prev, search: e.target.value }));
+                    setIsAutocompleteOpen(true);
+                  }}
+                  className="w-72 rounded-full border-purple-200 bg-white pl-10 pr-4 shadow-sm transition-all focus:border-purple-300 focus:ring-purple-500"
+                />
+
+                {isAutocompleteOpen && filters.search.trim().length >= 2 && (
+                  <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95 shadow-[0_16px_38px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+                    
+                    {isAutocompleteLoading ? (
+                      <div className="px-4 py-4 text-sm text-gray-500">
+                        Searching...
+                      </div>
+                    ) : suggestions.length === 0 ? (
+                      <div className="px-4 py-4 text-sm text-gray-500">
+                        No suggestions found for "{filters.search.trim()}"
+                      </div>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto py-1">
+                        {suggestions.map((item) => {
+                          const suggestionPrice = getSuggestionPrice(item);
+
+                          return (
+                            <button
+                              key={item.objectID || item.uid || item.title}
+                              type="button"
+                              onClick={() => {
+                                const destinationUid = item.uid || item.objectID;
+
+                                if (destinationUid) {
+                                  setIsAutocompleteOpen(false);
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                  navigate(`/hostel/${destinationUid}`);
+                                  return;
+                                }
+
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  search: item.title || "",
+                                }));
+                                setIsAutocompleteOpen(false);
+                              }}
+                              className="block w-full border-b border-gray-100/80 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-purple-50/60"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="line-clamp-1 text-sm font-semibold text-gray-900">
+                                  {highlightText(
+                                    item.title || "Untitled Hostel",
+                                    filters.search.trim(),
+                                  )}
+                                </p>
+                                {suggestionPrice ? (
+                                  <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                    from Rs. {suggestionPrice}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {item.address && (
+                                <p className="mt-1 line-clamp-1 text-xs text-gray-500">
+                                  {item.address}
+                                </p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <Select
+                value={filters.college}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, college: value }))
+                }
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select College" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Colleges</SelectItem>
+                  <SelectItem value="Thakur College of Engineering and Technology">
+                    Thakur College of Engineering and Technology
+                  </SelectItem>
+                  <SelectItem value="Indian Institute of Technology Bombay (IIT Bombay)">
+                    Indian Institute of Technology Bombay (IIT Bombay)
+                  </SelectItem>
+                  <SelectItem value="VJTI Mumbai">VJTI Mumbai</SelectItem>
+                  <SelectItem value="Institute of Chemical Technology (ICT)">
+                    Institute of Chemical Technology (ICT)
+                  </SelectItem>
+                  <SelectItem value="Sardar Patel Institute of Technology">
+                    Sardar Patel Institute of Technology
+                  </SelectItem>
+                  <SelectItem value="K.J. Somaiya College of Science & Commerce">
+                    K.J. Somaiya College of Science & Commerce
+                  </SelectItem>
+                  <SelectItem value="Dwarkadas J. Sanghvi College of Engineering (DJSCE)">
+                    Dwarkadas J. Sanghvi College of Engineering (DJSCE)
+                  </SelectItem>
+                  <SelectItem value="Narsee Monjee Institute of Management Studies (NMIMS)">
+                    Narsee Monjee Institute of Management Studies (NMIMS)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.location}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, location: value }))
+                }
+              >
+                <SelectTrigger className="w-56">
+                  <SelectValue placeholder="Select Location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="Mumbai">Mumbai</SelectItem>
+                  <SelectItem value="Pune">Pune</SelectItem>
+                  <SelectItem value="Bangalore">Bangalore</SelectItem>
+                  <SelectItem value="Delhi">Delhi</SelectItem>
+                  <SelectItem value="Lucknow">Lucknow</SelectItem>
+                  <SelectItem value="Jaipur">Jaipur</SelectItem>
+                  <SelectItem value="Prayagraj">Prayagraj</SelectItem>
+                  <SelectItem value="Hyderabad">Hyderabad</SelectItem>
+                  <SelectItem value="Chennai">Chennai</SelectItem>
+                  <SelectItem value="Kolkata">Kolkata</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.maxPrice}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, maxPrice: value }))
+                }
+              >
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Price Range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Limit</SelectItem>
+                  <SelectItem value="500">Under ₹500</SelectItem>
+                  <SelectItem value="1000">Under ₹1000</SelectItem>
+                  <SelectItem value="1500">Under ₹1500</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-        </main>
-        <Footer />
+
+            <div className="flex justify-center mb-6">
+              <Button
+                onClick={handleReset}
+                className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
+              >
+                {listingPageData?.reset_button_text || "Reset Filters"}
+              </Button>
+            </div>
+
+            <ResultsCount />
+
+            <Configure
+              hitsPerPage={6}
+              query={composedQuery || undefined}
+              filters={priceFilter}
+            />
+
+            <Hits
+              hitComponent={HostelHit}
+              classNames={{
+                root: "mb-10",
+                list: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+                item: "h-full",
+              }}
+            />
+
+            <div className="flex justify-center mb-10 hover:cursor-pointer">
+              <Pagination
+                classNames={{
+                  root: "flex justify-center",
+                  list: "flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-sm",
+                  item: "",
+                  link: "flex h-9 min-w-9 items-center justify-center rounded-xl border border-transparent px-3 text-sm font-medium text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50",
+                  selectedItem:
+                    "rounded-xl bg-[var(--primary)] text-white shadow-sm",
+                  disabledItem: "pointer-events-none opacity-40",
+                  previousPageItem: "mr-1",
+                  nextPageItem: "ml-1",
+                }}
+                translations={{
+                  previousPageItemText: <ChevronLeft className="h-4 w-4" />,
+                  nextPageItemText: <ChevronRight className="h-4 w-4" />,
+                }}
+              />
+            </div>
+          </main>
+
+          <Footer />
+        </InstantSearch>
       </div>
     </TooltipProvider>
   );

@@ -27,7 +27,7 @@ export function RecentlyViewedHostel({ email }) {
       if(!profile){
         console.warn("Lytics profile is not available yet");
       }
-      console.log("Profile from LyticsContext:", profile);
+      // console.log("Profile from LyticsContext:", profile);
 
       const viewedIds = profile?.user?.viewed_hostel || [];
 

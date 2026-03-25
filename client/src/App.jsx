@@ -6,8 +6,8 @@ import Loading from "./pages/Loading";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { applyTheme } from "./lib/applyTheme";
 import { fetchEntryById } from "./contentstack/utils";
-import detectAdBlocker from "./lib/detectAdBlocker";
-import AdBlockNotice from "./components/AdBlockNotice";
+// import detectAdBlocker from "./lib/detectAdBlocker";
+// import AdBlockNotice from "./components/AdBlockNotice";
 import { LyticsProvider } from "./context/LyticsContext";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
@@ -127,31 +127,34 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
 
-    const runDetection = async () => {
-      const blocked = await detectAdBlocker();
-      if (mounted) {
-        setAdBlockDetected(blocked);
-      }
-    };
+  // Adblocker detection -  currently disabled due to Lytics script conflicts
 
-    runDetection();
+  // useEffect(() => {
+  //   let mounted = true;
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  //   const runDetection = async () => {
+  //     const blocked = await detectAdBlocker();
+  //     if (mounted) {
+  //       setAdBlockDetected(blocked);
+  //     }
+  //   };
 
-  const retryAdBlockCheck = async () => {
-    const blocked = await detectAdBlocker();
-    setAdBlockDetected(blocked);
-  };
+  //   runDetection();
 
-  if (adBlockDetected) {
-    return <AdBlockNotice onRetry={retryAdBlockCheck} />;
-  }
+  //   return () => {
+  //     mounted = false;
+  //   };
+  // }, []);
+
+  // const retryAdBlockCheck = async () => {
+  //   const blocked = await detectAdBlocker();
+  //   setAdBlockDetected(blocked);
+  // };
+
+  // if (adBlockDetected) {
+  //   return <AdBlockNotice onRetry={retryAdBlockCheck} />;
+  // }
 
   return (
     <Router>

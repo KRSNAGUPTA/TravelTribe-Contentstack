@@ -27,6 +27,11 @@ VITE_CS_DEV_APP_HOST=app.contentstack.com
 # Contentstack Personalization
 VITE_CS_PERSONALIZE_PROJECT_UID=
 
+# Algolia Search
+VITE_ALGOLIA_APP_ID=
+VITE_ALGOLIA_SEARCH_KEY=
+VITE_ALGOLIA_INDEX_NAME=dev_index
+
 # Lytics
 VITE_LYTICS_STREAM = "default" 
 VITE_LYTICS_CID=""
