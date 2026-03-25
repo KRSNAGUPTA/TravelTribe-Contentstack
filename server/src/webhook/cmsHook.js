@@ -5,6 +5,8 @@ const hostelDataHook = async (req, res) => {
   try {
     console.log("Hostel webhook payload:", req.body);
     const hostelEntryId = req.body?.data?.entry?.uid;
+    const webhookEnvironment =
+      req.body?.data?.environment?.name;
 
     if (!hostelEntryId) {
       return res.status(400).json({ message: "Invalid webhook payload" });
@@ -22,10 +24,19 @@ const hostelDataHook = async (req, res) => {
       });
     }
 
+    console.log("Webhook environment:", webhookEnvironment);
+    console.log("Fetching hostel data for entry ID:", hostelEntryId);
+
+
     // Fetch full entry from CMS
     const hostelData = (
       await cmsClient.get(
-        `/content_types/hostel/entries/${hostelEntryId}`
+        `/content_types/hostel/entries/${hostelEntryId}`,
+        {
+          params: {
+            ...(webhookEnvironment ? { environment: webhookEnvironment } : {}),
+          },
+        }
       )
     ).data.entry;
 
