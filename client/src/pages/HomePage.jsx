@@ -28,6 +28,7 @@ import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 import { FocusCards } from "@/components/ui/focus-cards";
 import HostelCard from "@/components/HostelCard";
 import { trackEvent } from "@/Lytics/config";
+import {  trackPersonalizeEvent } from "@/contentstack/personalizeSdk";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -136,12 +137,13 @@ export default function HomePage() {
           </div>
           <div className="flex flex-col items-start gap-3">
             <Button
-              onClick={() => {
+              onClick={async() => {
                 trackEvent("hero_cta_clicked", {
                   cta_title: heroSection?.cta?.title || "Unknown CTA",
                   email: user?.email || null,
                   name: user?.name || null,
                 });
+                trackPersonalizeEvent("clickCTA");
 
                 if (heroSection?.cta?.href) {
                   navigate(heroSection.cta.href);
