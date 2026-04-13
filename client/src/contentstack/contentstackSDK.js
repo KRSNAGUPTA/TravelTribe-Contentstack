@@ -33,7 +33,7 @@ ContentstackLivePreview.init({
     port: 443,
   },
   editButton: {
-    enable: true,
+    enable: import.meta.env.VITE_CS_DEV_ENV !== "production",
     exclude: ["outsideLivePreviewPortal"], // to exclude edit button on outside live preview portal pages
     includeByQueryParameter: false,
     position: "top-right",
