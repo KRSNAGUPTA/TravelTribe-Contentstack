@@ -48,7 +48,7 @@ ContentstackLivePreview.init({
     includeByQueryParameter: false,
     position: "top-right",
   },
-  mode: "builder",
+  mode: config.environment === "production" ? "preview" : "builder",
 });
 export const { onEntryChange } = ContentstackLivePreview;
 export default Stack;
