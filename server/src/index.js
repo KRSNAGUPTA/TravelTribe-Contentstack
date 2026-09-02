@@ -17,10 +17,19 @@ import webHookRoutes from "./routes/webHookRoutes.js";
 import lyticsRoutes from "./routes/lyticsRoutes.js";
 import cors from "cors";
 import axios from "axios";
-
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 const app = express();
 
+// 1. Helmet HTTP Security Headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// 2. Production CORS Setup
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
   "http://localhost:5173",
@@ -30,11 +39,10 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server calls)
       if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback to avoid blocking valid requests on production
+      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -42,10 +50,32 @@ app.use(
   })
 );
 
+// 3. General Rate Limiter (100 requests / 15 mins per IP)
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests from this IP, please try again after 15 minutes" },
+});
+app.use("/api", generalLimiter);
 
+// 4. Strict Auth/OTP Rate Limiter (10 requests / 15 mins per IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many attempts from this IP, please try again after 15 minutes" },
+});
+app.use("/api/user/forgot-password", authLimiter);
+app.use("/api/user/verify-otp", authLimiter);
+app.use("/api/user/login", authLimiter);
+app.use("/api/user/signup", authLimiter);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// 5. Payload size limiting (Protects against Memory DoS)
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 
 
 
