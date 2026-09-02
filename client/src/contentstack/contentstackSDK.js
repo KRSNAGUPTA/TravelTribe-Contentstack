@@ -11,6 +11,7 @@ const config = {
   api_host: import.meta.env.VITE_CS_DEV_API_HOST,
   enable_live_preview: import.meta.env.VITE_CS_ENABLE_LIVE_PREVIEW,
 };
+console.log("Contentstack config:", config);
 const Stack = Contentstack.Stack({
   api_key: config.api_key,
   delivery_token: config.delivery_token,
@@ -27,7 +28,7 @@ if (config.api_host) {
   Stack.setHost(config.api_host);
 }
 ContentstackLivePreview.init({
-  enable: config.enable_live_preview,
+  enable: config.enable_live_preview === "true",
   cleanCslpOnProduction: true,
   ssr: false,
   stackSdk: Stack,

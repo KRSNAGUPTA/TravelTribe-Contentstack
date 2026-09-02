@@ -17,6 +17,7 @@ import Loading from "./Loading";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
+  fetchEntries,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -35,8 +36,8 @@ function Contact() {
     url: window.location.origin
   });
   const { toast } = useToast();
-  const data = {
-    entryUid: "blt66e7166f9eac8711",
+  let data = {
+    entryUid: "",
     contenttype: "contact_page",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
@@ -44,14 +45,16 @@ function Contact() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
-        setContactData(entry);
-        if (entry?.page_title) document.title = entry.page_title;
+          // const entry = await fetchEntryById(
+          //   data.contenttype,
+          //   data.entryUid,
+          //   import.meta.env.VITE_SDK,
+          //   null,
+          // );
+          const entry = (await fetchEntries("contact_page", import.meta.env.VITE_SDK, null))[0];
+          data.entryUid = entry?.uid;
+          setContactData(entry);
+          if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
         console.error("Error fetching contact page data", error);
       }

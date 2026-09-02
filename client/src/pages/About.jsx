@@ -6,12 +6,13 @@ import Loading from "./Loading";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
+  fetchEntries,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 
 function About() {
   const [about, setAbout] = useState(null);
-  const data = {
+  let data = {
     entryUid: "blt185b62aabf4f0649",
     contenttype: "about_us",
     locale: import.meta.env.VITE_CS_LOCALE,
@@ -20,14 +21,17 @@ function About() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        // const entry = await fetchEntryById(
+        //   data.contenttype,
+        //   data.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
         // console.log("Abous Us");
         // console.log(entry);
+
+        const entry = (await fetchEntries("about_us", import.meta.env.VITE_SDK, null))[0];
+        data.entryUid = entry?.uid;
         setAbout(entry);
         document.title = entry?.title || "About - Travel Tribe";
       } catch (error) {
