@@ -141,6 +141,7 @@ const Login = () => {
   };
 
   if (!authPageData) return null;
+  const googleLoginEnabled = import.meta.env.VITE_GOOGLE_CLIENT_ID !== "";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)] px-4">
@@ -161,35 +162,45 @@ const Login = () => {
           </div>
 
           <div className="mt-6 flex justify-center">
-            <GoogleLogin
-              onSuccess={async (credentialResponse) => {
-                const data = await api.post("/api/user/google/callback", {
-                  token: credentialResponse.credential,
-                });
+            {googleLoginEnabled && (
 
-                localStorage.setItem("token", data.data.jwtToken);
-                localStorage.setItem("user", JSON.stringify(data.data.user));
-                setUser(data.data.user);
-                setAuthToken(data.data.jwtToken);
+              <GoogleLogin
+                onSuccess={async (credentialResponse) => {
+                  const data = await api.post("/api/user/google/callback", {
+                    token: credentialResponse.credential,
+                  });
 
-                toast({ title: "Login Successful" });
+                  localStorage.setItem("token", data.data.jwtToken);
+                  localStorage.setItem("user", JSON.stringify(data.data.user));
+                  setUser(data.data.user);
+                  setAuthToken(data.data.jwtToken);
 
-                // identifyUser(data.data.user.email);
-                trackEvent("google_login", {
-                  email: data.data.user.email,
-                  name: data.data.user.name,
-                });
+                  toast({ title: "Login Successful" });
 
-                // console.log("Google login successful, user data:", data.data);
-                navigate("/");
-              }}
-              onError={() =>
-                toast({
-                  title: "Google login failed",
-                  variant: "destructive",
-                })
-              }
-            />
+                  // identifyUser(data.data.user.email);
+                  trackEvent("google_login", {
+                    email: data.data.user.email,
+                    name: data.data.user.name,
+                  });
+
+                  // console.log("Google login successful, user data:", data.data);
+                  navigate("/");
+                }}
+                onError={() =>
+                  toast({
+                    title: "Google login failed",
+                    variant: "destructive",
+                  })
+                }
+              />)}
+            {!googleLoginEnabled && (
+              <Button
+                disabled
+                className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
+              >
+                Google Login Disabled
+              </Button>
+            )}
           </div>
 
           <div className="flex items-center gap-3 my-6">
