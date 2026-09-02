@@ -16,10 +16,12 @@ const getTransporter = () => {
       user,
       pass,
     },
+    family: 4, // Use IPv4 as Render not giving error with default
   });
 };
 
 export const sendOtpEmail = async (toEmail, otp) => {
+  try {
   const transporter = getTransporter();
 
   const mailOptions = {
@@ -46,6 +48,10 @@ export const sendOtpEmail = async (toEmail, otp) => {
   const info = await transporter.sendMail(mailOptions);
   console.log("OTP Email sent:", info.messageId);
   return info;
+  } catch (error) {
+    console.error("Error sending OTP email:", error);
+    throw error;
+  }
 };
 
 export const sendBookingConfirmationEmail = async (booking) => {
