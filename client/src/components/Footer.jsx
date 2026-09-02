@@ -4,7 +4,7 @@ import { Toaster } from "./ui/toaster";
 import { useEffect, useState } from "react";
 import api from "@/api";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import { fetchEntryById, setDataForChromeExtension } from "@/contentstack/utils";
+import { fetchEntryById, fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { useContext } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -90,12 +90,13 @@ const Footer = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          footerEntryMeta.contenttype,
-          footerEntryMeta.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        const entry = (await fetchEntries("footer", import.meta.env.VITE_SDK, null))[0];
+        // const entry = await fetchEntryById(
+        //   footerEntryMeta.contenttype,
+        //   footerEntryMeta.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
         setFooterData(entry || {});
       } catch (error) {
         console.error("Error fetching footer data", error);

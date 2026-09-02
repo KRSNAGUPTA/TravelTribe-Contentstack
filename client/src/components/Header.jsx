@@ -12,7 +12,7 @@ import {
 } from "./ui/tooltip";
 import { Separator } from "@/components/ui/separator"
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import cmsClient from "@/contentstack/contentstackClient";
+import {fetchEntries, fetchEntryById} from "@/contentstack/utils";
 import { setDataForChromeExtension } from "@/contentstack/utils";
 import { addEditableTags } from "@contentstack/utils";
 
@@ -25,12 +25,9 @@ const Header = () => {
   useEffect(() => {
     const fetchCDAData = async () => {
       try {
-        const entry = (
-          await cmsClient.get(
-            "/content_types/header/entries/bltf9dba16208e02dd7"
-          )
-        ).data.entry;
-
+        console.log("Header entry:");
+        const entry = (await fetchEntries("header", import.meta.env.VITE_SDK, null))[0];
+        console.log("Header entry:", entry);  
         setIcons(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
@@ -40,20 +37,22 @@ const Header = () => {
 
     const fetchSDKData = async () => {
       try {
-        const entry = await Stack
-          .ContentType("header")
-          .Entry("bltf9dba16208e02dd7")
-          .toJSON()
-          .fetch();
+        // const entry = await Stack
+        //   .ContentType("header")
+        //   .Entry("bltf9dba16208e02dd7")
+        //   .toJSON()
+        //   .fetch();
+        const entry = (await fetchEntries("header", import.meta.env.VITE_SDK, null))[0];
+
         addEditableTags(entry, "header",true, 'en-us')
         setIcons(entry);
         if (entry?.page_title) document.title = entry.page_title;
 
         // for live preview 
         const data = {
-          "entryUid":"bltf9dba16208e02dd7",
+          "entryUid": entry?.uid,
           "contenttype":"header",
-          "locale":"en-us"
+          "locale":import.meta.env.VITE_CS_LOCALE
         }
         setDataForChromeExtension(data)
       } catch (error) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Autoplay from "embla-carousel-autoplay";
-import { fetchEntryById } from "@/contentstack/utils";
+import { fetchEntryById, fetchEntries } from "@/contentstack/utils";
 import { Toaster } from "./ui/toaster";
 import {
   Carousel,

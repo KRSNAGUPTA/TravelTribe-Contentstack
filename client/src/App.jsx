@@ -5,7 +5,7 @@ import ProtectedRoute from "./middlewares/protectedRoutes";
 import Loading from "./pages/Loading";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import { applyTheme } from "./lib/applyTheme";
-import { fetchEntryById } from "./contentstack/utils";
+import { fetchEntries, fetchEntryById } from "./contentstack/utils";
 // import detectAdBlocker from "./lib/detectAdBlocker";
 // import AdBlockNotice from "./components/AdBlockNotice";
 import { LyticsProvider } from "./context/LyticsContext";
@@ -102,12 +102,14 @@ function App() {
   useEffect(() => {
     let mounted = true;
     async function loadTheme() {
-      const entry = await fetchEntryById(
-        "website_theme",
-        "blt1536a6f67fbc5110",
-        import.meta.env.VITE_SDK,
-        null,
-      );
+      const entry = (await fetchEntries("website_theme", import.meta.env.VITE_SDK, null))[0]; 
+      // console.log("Theme entry:", test[0]);
+      // const entry = await fetchEntryById(
+      //   "website_theme",
+      //   "blt1536a6f67fbc5110",
+      //   import.meta.env.VITE_SDK,
+      //   null,
+      // );
       // console.log("Theme entry:", entry);
       const base = entry?.primary_color?.hex;
       // console.log("Theme base color:", base);
