@@ -43,9 +43,9 @@ ContentstackLivePreview.init({
     port: 443,
   },
   editButton: {
-    enable: config.environment !== "production",
+    enable: config.enable_live_preview === "true",
     exclude:
-      config.environment === "production" ? ["outsideLivePreviewPortal"] : [], // to exclude edit button on outside live preview portal pages
+      config.enable_live_preview === "true" ? ["outsideLivePreviewPortal"] : [], // to exclude edit button on outside live preview portal pages
     includeByQueryParameter: false,
     position: "top-right",
   },
