@@ -115,7 +115,7 @@ npm run start --workspace=server
 - If server cannot connect DB:
 	validate `MONGO_URI`/`MONGO_URI_PROD`.
 - If subscription/support emails fail:
-	verify `EMAIL_AUTOMATE_KEY`.
+	verify `Discord webhook url	`.
 
 ## Notes
 

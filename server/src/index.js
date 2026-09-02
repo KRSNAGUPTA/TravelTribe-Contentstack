@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import express from "express";
 import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
@@ -9,7 +9,6 @@ import webHookRoutes from "./routes/webHookRoutes.js";
 import lyticsRoutes from "./routes/lyticsRoutes.js";
 import cors from "cors";
 import axios from "axios";
-dotenv.config();
 
 
 const app = express();
@@ -54,38 +53,31 @@ app.use("/api/lytics", lyticsRoutes)
 //for email notification
 app.post("/api/support", async (req, res) => {
   const { name, email, topic, message, url } = req.body;
-  if (!process.env.EMAIL_AUTOMATE_KEY) {
-      console.error("Missing EMAIL_AUTOMATE_KEY");
-      return res.status(500).json({
-        message: "Server configuration error",
-      });
-    }
-  try {
-    // console.log(req.body)
-    await axios.post(
-      "https://app.contentstack.com/automations-api/run/12b6c0df1e9a444d882eaf6687709ff1",
-       {
-        name, email, topic, message, url
-       },
-       {
-          headers: {
-            "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
-            "Content-Type": "application/json",
-          },
-        }
-      )
-      
-    console.log("Support message send.")
+  const discordWebhookUrl = process.env.DISCORD_BOT_WEBHOOK;
+  if(!discordWebhookUrl) {
+    console.error("Missing DISCORD_BOT_WEBHOOK. Logging support details instead of sending to Discord.");
     return res.status(200).json({
-      message: "Support request received",
+      message: "Server configuration error",
     });
-    
-  } catch (error) {
-    console.error("Error while sending mail", error)
+  }
+  try{
+    const discordMessage = {
+      content: `New support request:\nName: ${name}\nEmail: ${email}\nTopic: ${topic}\nMessage: ${message}\nURL: ${url}`,
+    };
+    await axios.post(discordWebhookUrl, discordMessage, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    return res.status(200).json({
+      message: "Support request sent successfully",
+    });
+
+  }catch(error){
+    console.error("Error while sending message to Discord", error);
     return res.status(500).json({
-      message:"Error while sending email",
-      error
-    })
+      message: "Failed to send support request",
+    });
   }
 });
 
@@ -99,25 +91,23 @@ app.post("/api/subscribe", async (req, res) => {
       });
     }
 
-    if (!process.env.EMAIL_AUTOMATE_KEY) {
-      console.error("Missing EMAIL_AUTOMATE_KEY");
-      return res.status(500).json({
-        message: "Server configuration error",
-      });
-    }
+   const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
+   if(!discordWebhookUrl){
+    console.error("Missing DISCORD_WEBHOOK_URL. Logging subscription details instead of sending to Discord.");
+    return res.status(200).json({
+      message: "Server configuration error",
+    });
+   }
+   const discordMessage = {
+      content: `New subscription:\nEmail: ${email}\nURL: ${url}`,
+    };
+    await axios.post(discordWebhookUrl, discordMessage, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-    await axios.post(
-      "https://app.contentstack.com/automations-api/run/966238c2bd59420aba1b173e59a38ece",
-      { email, url },
-      {
-        headers: {
-          "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    console.log("User subscribed:", email);
+    // console.log("User subscribed:", email);
 
     return res.status(200).json({
       message: "Subscription successful",

@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
+  fetchEntries,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import Footer from "@/components/Footer";
@@ -19,12 +20,13 @@ export default function PrivacyPolicy() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        // const entry = await fetchEntryById(
+        //   data.contenttype,
+        //   data.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
+        const entry = (await Stack.ContentType("privacy_page").Entry(data.entryUid).toJSON().fetch());
         setPrivacyData(entry);
         if (entry?.title) document.title = entry.title;
       } catch (error) {

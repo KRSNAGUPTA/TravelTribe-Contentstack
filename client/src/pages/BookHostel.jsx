@@ -42,7 +42,7 @@ export default function HostelBooking() {
 
   const { toast } = useToast();
   const { user } = useAuth();
-  const {profile, isLoading, error} = useContext(LyticsContext);
+  const { profile, isLoading, error } = useContext(LyticsContext);
   const [cmsRooms, setCmsRooms] = useState([]);
   const [availabilityRooms, setAvailabilityRooms] = useState([]);
   const [hostel, setHostel] = useState(null);
@@ -80,17 +80,17 @@ export default function HostelBooking() {
       phone: user.phone || profile?.user?.phone || prev.phone || "",
       gender: user?.gender || profile?.user?.gender || prev.gender || "",
     }));
-  }, [user,profile]);
+  }, [user, profile]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const apiRes = await api.get(`/api/hostel/${id}`);
+        // const apiRes = await api.get(`/api/hostel/${id}`);
         const cmsRes = await cmsClient.get(
           `/content_types/hostel/entries/${id}`,
         );
 
-        setAvailabilityRooms(apiRes.data.room_types || []);
+        // setAvailabilityRooms(apiRes.data.room_types || []);
         setCmsRooms(cmsRes.data.entry.room_types || []);
         setHostel(cmsRes.data.entry);
       } catch (err) {
@@ -110,30 +110,35 @@ export default function HostelBooking() {
     });
   }, [id, toast]);
 
-  const mergedRooms = useMemo(() => {
-    const availabilityMap = availabilityRooms.reduce((acc, r) => {
-      acc[r.room_key] = r;
-      return acc;
-    }, {});
+  // const mergedRooms = useMemo(() => {
+  //   const availabilityMap = availabilityRooms.reduce((acc, r) => {
+  //     acc[r.room_key] = r;
+  //     return acc;
+  //   }, {});
 
-    return cmsRooms.map((cmsRoom) => {
-      const backendRoom = availabilityMap[cmsRoom.room_key];
+  //   return cmsRooms.map((cmsRoom) => {
+  //     // const backendRoom = availabilityMap[cmsRoom.room_key];
 
-      return {
-        ...cmsRoom,
-        total_beds: backendRoom?.total_beds ?? 0,
-        available_beds: backendRoom?.available_beds ?? 0,
-        is_available: (backendRoom?.available_beds ?? 0) > 0,
-      };
-    });
-  }, [cmsRooms, availabilityRooms]);
+  //     return {
+  //       ...cmsRoom,
+  //       // total_beds: backendRoom?.total_beds ?? 0,
+  //       // available_beds: backendRoom?.available_beds ?? 0,
+  //       // is_available: (backendRoom?.available_beds ?? 0) > 0,
+  //     };
+  //   });
+  // }, [cmsRooms]);
 
   useEffect(() => {
-    if (!selectedRoomFromQuery || !mergedRooms.length) return;
+    // console.log("Selected room from query:", selectedRoomFromQuery);
+    if (!selectedRoomFromQuery) return;
 
-    const room = mergedRooms.find((r) => r.room_key === selectedRoomFromQuery);
+    const room = cmsRooms.find((r) => {
+      // console.log("r:   ", r); // Prints each room object in console
+      return r.room_key === selectedRoomFromQuery; // Returns true/false
+    });
+    // console.log("Selected room from query:", selectedRoomFromQuery, "Found room:", room);
 
-    if (!room || !room.is_available) return;
+    if (!room || !room.total_beds) return;
     setBookingSummary((prev) => ({
       ...prev,
       dailyRent: room.base_price,
@@ -146,7 +151,7 @@ export default function HostelBooking() {
       roomSelection: room.room_key,
       amount: room.base_price,
     }));
-  }, [selectedRoomFromQuery, mergedRooms]);
+  }, [selectedRoomFromQuery, cmsRooms]);
 
   useEffect(() => {
     if (!formData.checkIn || !formData.checkOut || !formData.roomSelection)
@@ -159,7 +164,7 @@ export default function HostelBooking() {
 
     const diffDays = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-    const room = mergedRooms.find((r) => r.room_key === formData.roomSelection);
+    const room = cmsRooms.find((r) => r.room_key === formData.roomSelection);
 
     if (!room) return;
 
@@ -182,7 +187,8 @@ export default function HostelBooking() {
     formData.checkIn,
     formData.checkOut,
     formData.roomSelection,
-    mergedRooms,
+    cmsRooms,
+    // mergedRooms,
   ]);
 
   const validateDates = () => {
@@ -303,14 +309,12 @@ export default function HostelBooking() {
               </h1>
               <div className="hidden md:flex items-center space-x-2">
                 <div
-                  className={`h-2 w-12 rounded-full ${
-                    currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
-                  }`}
+                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
+                    }`}
                 ></div>
                 <div
-                  className={`h-2 w-12 rounded-full ${
-                    currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
-                  }`}
+                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
+                    }`}
                 ></div>
               </div>
             </div>
@@ -366,6 +370,9 @@ export default function HostelBooking() {
                           >
                             Check-out Date
                           </Label>
+                          <div className="relative">
+                            
+                         
                           <Input
                             id="checkOut"
                             name="checkOut"
@@ -376,16 +383,18 @@ export default function HostelBooking() {
                             min={
                               formData.checkIn
                                 ? new Date(
-                                    new Date(formData.checkIn).setDate(
-                                      new Date(formData.checkIn).getDate() + 1,
-                                    ),
-                                  )
-                                    .toISOString()
-                                    .split("T")[0]
+                                  new Date(formData.checkIn).setDate(
+                                    new Date(formData.checkIn).getDate() + 1,
+                                  ),
+                                )
+                                  .toISOString()
+                                  .split("T")[0]
                                 : new Date().toISOString().split("T")[0]
                             }
                             className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
                           />
+                          <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
+                           </div>
                         </div>
                       </div>
 

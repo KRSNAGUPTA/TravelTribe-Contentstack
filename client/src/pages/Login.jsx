@@ -1,5 +1,5 @@
 import React, { useState, useContext, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import { trackEvent } from "@/Lytics/config";
 import {
   fetchEntryById,
+  fetchEntries,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 
@@ -36,7 +37,7 @@ const Login = () => {
     password: "",
   });
 
-  const pageData = {
+  let pageData = {
     entryUid: "bltcb7c69182a4d93ca",
     contenttype: "auth_page",
     locale: import.meta.env.VITE_CS_LOCALE,
@@ -44,12 +45,14 @@ const Login = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          pageData.contenttype,
-          pageData.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        // const entry = await fetchEntryById(
+        //   pageData.contenttype,
+        //   pageData.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
+        const entry = (await fetchEntries("auth_page", import.meta.env.VITE_SDK, null))[0];
+        pageData.entryUid = entry?.uid;
         setAuthPageData(entry);
         if (entry?.app_title) document.title = entry.app_title;
       } catch (error) {
@@ -244,9 +247,17 @@ const Login = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-[var(--text-dark)]">
-                    {authPageData.password_label}
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-[var(--text-dark)]">
+                      {authPageData.password_label}
+                    </Label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs font-medium text-purple-600 hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                   <Input
                     name="password"
                     type="password"

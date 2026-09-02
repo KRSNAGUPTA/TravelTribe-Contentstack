@@ -1,25 +1,34 @@
 import Razorpay from "razorpay";
 import config from "../config/razorpayConfig.js";
-import crypto from "crypto"
-const razorpay = new Razorpay({
-  key_id: config.razorpay.key_id,
-  key_secret: config.razorpay.key_secret,
-});
+import crypto from "crypto";
+
+const getRazorpayInstance = () => {
+  const key_id = (process.env.RAZORPAY_KEY_ID || "").replace(/['"]/g, "").trim();
+  const key_secret = (process.env.RAZORPAY_KEY_SECRET || "").replace(/['"]/g, "").trim();
+
+  return new Razorpay({
+    key_id,
+    key_secret,
+  });
+};
+
 const createOrder = async (req, res) => {
-  console.log(req.body)
+  console.log("Create order request body:", req.body);
   if (!req.body.amount || !req.body.currency || !req.body.hostelId) {
     return res.status(400).json({
       message: "Some details are missing.",
     });
   }
-  const generateRecipt = () => {
+  const generateReceipt = () => {
     const date = Date.now();
-    return `ORDER_${req.body.hostelId}_${date}`.toUpperCase();
+    const shortHostelId = String(req.body.hostelId || "").slice(-8);
+    return `ORD_${shortHostelId}_${date}`.toUpperCase();
   };
-  let receipt = generateRecipt();
+  let receipt = generateReceipt();
   try {
+    const razorpay = getRazorpayInstance();
     const options = {
-      amount: req.body.amount * 100,
+      amount: Math.round(Number(req.body.amount) * 100),
       currency: req.body.currency,
       receipt: receipt,
     };
@@ -27,9 +36,10 @@ const createOrder = async (req, res) => {
     const order = await razorpay.orders.create(options);
     return res.json(order);
   } catch (error) {
+    console.error("Razorpay order creation error:", error);
     return res
       .status(500)
-      .json({ message: "Error while creating order", error: error });
+      .json({ message: "Error while creating order", error: error.message || error });
   }
 };
 const verifyPayment = async (req, res) => {

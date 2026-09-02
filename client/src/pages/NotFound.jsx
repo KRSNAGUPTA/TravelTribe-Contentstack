@@ -5,6 +5,7 @@ import Loading from "./Loading";
 import  { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntryById,
+  fetchEntries,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
 import { Home } from "lucide-react";
@@ -12,8 +13,8 @@ import { Home } from "lucide-react";
 export default function NotFound() {
   const [pageData, setPageData] = useState(null);
   const navigate = useNavigate();
-  const data = {
-    entryUid: "blta6083be0942d0903",
+  let data = {
+    entryUid: "bltc0378a7ba0e28919",
     contenttype: "not_found_page",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
@@ -21,12 +22,14 @@ export default function NotFound() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        // const entry = await fetchEntryById(
+        //   data.contenttype,
+        //   data.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
+        const entry = (await fetchEntries("not_found_page", import.meta.env.VITE_SDK, null))[0];
+        data.entryUid = entry?.uid;
         setPageData(entry);
         if (entry?.title) document.title = entry.title;
       } catch (error) {

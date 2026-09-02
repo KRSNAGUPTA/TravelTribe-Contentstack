@@ -11,7 +11,7 @@ const config = {
   api_host: import.meta.env.VITE_CS_DEV_API_HOST,
   enable_live_preview: import.meta.env.VITE_CS_ENABLE_LIVE_PREVIEW,
 };
-console.log("Contentstack config:", config);
+// console.log("Contentstack config:", config);
 const Stack = Contentstack.Stack({
   api_key: config.api_key,
   delivery_token: config.delivery_token,

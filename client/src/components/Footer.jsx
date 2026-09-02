@@ -157,7 +157,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative overflow-hidden bg-black text-white">
+    <footer className="relative overflow-hidden bg-black text-white print:hidden">
       <Toaster />
       <div
         className="container relative  mx-auto grid grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 lg:grid-cols-4"

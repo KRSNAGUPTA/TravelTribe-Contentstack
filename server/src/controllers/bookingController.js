@@ -2,11 +2,12 @@ import axios from "axios";
 import { sendNotification } from "../discordBot/NotificationBot.js";
 import Booking from "../model/BookingModel.js";
 import Hostel from "../model/HostelModel.js";
+import cmsClient from "../contentstackClient.js";
+import { sendBookingConfirmationEmail } from "../services/emailService.js";
+
 const formatDate = (input) => {
   if (!input) return "";
-
   const date = new Date(input);
-
   if (isNaN(date.getTime())) return "";
 
   const day = String(date.getUTCDate()).padStart(2, "0");
@@ -15,7 +16,6 @@ const formatDate = (input) => {
 
   return `${day}/${month}/${year}`;
 };
-
 
 export const createBooking = async (req, res) => {
   try {
@@ -36,7 +36,7 @@ export const createBooking = async (req, res) => {
       !checkIn || !checkOut || !hostelId || !roomSelection || !amount ||
       !name || !email || !phone || !gender || !receiptId
     ) {
-      console.error("Incomplete details while 'Creating Booking'.")
+      console.error("Incomplete details while Creating Booking.");
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -44,13 +44,36 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const hostel = await Hostel.findOne({ hostelId: hostelId });
-    if (!hostel) return res.status(404).json({ message: "Hostel not found" });
+    // Find or initialize Hostel document in MongoDB from Contentstack CMS
+    let hostel = await Hostel.findOne({ hostelId: hostelId });
+    if (!hostel) {
+      try {
+        const env = process.env.CS_DEV_ENV || "dev";
+        const cmsRes = await cmsClient.get(
+          `/content_types/hostel/entries/${hostelId}?environment=${env}`
+        );
+        const cmsEntry = cmsRes.data.entry;
+        if (cmsEntry) {
+          const roomTypes = (cmsEntry.room_types || []).map((room) => ({
+            room_key: room.room_key,
+            room_name: room.room_name,
+            total_beds: room.total_beds || 10,
+            available_beds: room.total_beds || 10,
+          }));
+          hostel = await Hostel.create({
+            hostelId,
+            reviews: [],
+            room_types: roomTypes,
+          });
+        }
+      } catch (err) {
+        console.error("Could not auto-create Hostel in DB from CMS:", err.message);
+      }
+    }
 
-    const roomType = hostel.room_types.find(room => room.room_key === roomSelection);
-    if (!roomType) return res.status(404).json({ message: "Room type not found" });
+    let roomType = hostel?.room_types?.find(room => room.room_key === roomSelection);
 
-    if (roomType?.available_beds <= 0) {
+    if (roomType && roomType.available_beds <= 0) {
       return res.status(400).json({ message: "No available rooms for this type" });
     }
 
@@ -69,41 +92,30 @@ export const createBooking = async (req, res) => {
       status: "confirmed",
     });
 
-    console.log(formatDate(checkIn))
-
     await newBooking.save();
-    await axios.post(
-      "https://app.contentstack.com/automations-api/run/f9ea368a35b64db6811b442b6c43b27c",
-      {
-        checkInDate: formatDate(checkIn),
-        checkOutDate: formatDate(checkOut),
-        name,
-        roomSelection,
-        hostelId,
-        email,
-        phone,
-        gender,
-        receiptId,
-        amount,
-      },
-      {
-        headers: {
-          "ah-http-key": process.env.EMAIL_AUTOMATE_KEY,
-          "Content-Type": "application/json",
-        },
-      }
-    );
 
+    // Decrement room inventory in MongoDB if hostel document exists
+    if (roomType && hostel) {
+      roomType.available_beds = Math.max(0, roomType.available_beds - 1);
+      await hostel.save();
+    }
 
-    roomType.available_beds -= 1;
-    await hostel.save();
+    // Send confirmation email via Nodemailer SMTP
+    sendBookingConfirmationEmail(newBooking);
 
-    res.status(201).json(newBooking);
+    // Discord notification
+    try {
+      await sendNotification("booking", newBooking);
+    } catch (discErr) {
+      // Silently ignore discord errors
+    }
+
+    return res.status(201).json(newBooking);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error creating booking:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
-
 
 export const getAllBookings = async (req, res) => {
   try {
@@ -149,22 +161,20 @@ export const cancelBooking = async (req, res) => {
     }
 
     const hostel = await Hostel.findOne({ hostelId: booking.hostelId });
-    if (!hostel) return res.status(404).json({ message: "Hostel not found" });
-
-    // Find the room type
-    const roomType = hostel.roomTypes.find(room => room.type === booking.roomSelection);
-    if (roomType) {
-      roomType.availability += 1;
-      await hostel.save();
+    if (hostel) {
+      const roomType = hostel.room_types?.find(room => room.room_key === booking.roomSelection);
+      if (roomType) {
+        roomType.available_beds += 1;
+        await hostel.save();
+      }
     }
 
-    // Update booking status
     booking.status = "cancelled";
     await booking.save();
 
-    res.status(200).json({ message: "Booking cancelled", booking });
+    return res.status(200).json({ message: "Booking cancelled", booking });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 

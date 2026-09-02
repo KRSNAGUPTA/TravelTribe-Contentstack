@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     savedHostels: [{ type: mongoose.Schema.Types.ObjectId, ref: "Hostel" }],
     avatar: { type: String },
+    resetPasswordOtp: { type: String },
+    resetPasswordOtpExpires: { type: Date },
   },
   { timestamps: true }
 );

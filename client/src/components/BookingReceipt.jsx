@@ -4,7 +4,7 @@ function BookingReceipt({ booking, userData }) {
   return (
     <div
       id="booking-receipt"
-      className="w-[794px] p-10 font-sans"
+      className="w-[794px] p-10 font-san"
     >
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         

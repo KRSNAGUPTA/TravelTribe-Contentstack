@@ -25,9 +25,9 @@ const Header = () => {
   useEffect(() => {
     const fetchCDAData = async () => {
       try {
-        console.log("Header entry:");
+        // console.log("Header entry:");
         const entry = (await fetchEntries("header", import.meta.env.VITE_SDK, null))[0];
-        console.log("Header entry:", entry);  
+        // console.log("Header entry:", entry);  
         setIcons(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {

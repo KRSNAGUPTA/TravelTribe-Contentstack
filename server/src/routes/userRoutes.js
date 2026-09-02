@@ -11,6 +11,9 @@ import {
   searchUser,
   updateUser,
   handleGoogleLogin,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
 } from "../controllers/userController.js";
 import { protect, adminOnly } from "../middlewares/authMiddleware.js";
 
@@ -26,6 +29,9 @@ router.post("/google/callback",handleGoogleLogin)
 
 router.post("/signup", registerUser);
 router.post("/login", loginUser);
+router.post("/forgot-password", forgotPassword);
+router.post("/verify-otp", verifyOtp);
+router.post("/reset-password", resetPassword);
 
 router.get("/all", protect, adminOnly, getAllUsers);
 router.get("/search", protect, adminOnly, searchUser);

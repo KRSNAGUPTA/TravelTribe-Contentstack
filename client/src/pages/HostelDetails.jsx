@@ -149,7 +149,16 @@ export default function HostelDetails() {
   }, [id]);
 
   const mergedRooms = useMemo(() => {
-    if (!hostel?.room_types || !roomAvailability?.room_types) return [];
+    if (!hostel?.room_types) return [];
+
+    if (!roomAvailability?.room_types) {
+      return hostel.room_types.map((cmsRoom) => ({
+        ...cmsRoom,
+        total_beds: cmsRoom.total_beds ?? 10,
+        available_beds: cmsRoom.available_beds ?? 10,
+        is_available: true,
+      }));
+    }
 
     const apiRoomMap = roomAvailability.room_types.reduce((acc, room) => {
       acc[room.room_key] = room;
@@ -161,9 +170,9 @@ export default function HostelDetails() {
 
       return {
         ...cmsRoom,
-        total_beds: apiRoom?.total_beds ?? 0,
-        available_beds: apiRoom?.available_beds ?? 0,
-        is_available: (apiRoom?.available_beds ?? 0) > 0,
+        total_beds: apiRoom?.total_beds ?? cmsRoom.total_beds ?? 10,
+        available_beds: apiRoom?.available_beds ?? cmsRoom.available_beds ?? 10,
+        is_available: apiRoom ? (apiRoom.available_beds > 0) : true,
       };
     });
   }, [hostel, roomAvailability]);

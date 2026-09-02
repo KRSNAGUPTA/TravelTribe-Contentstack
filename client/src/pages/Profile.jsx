@@ -47,6 +47,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
+  fetchEntries,
   fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
@@ -82,12 +83,14 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        // const entry = await fetchEntryById(
+        //   data.contenttype,
+        //   data.entryUid,
+        //   import.meta.env.VITE_SDK,
+        //   null,
+        // );
+        const entry = (await fetchEntries("profile_page", import.meta.env.VITE_SDK, null))[0];
+        data.entryUid = entry?.uid;
         setProfileData(entry);
         if (entry?.page_title) document.title = entry.page_title;
       } catch (error) {
@@ -381,8 +384,8 @@ export default function ProfilePage() {
       </section>
 
       {selectedBooking && (
-        <div className="fixed top-0 left-0 w-full h-full bg-black/50 z-100">
-          <div className="flex items-center justify-center h-full">
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="relative max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
             <BookingReceipt booking={selectedBooking} userData={userData} isGenerating={isGenerating} />
           </div>
         </div>

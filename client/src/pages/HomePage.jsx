@@ -111,77 +111,83 @@ export default function HomePage() {
       <Toaster />
 
       {/* Hero Section */}
-      <section className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 md:px-16 pt-36 md:pt-24">
-        <div className="relative z-10 max-w-xl md:max-w-2xl md:pl-10 md:pt-20 space-y-6">
-          <div className="space-y-4">
-            <h1
-              className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight pacifico-regular"
-              {...heroSection?.$?.title}
-            >
-              {heroSection?.title}
-            </h1>
+      <section className="relative min-h-fit lg:min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 sm:px-10 lg:px-16 pt-24 pb-12 md:py-28 flex flex-col justify-between">
+  
+  {/* Content Wrapper */}
+  <div className="relative z-10 w-full max-w-xl lg:max-w-2xl lg:pl-6 space-y-6">
+    <div className="space-y-4">
+      <h1
+        className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight pacifico-regular"
+        {...heroSection?.$?.title}
+      >
+        {heroSection?.title}
+      </h1>
 
-            <h2
-              className="text-2xl sm:text-3xl md:text-4xl font-bold text-[var(--primary)]"
-              {...heroSection?.$?.subtitle}
-            >
-              {heroSection?.subtitle}
-            </h2>
+      <h2
+        className="text-xl sm:text-3xl lg:text-4xl font-bold text-[var(--primary)]"
+        {...heroSection?.$?.subtitle}
+      >
+        {heroSection?.subtitle}
+      </h2>
 
-            <p
-              className="text-base sm:text-lg text-[var(--secondary)] max-w-lg"
-              {...heroSection?.$?.subtext}
-            >
-              {heroSection?.subtext}
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-3">
-            <Button
-              onClick={async() => {
-                trackEvent("hero_cta_clicked", {
-                  cta_title: heroSection?.cta?.title || "Unknown CTA",
-                  email: user?.email || null,
-                  name: user?.name || null,
-                });
-                trackPersonalizeEvent("clickCTA");
+      <p
+        className="text-sm sm:text-base lg:text-lg text-[var(--secondary)] max-w-lg"
+        {...heroSection?.$?.subtext}
+      >
+        {heroSection?.subtext}
+      </p>
+    </div>
 
-                if (heroSection?.cta?.href) {
-                  navigate(heroSection.cta.href);
-                }
-              }}
-              className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-8 py-6 text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
-              {...heroSection?.cta?.$?.title}
-            >
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
-              />
-              <span className="relative z-10 flex items-center">
-                {heroSection?.cta?.title}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-              </span>
-            </Button>
-          </div>
-        </div>
+    {/* CTA Button */}
+    <div className="flex flex-col items-start gap-3">
+      <Button
+        onClick={async () => {
+          trackEvent("hero_cta_clicked", {
+            cta_title: heroSection?.cta?.title || "Unknown CTA",
+            email: user?.email || null,
+            name: user?.name || null,
+          });
+          trackPersonalizeEvent("clickCTA");
 
-        <div className=" absolute bottom-0 right-0 hidden md:block w-[70vw] lg:w-[75vw] max-w-none z-0 pointer-events-none">
-          <img
-            src={heroSection?.hero_image?.url}
-            alt="Travel Tribe Illustration"
-            className="w-full h-auto object-contain"
-            draggable="false"
-          />
-        </div>
+          if (heroSection?.cta?.href) {
+            navigate(heroSection.cta.href);
+          }
+        }}
+        className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
+        {...heroSection?.cta?.$?.title}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
+        />
+        <span className="relative z-10 flex items-center">
+          {heroSection?.cta?.title}
+          <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+        </span>
+      </Button>
+    </div>
+  </div>
 
-        <div className="mt-12 md:hidden pt-32">
-          <img
-            src={heroSection?.hero_image?.url}
-            alt="Travel Tribe Illustration"
-            className="w-full h-auto object-contain"
-            draggable="false"
-          />
-        </div>
-      </section>
+  {/* Desktop / Large Screen Image */}
+  <div className="absolute bottom-0 right-0 hidden lg:block w-[45vw] xl:w-[50vw] max-w-3xl z-0 pointer-events-none">
+    <img
+      src={heroSection?.hero_image?.url}
+      alt="Travel Tribe Illustration"
+      className="w-full h-auto object-contain"
+      draggable="false"
+    />
+  </div>
+
+  {/* Mobile / Tablet Image */}
+  <div className="mt-8 lg:hidden w-full flex justify-center z-0">
+    <img
+      src={heroSection?.hero_image?.url}
+      alt="Travel Tribe Illustration"
+      className="w-full max-w-md sm:max-w-lg h-auto object-contain"
+      draggable="false"
+    />
+  </div>
+</section>
 
       {/* Features Section */}
       <section className="py-24 w-full">
