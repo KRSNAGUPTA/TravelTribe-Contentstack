@@ -303,7 +303,7 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordOtp = otp;
     user.resetPasswordOtpExpires = otpExpires;
     await user.save();
-
+    console.log(`Generated OTP for ${user.email} (expires at ${otpExpires})`);
     await sendOtpEmail(user.email, otp);
 
     return res.status(200).json({

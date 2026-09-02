@@ -5,6 +5,10 @@ const getTransporter = () => {
   const pass = process.env.APP_PASSWORD
     ? process.env.APP_PASSWORD.replace(/\s+/g, "")
     : "";
+    if(!user || !pass) {
+      console.error("Email user or app password is not set in environment variables.");
+      throw new Error("Email user or app password is not set in environment variables.");
+    }
 
   return nodemailer.createTransport({
     service: "gmail",
