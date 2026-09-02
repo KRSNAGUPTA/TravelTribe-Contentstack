@@ -6,6 +6,12 @@ const getRazorpayInstance = () => {
   const key_id = (process.env.RAZORPAY_KEY_ID || "").replace(/['"]/g, "").trim();
   const key_secret = (process.env.RAZORPAY_KEY_SECRET || "").replace(/['"]/g, "").trim();
 
+  if (!key_id || !key_secret) {
+    console.error("Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET in environment variables");
+  } else {
+    console.log(`Razorpay instance initialized with Key ID prefix: ${key_id.slice(0, 10)}...`);
+  }
+
   return new Razorpay({
     key_id,
     key_secret,

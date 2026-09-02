@@ -41,6 +41,7 @@ export const createBooking = async (req, res) => {
     }
 
     if (!req.user) {
+      console.error("Unauthorized attempt to create booking.", req?.user);
       return res.status(401).json({ message: "Unauthorized" });
     }
 
