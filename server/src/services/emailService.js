@@ -1,4 +1,11 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
+
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (e) {
+  // Ignore fallback
+}
 
 const getTransporter = () => {
   const user = process.env.EMAIL_USER;
@@ -21,6 +28,10 @@ const getTransporter = () => {
     },
     tls: {
       rejectUnauthorized: false,
+      servername: "smtp.gmail.com",
+    },
+    lookup: (hostname, options, callback) => {
+      dns.lookup(hostname, { family: 4 }, callback);
     },
     connectionTimeout: 15000,
     greetingTimeout: 15000,

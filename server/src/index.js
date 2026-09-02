@@ -1,4 +1,12 @@
 import "dotenv/config";
+import dns from "dns";
+
+try {
+  dns.setDefaultResultOrder("ipv4first");
+} catch (e) {
+  // Ignore fallback
+}
+
 import express from "express";
 import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
