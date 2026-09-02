@@ -1,7 +1,7 @@
 PORT=5001
 NODE_ENV="development" # production | development
 MONGO_URI_PROD="mongodb+srv://<username>:<password>@traveltribecluster.cexza.mongodb.net/?appName=TravelTribeCluster"
-MONGO_URI="mongodb://mongo:27017/travel_tribe"
+MONGO_URI="mongodb://mongo:27017/travel_tribe" #for docker, use main atlas for local test without docker
 
 JWT_SECRET=""
 CORS_ORIGIN=""
@@ -11,9 +11,6 @@ GOOGLE_CLIENT_ID=""
 RAZORPAY_KEY_ID=""
 RAZORPAY_KEY_SECRET=""
 
-CLOUDINARY_CLOUD_NAME=""
-CLOUDINARY_API_KEY=""
-CLOUDINARY_API_SECRET=""
 
 # webhook for authorised access to hook for cms room data update
 WEBHOOK_SECRET=""
@@ -32,3 +29,7 @@ CS_PREVIEW_TOKEN=
 # Lytics
 LYTICS_BASE_URL=https://api.lytics.io/v2
 LYTICS_API_KEY=
+
+# SMTP krx
+EMAIL_USER="<your-email>@gmail.com"
+APP_PASSWORD="<SMTP App Password>"
