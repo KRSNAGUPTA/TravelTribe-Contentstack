@@ -5,18 +5,26 @@ const getTransporter = () => {
   const pass = process.env.APP_PASSWORD
     ? process.env.APP_PASSWORD.replace(/\s+/g, "")
     : "";
-    if(!user || !pass) {
-      console.error("Email user or app password is not set in environment variables.");
-      throw new Error("Email user or app password is not set in environment variables.");
-    }
+
+  if (!user || !pass) {
+    console.error("Email user or app password is not set in environment variables.");
+    throw new Error("Email user or app password is not set in environment variables.");
+  }
 
   return nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // STARTTLS over port 587 (Port 465 SSL times out / is blocked on Render)
     auth: {
       user,
       pass,
     },
-    family: 4, // Use IPv4 as Render not giving error with default
+    tls: {
+      rejectUnauthorized: false,
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000,
   });
 };
 

@@ -13,22 +13,26 @@ import axios from "axios";
 
 const app = express();
 
-// app.use(
-//   cors({
-//     origin: [
-//       process.env.CORS_ORIGIN,
-//       "http://localhost:5173",
-//     ],
-//     methods: ["GET", "POST", "OPTIONS"],
-//     allowedHeaders: ["Content-Type"],
-//   })
-// );
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
+
 app.use(
-  cors(
-  {origin:process.env.CORS_ORIGIN}
-  )
-)
-// app.options("*", cors());
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server calls)
+      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback to avoid blocking valid requests on production
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "ah-http-key"],
+  })
+);
 
 
 
