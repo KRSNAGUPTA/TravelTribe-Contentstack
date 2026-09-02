@@ -1,13 +1,20 @@
 import nodemailer from "nodemailer";
-import dns from "dns";
+import dns from "dns/promises";
 
-try {
-  dns.setDefaultResultOrder("ipv4first");
-} catch (e) {
-  // Ignore fallback
-}
+const getSmtpHost = async () => {
+  try {
+    const addresses = await dns.resolve4("smtp.gmail.com");
+    if (addresses && addresses.length > 0) {
+      console.log("Resolved smtp.gmail.com to IPv4:", addresses[0]);
+      return addresses[0];
+    }
+  } catch (err) {
+    console.error("Failed to resolve IPv4 for smtp.gmail.com:", err.message);
+  }
+  return "smtp.gmail.com";
+};
 
-const getTransporter = () => {
+const getTransporter = async () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.APP_PASSWORD
     ? process.env.APP_PASSWORD.replace(/\s+/g, "")
@@ -18,8 +25,10 @@ const getTransporter = () => {
     throw new Error("Email user or app password is not set in environment variables.");
   }
 
+  const host = await getSmtpHost();
+
   return nodemailer.createTransport({
-    host: "smtp.gmail.com",
+    host,
     port: 587,
     secure: false, // STARTTLS over port 587 (Port 465 SSL times out / is blocked on Render)
     auth: {
@@ -30,9 +39,6 @@ const getTransporter = () => {
       rejectUnauthorized: false,
       servername: "smtp.gmail.com",
     },
-    lookup: (hostname, options, callback) => {
-      dns.lookup(hostname, { family: 4 }, callback);
-    },
     connectionTimeout: 15000,
     greetingTimeout: 15000,
     socketTimeout: 15000,
@@ -41,7 +47,7 @@ const getTransporter = () => {
 
 export const sendOtpEmail = async (toEmail, otp) => {
   try {
-  const transporter = getTransporter();
+  const transporter = await getTransporter();
 
   const mailOptions = {
     from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
@@ -75,7 +81,7 @@ export const sendOtpEmail = async (toEmail, otp) => {
 
 export const sendBookingConfirmationEmail = async (booking) => {
   try {
-    const transporter = getTransporter();
+    const transporter = await getTransporter();
 
     const formatDateStr = (d) => {
       if (!d) return "";
