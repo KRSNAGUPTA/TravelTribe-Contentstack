@@ -695,7 +695,7 @@ export default function HostelDetails() {
     transition-all duration-300
     ${
       room.is_available
-        ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-2 active:translate-y-4 transition-all hover:scale-105 shadow-md hover:shadow-lg"
+        ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-1 active:translate-y-1 transition-all hover:scale-105 shadow-md hover:shadow-lg"
         : "bg-gray-300 text-gray-500 cursor-not-allowed"
     }
   `}

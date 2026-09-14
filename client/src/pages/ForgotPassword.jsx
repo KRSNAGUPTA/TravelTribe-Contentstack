@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link, useParams, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,15 @@ export default function ForgotPassword() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+
+  const [searchParams] = useSearchParams();
+
+  useEffect(()=>{
+    const e = searchParams.get("email")
+    setEmail(e.toLowerCase().trim());
+  },[])
+ 
 
   // Step 1: Request OTP
   const handleRequestOtp = async (e) => {

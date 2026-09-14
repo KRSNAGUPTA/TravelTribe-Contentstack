@@ -30,7 +30,7 @@ const hashOtp = (otp) => {
 
 export const refreshToken = async (req, res) => {
   try {
-    console.log("cookies",req.cookies)
+    console.log("Refreshing token for:", req.cookies?.refreshToken )
     const refreshT = req.cookies?.refreshToken;
     if (!refreshT) {
       return res.status(401).json({ message: "Refresh token not provided" });

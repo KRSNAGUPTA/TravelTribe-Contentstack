@@ -63,7 +63,6 @@ function App() {
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <AuthProvider>
             <Suspense fallback={<Loading />}>
-              <StickyBar />
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/hostel" element={<HostelPage />} />

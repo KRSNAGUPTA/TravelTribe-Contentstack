@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Loading from "./Loading";
 import api from "@/api";
+import { useAuth } from "@/context/AuthContext"; // 👈 Import useAuth
 import { Toaster } from "@/components/ui/toaster";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,18 +15,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowRight,
-  LucideAppWindow,
   Mail,
   Phone,
-  User,
-  Calendar,
-  BadgeIndianRupee,
-  Clock,
-  BedDouble,
-  Building,
+  LucideAppWindow,
   Edit,
-  ReceiptIndianRupee,
+  Download,
+  EllipsisVertical,
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -43,24 +38,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
 import {
   fetchEntries,
-  fetchEntryById,
   setDataForChromeExtension,
 } from "@/contentstack/utils";
-import { Eye } from "lucide-react";
-import { Ellipsis } from "lucide-react";
-import { EllipsisVertical } from "lucide-react";
-import { AlertCircle } from "lucide-react";
 import BookingReceipt from "@/components/BookingReceipt";
-import { Download } from "lucide-react";
 import { generateBookingPDF } from "@/lib/printPdf";
 
 export default function ProfilePage() {
-  const [userData, setUserData] = useState({});
+  const { user: authUser, isInitializing } = useAuth();
+  console.log("user", authUser);
+  console.log("isInit", isInitializing);
+   // 👈 Access global auth state
+  const [userData, setUserData] = useState(null);       // 👈 Initialize as null instead of {}
   const [bookings, setBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [profileData, setProfileData] = useState(null);
@@ -80,15 +72,11 @@ export default function ProfilePage() {
     contenttype: "profile_page",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
+
   useEffect(() => {
+    console.log("fetching profile")
     const fetchData = async () => {
       try {
-        // const entry = await fetchEntryById(
-        //   data.contenttype,
-        //   data.entryUid,
-        //   import.meta.env.VITE_SDK,
-        //   null,
-        // );
         const entry = (await fetchEntries("profile_page", import.meta.env.VITE_SDK, null))[0];
         data.entryUid = entry?.uid;
         setProfileData(entry);
@@ -102,18 +90,22 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
+    // 👈 Only fetch user data AFTER AuthContext initialization completes
+    if (isInitializing) return;
+
     const fetchUserData = async () => {
       try {
         const userRes = await api.get("/api/user/profile");
-        setUserData(userRes.data.userData);
+        setUserData(userRes.data.userData || userRes.data);
         const bookingRes = await api.get("/api/booking/my-bookings");
         setBookings(bookingRes.data || []);
       } catch (error) {
         console.error("Error fetching user profile or bookings:", error);
       }
     };
+
     fetchUserData();
-  }, []);
+  }, [isInitializing]);
 
   const filteredBookings = bookings.filter(
     (booking) => statusFilter === "all" || booking.status === statusFilter,
@@ -128,6 +120,7 @@ export default function ProfilePage() {
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
+
   const handleProfileUpdate = async () => {
     try {
       const updatedFields = Object.fromEntries(
@@ -142,13 +135,13 @@ export default function ProfilePage() {
       }
 
       if (Object.keys(updatedFields).length > 0) {
-        const res = await api.patch("/api/user/update", updatedFields);
+        await api.patch("/api/user/update", updatedFields);
         toast({
           title: "Profile updated successfully",
         });
 
         const userRes = await api.get("/api/user/profile");
-        setUserData(userRes.data.userData);
+        setUserData(userRes.data.userData || userRes.data);
 
         setFormData((prev) => ({
           ...prev,
@@ -164,6 +157,7 @@ export default function ProfilePage() {
       });
     }
   };
+
   const handleValueChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({
@@ -179,7 +173,6 @@ export default function ProfilePage() {
     setSelectedBooking(booking);
     setIsGenerating(true);
 
-    // Wait for component to render
     setTimeout(async () => {
       await generateBookingPDF(booking);
       setIsGenerating(false);
@@ -187,7 +180,8 @@ export default function ProfilePage() {
     }, 300);
   };
 
-  if (!userData || !profileData) return <Loading />;
+  // 👈 Display loader while AuthContext hydrates session or Contentstack/User fetches
+  if (isInitializing || !userData || !profileData) return <Loading />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)]">
@@ -198,14 +192,17 @@ export default function ProfilePage() {
       </div>
 
       <section className="pt-20 pb-28 px-6 text-center">
-        <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 bg-[var(--accent)]  shadow-xl">
-          {/* {console.log(userData)} */}
-          <AvatarImage
-            src={userData?.avatar || "/icon.png"}
-            draggable="false"
-          />
-          <AvatarFallback className="bg-[var(--accent)] text-[var(--primary)] text-3xl">
-            {userData?.name?.charAt(0) || "U"}
+        <Avatar className="w-28 h-28 md:w-36 md:h-36 mx-auto border-4 bg-[var(--accent)] shadow-xl">
+          {/* Only load AvatarImage if explicit avatar URL is present */}
+          {userData?.avatar && (
+            <AvatarImage
+              src={userData.avatar}
+              alt={userData?.name || "User Avatar"}
+              draggable="false"
+            />
+          )}
+          <AvatarFallback className="bg-[var(--accent)] text-[var(--primary)] text-3xl font-bold">
+            {userData?.name ? userData.name.charAt(0).toUpperCase() : "U"}
           </AvatarFallback>
         </Avatar>
 
@@ -256,7 +253,7 @@ export default function ProfilePage() {
                     />
                     <Button
                       onClick={handleProfileUpdate}
-                      className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md  "
+                      className="w-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-md"
                     >
                       Update
                     </Button>
@@ -268,18 +265,21 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-700">
               <div className="flex items-center gap-3">
                 <Mail className="w-4 text-purple-600" />
-                <span>{userData.email}</span>
+                <span>{userData?.email}</span>
               </div>
 
               <div className="flex items-center gap-3">
                 <Phone className="w-4 text-purple-600" />
-                <span>{userData.phone || "NA"}</span>
+                <span>{userData?.phone || "NA"}</span>
               </div>
 
               <div className="flex items-center gap-3">
                 <LucideAppWindow className="w-4 text-purple-600" />
                 <span>
-                  Joined {new Date(userData.createdAt).toLocaleDateString("en-IN")}
+                  Joined{" "}
+                  {userData?.createdAt
+                    ? new Date(userData.createdAt).toLocaleDateString("en-IN")
+                    : "N/A"}
                 </span>
               </div>
             </div>
@@ -291,7 +291,7 @@ export default function ProfilePage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              {profileData?.booking_label}
+              {profileData?.booking_label || "My Bookings"}
             </h2>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -310,12 +310,14 @@ export default function ProfilePage() {
 
           {bookings.length === 0 ? (
             <Card className="p-8 text-center rounded-xl">
-              <p className="text-gray-500">{profileData?.no_booking_text}</p>
+              <p className="text-gray-500">
+                {profileData?.no_booking_text || "No bookings found."}
+              </p>
             </Card>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--accent)] bg-white shadow">
               <Table>
-                <TableHeader className="bg-[var(--accent)] ">
+                <TableHeader className="bg-[var(--accent)]">
                   <TableRow>
                     <TableHead>Receipt</TableHead>
                     <TableHead>Hostel</TableHead>
@@ -332,7 +334,7 @@ export default function ProfilePage() {
                   {filteredBookings.map((booking) => (
                     <TableRow
                       key={booking.receiptId}
-                      className="hover:bg-[var(--accent)]  transition"
+                      className="hover:bg-[var(--accent)] transition"
                     >
                       <TableCell>{booking.receiptId}</TableCell>
                       <TableCell>{booking.hostelId}</TableCell>
@@ -368,7 +370,7 @@ export default function ProfilePage() {
                               size="sm"
                               onClick={() => handleDownloadClick(booking)}
                             >
-                              <Download className="w-4 h-4" />
+                              <Download className="w-4 h-4 mr-2" />
                               Download PDF
                             </Button>
                           </PopoverContent>
@@ -386,7 +388,11 @@ export default function ProfilePage() {
       {selectedBooking && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="relative max-h-[90vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
-            <BookingReceipt booking={selectedBooking} userData={userData} isGenerating={isGenerating} />
+            <BookingReceipt
+              booking={selectedBooking}
+              userData={userData}
+              isGenerating={isGenerating}
+            />
           </div>
         </div>
       )}

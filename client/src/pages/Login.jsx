@@ -12,17 +12,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
-import api from "@/api";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
+import api, { setAccessToken } from "@/api";
 import { trackEvent } from "@/Lytics/config";
-import {
-  fetchEntryById,
-  fetchEntries,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
+import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
+import { StickyBar } from "@/components/StickyBanner";
 
 const Login = () => {
-  const { login, signupUser, setUser, setAuthToken } = useContext(AuthContext);
+  const { login, signupUser, setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -42,15 +39,10 @@ const Login = () => {
     contenttype: "auth_page",
     locale: import.meta.env.VITE_CS_LOCALE,
   };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // const entry = await fetchEntryById(
-        //   pageData.contenttype,
-        //   pageData.entryUid,
-        //   import.meta.env.VITE_SDK,
-        //   null,
-        // );
         const entry = (await fetchEntries("auth_page", import.meta.env.VITE_SDK, null))[0];
         pageData.entryUid = entry?.uid;
         setAuthPageData(entry);
@@ -66,10 +58,7 @@ const Login = () => {
 
   const handleDataChange = (e) => {
     const { name, value } = e.target;
-    setData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleAuth = async (e, type) => {
@@ -77,58 +66,46 @@ const Login = () => {
     setLoading(true);
     setError("");
 
-    const formData = { ...data };
+    const phonePattern = /^\d{10}$/ //10 digit number
 
     try {
       if (type === "signup") {
-        if (formData.phone.length < 10) {
+        if (data.phone.length != 10 || !phonePattern.test(data.phone) ) {
           setLoading(false);
-          return toast({
-            title: "Invalid phone number",
-            variant: "destructive",
-          });
+          return toast({ title: "Invalid phone number", variant: "destructive" });
+        }
+        if (data.password.length < 8) {
+          setLoading(false);
+          return toast({ title: "Password must be at least 8 characters", variant: "destructive" });
         }
 
-        if (formData.password.length < 8) {
-          setLoading(false);
-          return toast({
-            title: "Password must be at least 8 characters",
-            variant: "destructive",
-          });
-        }
-
-        await signupUser(formData);
-
+        await signupUser(data);
         toast({
           title: authPageData.sign_up_text,
-          description: `Welcome ${formData.name}`,
+          description: `Welcome ${data.name}`,
           icon: <CheckCircle className="text-green-500" />,
         });
-
         setActiveTab("login");
         return;
       }
 
-      await login(formData.email, formData.password);
-
+      await login(data.email, data.password);
       toast({
         title: authPageData.login_text,
         description: "You are now logged in",
         icon: <CheckCircle className="text-green-500" />,
       });
-
       navigate("/");
     } catch (err) {
+      console.error(err)
       const message =
-        err.status === 409
+        err.response?.status === 409
           ? "User already exists"
-          : err.status === 400
+          : err.response?.status === 400
             ? "Invalid credentials"
             : "Login: Something went wrong";
 
       setError(message);
-      console.log("Authentication error details:", err);
-
       toast({
         title: "Authentication Failed",
         description: message,
@@ -145,59 +122,59 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--hero-grad-start)] via-white to-[var(--hero-grad-end)] px-4">
-      <Card className="w-full max-w-md rounded-3xl   shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] backdrop-blur-sm bg-white/90">
+      <StickyBar/>
+      <Card className="w-full max-w-md rounded-3xl shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] backdrop-blur-sm bg-white/90">
         <Toaster />
 
         <CardContent className="p-8">
           <div className="text-center space-y-2">
-            <h2
-              className="pacifico-regular text-3xl font-semibold tracking-tight text-[var(--primary)] md:text-4xl"
-              {...authPageData?.$?.app_title}
-            >
+            <h2 className="pacifico-regular text-3xl font-semibold tracking-tight text-[var(--primary)] md:text-4xl">
               {authPageData?.app_title}
             </h2>
-            <p className="text-sm text-[var(--text-muted)]" {...authPageData?.$?.subtitle}>
+            <p className="text-sm text-[var(--text-muted)]">
               {authPageData?.subtitle}
             </p>
           </div>
 
           <div className="mt-6 flex justify-center">
-            {googleLoginEnabled && (
-
+            {googleLoginEnabled ? (
               <GoogleLogin
+                useOneTap={true}
                 onSuccess={async (credentialResponse) => {
-                  const data = await api.post("/api/user/google/callback", {
-                    token: credentialResponse.credential,
-                  });
+                  try {
+                    const res = await api.post("/api/user/google/callback", {
+                      token: credentialResponse.credential,
+                    });
 
-                  localStorage.setItem("token", data.data.jwtToken);
-                  localStorage.setItem("user", JSON.stringify(data.data.user));
-                  setUser(data.data.user);
-                  setAuthToken(data.data.jwtToken);
+                    const returnedUser = res.data.user;
+                    const accessToken = res.data.accessToken;
 
-                  toast({ title: "Login Successful" });
+                    setAccessToken(accessToken);
+                    setUser(returnedUser);
+                    localStorage.setItem("user", JSON.stringify(returnedUser));
 
-                  // identifyUser(data.data.user.email);
-                  trackEvent("google_login", {
-                    email: data.data.user.email,
-                    name: data.data.user.name,
-                  });
-
-                  // console.log("Google login successful, user data:", data.data);
-                  navigate("/");
+                    toast({ title: "Login Successful" });
+                    trackEvent("google_login", {
+                      email: returnedUser.email,
+                      name: returnedUser.name,
+                    });
+                    navigate("/");
+                  } catch (googleErr) {
+                    toast({
+                      title: "Google login failed",
+                      variant: "destructive",
+                    });
+                  }
                 }}
-                onError={() =>
+                onError={() => {
                   toast({
                     title: "Google login failed",
                     variant: "destructive",
-                  })
-                }
-              />)}
-            {!googleLoginEnabled && (
-              <Button
-                disabled
-                className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
-              >
+                  });
+                }}
+              />
+            ) : (
+              <Button disabled className="w-full rounded-xl">
                 Google Login Disabled
               </Button>
             )}
@@ -211,22 +188,12 @@ const Login = () => {
             <Separator className="flex-1" />
           </div>
 
-          <Tabs
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="w-full"
-          >
-            <TabsList className="mb-6 grid grid-cols-2 rounded-xl   bg-[var(--primary-soft)] p-1">
-              <TabsTrigger
-                value="login"
-                className="rounded-lg text-[var(--text-muted)] data-[state=active]:bg-white data-[state=active]:text-[var(--text-dark)] data-[state=active]:shadow-sm"
-              >
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="mb-6 grid grid-cols-2 rounded-xl bg-[var(--primary-soft)] p-1">
+              <TabsTrigger value="login" className="rounded-lg">
                 {authPageData.login_text}
               </TabsTrigger>
-              <TabsTrigger
-                value="signup"
-                className="rounded-lg text-[var(--text-muted)] data-[state=active]:bg-white data-[state=active]:text-[var(--text-dark)] data-[state=active]:shadow-sm"
-              >
+              <TabsTrigger value="signup" className="rounded-lg">
                 {authPageData.sign_up_text}
               </TabsTrigger>
             </TabsList>
@@ -238,10 +205,7 @@ const Login = () => {
                 </Alert>
               )}
 
-              <form
-                onSubmit={(e) => handleAuth(e, "login")}
-                className="space-y-4"
-              >
+              <form onSubmit={(e) => handleAuth(e, "login")} className="space-y-4">
                 <div className="space-y-1">
                   <Label className="text-sm text-[var(--text-dark)]">
                     {authPageData.email_label}
@@ -252,7 +216,7 @@ const Login = () => {
                     value={data.email}
                     onChange={handleDataChange}
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
@@ -263,7 +227,7 @@ const Login = () => {
                       {authPageData.password_label}
                     </Label>
                     <Link
-                      to="/forgot-password"
+                      to={`/forgot-password${data?.email? `?email=${data.email}`:""}`}
                       className="text-xs font-medium text-purple-600 hover:underline"
                     >
                       Forgot password?
@@ -275,7 +239,7 @@ const Login = () => {
                     value={data.password}
                     onChange={handleDataChange}
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
@@ -283,7 +247,7 @@ const Login = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
+                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)]"
                 >
                   {loading ? "Signing in..." : authPageData.login_text}
                 </Button>
@@ -297,65 +261,54 @@ const Login = () => {
                 </Alert>
               )}
 
-              <form
-                onSubmit={(e) => handleAuth(e, "signup")}
-                className="space-y-4"
-              >
+              <form onSubmit={(e) => handleAuth(e, "signup")} className="space-y-4">
                 <div className="space-y-1">
-                  <Label className="text-sm text-[var(--text-dark)]">
-                    {authPageData.name_label}
-                  </Label>
+                  <Label className="text-sm text-[var(--text-dark)]">{authPageData.name_label}</Label>
                   <Input
                     name="name"
                     value={data.name}
                     onChange={handleDataChange}
                     placeholder={authPageData.name_placeholder}
-                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-[var(--text-dark)]">
-                    {authPageData.email_label}
-                  </Label>
+                  <Label className="text-sm text-[var(--text-dark)]">{authPageData.email_label}</Label>
                   <Input
                     name="email"
                     type="email"
                     value={data.email}
                     onChange={handleDataChange}
                     placeholder={authPageData.email_placeholder}
-                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-[var(--text-dark)]">
-                    {authPageData.phone_number_label}
-                  </Label>
+                  <Label className="text-sm text-[var(--text-dark)]">{authPageData.phone_number_label}</Label>
                   <Input
                     name="phone"
                     type="number"
                     value={data.phone}
                     onChange={handleDataChange}
                     placeholder={authPageData.phone_number_placeholder}
-                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-sm text-[var(--text-dark)]">
-                    {authPageData.password_label}
-                  </Label>
+                  <Label className="text-sm text-[var(--text-dark)]">{authPageData.password_label}</Label>
                   <Input
                     name="password"
                     type="password"
                     value={data.password}
                     onChange={handleDataChange}
                     placeholder={authPageData.password_placeholder}
-                    className="rounded-xl  bg-white text-[var(--text-dark)] placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-[var(--ring)]"
+                    className="rounded-xl"
                     required
                   />
                 </div>
@@ -363,7 +316,7 @@ const Login = () => {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)]"
+                  className="w-full rounded-xl bg-[var(--primary)] text-[var(--on-primary)] shadow-md transition hover:bg-[var(--primary-hover)]"
                 >
                   {loading ? "Creating account..." : authPageData.sign_up_text}
                 </Button>

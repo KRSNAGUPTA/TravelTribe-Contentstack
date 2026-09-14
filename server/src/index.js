@@ -54,10 +54,10 @@ app.use(
 
 app.use(cookieParser())
 
-// 3. General Rate Limiter (300 requests / 15 mins per IP)
+// 3. General Rate Limiter (100 requests / 15 mins per IP)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: process.env.NODE_ENV == 'production' ? 100 : 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests from this IP, please try again after 15 minutes" },

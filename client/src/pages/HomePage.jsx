@@ -28,7 +28,8 @@ import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 import { FocusCards } from "@/components/ui/focus-cards";
 import HostelCard from "@/components/HostelCard";
 import { trackEvent } from "@/Lytics/config";
-import {  trackPersonalizeEvent } from "@/contentstack/personalizeSdk";
+import { trackPersonalizeEvent } from "@/contentstack/personalizeSdk";
+import { StickyBar } from "@/components/StickyBanner";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
@@ -104,96 +105,98 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-white mx-auto">
+      <StickyBar />
       <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
         <Header />
+
       </div>
 
       <Toaster />
 
       {/* Hero Section */}
-      <section className="relative min-h-fit lg:min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 sm:px-10 lg:px-16 pt-24 pb-12 md:py-28 flex flex-col justify-between">
-  
-  {/* Content Wrapper */}
-  <div className="relative z-10 w-full max-w-xl lg:max-w-2xl lg:pl-6 space-y-6">
-    <div className="space-y-4">
-      <h1
-        className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight pacifico-regular"
-        {...heroSection?.$?.title}
-      >
-        {heroSection?.title}
-      </h1>
+      <section className="relative min-h-fit lg:min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 sm:px-10 lg:px-16 pt-56 sm:pt-24 pb-12 md:py-28 flex flex-col justify-between">
 
-      <h2
-        className="text-xl sm:text-3xl lg:text-4xl font-bold text-[var(--primary)]"
-        {...heroSection?.$?.subtitle}
-      >
-        {heroSection?.subtitle}
-      </h2>
+        {/* Content Wrapper */}
+        <div className="relative z-10 w-full max-w-xl lg:max-w-2xl lg:pl-6 space-y-6">
+          <div className="space-y-4">
+            <h1
+              className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight pacifico-regular"
+              {...heroSection?.$?.title}
+            >
+              {heroSection?.title}
+            </h1>
 
-      <p
-        className="text-sm sm:text-base lg:text-lg text-[var(--secondary)] max-w-lg"
-        {...heroSection?.$?.subtext}
-      >
-        {heroSection?.subtext}
-      </p>
-    </div>
+            <h2
+              className="text-xl sm:text-3xl lg:text-4xl font-bold text-[var(--primary)]"
+              {...heroSection?.$?.subtitle}
+            >
+              {heroSection?.subtitle}
+            </h2>
 
-    {/* CTA Button */}
-    <div className="flex flex-col items-start gap-3">
-      <Button
-        onClick={async () => {
-          trackEvent("hero_cta_clicked", {
-            cta_title: heroSection?.cta?.title || "Unknown CTA",
-            email: user?.email || null,
-            name: user?.name || null,
-          });
-          trackPersonalizeEvent("clickCTA");
+            <p
+              className="text-sm sm:text-base lg:text-lg text-[var(--secondary)] max-w-lg"
+              {...heroSection?.$?.subtext}
+            >
+              {heroSection?.subtext}
+            </p>
+          </div>
 
-          if (heroSection?.cta?.href) {
-            navigate(heroSection.cta.href);
-          }
-        }}
-        className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
-        {...heroSection?.cta?.$?.title}
-      >
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
-        />
-        <span className="relative z-10 flex items-center">
-          {heroSection?.cta?.title}
-          <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-        </span>
-      </Button>
-    </div>
-  </div>
+          {/* CTA Button */}
+          <div className="flex flex-col items-center sm:items-start gap-3">
+            <Button
+              onClick={async () => {
+                trackEvent("hero_cta_clicked", {
+                  cta_title: heroSection?.cta?.title || "Unknown CTA",
+                  email: user?.email || null,
+                  name: user?.name || null,
+                });
+                trackPersonalizeEvent("clickCTA");
 
-  {/* Desktop / Large Screen Image */}
-  <div className="absolute bottom-0 right-0 hidden lg:block w-[45vw] xl:w-[50vw] max-w-3xl z-0 pointer-events-none">
-    <img
-      src={heroSection?.hero_image?.url}
-      alt="Travel Tribe Illustration"
-      className="w-full h-auto object-contain"
-      draggable="false"
-    />
-  </div>
+                if (heroSection?.cta?.href) {
+                  navigate(heroSection.cta.href);
+                }
+              }}
+              className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
+              {...heroSection?.cta?.$?.title}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
+              />
+              <span className="relative z-10 flex items-center">
+                {heroSection?.cta?.title}
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </span>
+            </Button>
+          </div>
+        </div>
 
-  {/* Mobile / Tablet Image */}
-  <div className="mt-8 lg:hidden w-full flex justify-center z-0">
-    <img
-      src={heroSection?.hero_image?.url}
-      alt="Travel Tribe Illustration"
-      className="w-full max-w-md sm:max-w-lg h-auto object-contain"
-      draggable="false"
-    />
-  </div>
-</section>
+        {/* Desktop / Large Screen Image */}
+        <div className="absolute bottom-0 right-0 hidden lg:block w-[45vw] xl:w-[50vw] max-w-3xl z-0 pointer-events-none">
+          <img
+            src={heroSection?.hero_image?.url}
+            alt="Travel Tribe Illustration"
+            className="w-full h-auto object-contain"
+            draggable="false"
+          />
+        </div>
+
+        {/* Mobile / Tablet Image */}
+        <div className="mt-28 lg:hidden w-full flex justify-center z-0">
+          <img
+            src={heroSection?.hero_image?.url}
+            alt="Travel Tribe Illustration"
+            className="w-full max-w-md sm:max-w-lg h-auto object-contain"
+            draggable="false"
+          />
+        </div>
+      </section>
 
       {/* Features Section */}
-      <section className="py-24 w-full">
-        <div className="container mx-auto px-4">
+      <section className="py-16 sm:py-20 md:py-24 w-full">
+        <div className="container mx-auto px-4 max-w-7xl">
           <h2
-            className="text-4xl font-bold text-center mb-12 text-[var(--text-dark)] bubblegum-sans-regular"
+            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 text-[var(--text-dark)] bubblegum-sans-regular"
             {...featuresSection?.$?.title}
           >
             {featuresSection?.title}
@@ -203,40 +206,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Hostel */}
-      <section className="py-24 w-full bg-[var(--hero-grad-start)]">
-        <div className="container mx-auto px-4">
+      {/* Featured Hostels Section */}
+      <section className="py-16 sm:py-20 md:py-24 w-full bg-[var(--hero-grad-start)] overflow-hidden">
+        <div className="container mx-auto px-4 max-w-7xl">
           <h2
-            className="text-4xl font-bold text-center mb-12 bubblegum-sans-regular"
+            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 bubblegum-sans-regular text-gray-900"
             {...hostelsSection?.$?.title}
           >
             {hostelsSection?.title}
           </h2>
 
-          <div className="relative max-w-full mx-auto px-8">
+          <div className="relative max-w-full mx-auto px-2 sm:px-6">
             <Carousel
-              className="cursor-grab active:cursor-grabbing"
+              className="w-full cursor-grab active:cursor-grabbing"
               opts={{ align: "start", loop: true }}
               plugins={[hostelsPlugin.current]}
               onMouseEnter={() => hostelsPlugin.current?.stop()}
               onMouseLeave={() => hostelsPlugin.current?.play()}
             >
-              <CarouselContent className="flex py-8">
-                {featuredHostels.map((hostel) => {
-                  const minPrice = Math.min(
-                    ...hostel.room_types.map((r) => r.base_price),
-                  );
-
-                  return (
-                    <CarouselItem className="max-w-md mx-auto" key={hostel.uid}>
+              <CarouselContent className="-ml-2 md:-ml-4 py-4">
+                {featuredHostels.map((hostel) => (
+                  <CarouselItem
+                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
+                    key={hostel.uid}
+                  >
+                    <div className="h-full px-1">
                       <HostelCard
                         hostel={hostel}
                         lytics_event="home_page"
                         variant="compact"
                       />
-                    </CarouselItem>
-                  );
-                })}
+                    </div>
+                  </CarouselItem>
+                ))}
               </CarouselContent>
             </Carousel>
           </div>
@@ -298,11 +300,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ Section  */}
-      <section className="py-24 bg-[var(--hero-grad-start)]">
+      {/* FAQ Section */}
+      <section className="py-16 sm:py-20 md:py-24 bg-[var(--hero-grad-start)]">
         <div className="container mx-auto px-4 max-w-3xl">
           <h2
-            className="text-4xl font-bold text-center mb-12 text-gray-900 bubblegum-sans-regular"
+            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 text-gray-900 bubblegum-sans-regular"
             {...faqSection?.$?.title}
           >
             {faqSection?.title}
@@ -313,16 +315,16 @@ export default function HomePage() {
               <AccordionItem
                 key={index}
                 value={`item-${index + 1}`}
-                className="bg-white rounded-lg"
+                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
               >
                 <AccordionTrigger
-                  className="text-lg font-medium px-6 hover:text-[var(--primary)] transition-colors duration-500"
+                  className="text-base sm:text-lg font-medium px-6 py-4 hover:text-[var(--primary)] text-left transition-colors duration-300"
                   {...item?.$?.question}
                 >
                   {item.question}
                 </AccordionTrigger>
                 <AccordionContent
-                  className="text-gray-700 px-6 pb-4 font-semibold"
+                  className="text-gray-700 px-6 pb-5 font-normal text-sm sm:text-base leading-relaxed border-t border-gray-50 pt-3"
                   {...item?.$?.answer}
                 >
                   {item.answer}
