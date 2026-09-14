@@ -1,0 +1,10 @@
+/* Add to your global CSS (globals.css or app.css) */
+html {
+  scrollbar-gutter: stable;
+}
+
+body[data-scroll-locked] {
+  padding-right: 0px !important;
+  margin-right: 0px !important;
+  overflow: auto !important;
+}

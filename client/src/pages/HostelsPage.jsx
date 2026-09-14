@@ -113,6 +113,10 @@ export default function HostelsPage() {
 
     fetchHeaderData();
     onEntryChange(fetchHeaderData);
+    scrollTo({
+      top:0,
+      behavior:'smooth'
+    })
     setDataForChromeExtension(data);
   }, []);
 
@@ -257,7 +261,7 @@ export default function HostelsPage() {
         </div>
 
         <main className="container mx-auto px-4 py-8">
-          <div className="text-center mb-12">
+          <div className="text-center mb-12 mt-16">
             <h1 className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular">
               {listingPageData?.title || "Hostels"}
             </h1>
@@ -364,7 +368,7 @@ export default function HostelsPage() {
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Select College" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent alignItemWithTrigger={true}>
                 <SelectItem value="all">All Colleges</SelectItem>
                 <SelectItem value="Thakur College of Engineering and Technology">
                   Thakur College of Engineering and Technology
@@ -432,7 +436,7 @@ export default function HostelsPage() {
           <div className="flex justify-center mb-6">
             <Button
               onClick={handleReset}
-              className="text-sm rounded-full text-black active:translate-y-4 hover:translate-y-2 transition-all"
+              className="text-sm rounded-full text-black active:translate-y-1 hover:translate-y-1 transition-all"
             >
               {listingPageData?.reset_button_text || "Reset Filters"}
             </Button>
