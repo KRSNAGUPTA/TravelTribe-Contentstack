@@ -1,33 +1,74 @@
+import dotenv from "dotenv";
+dotenv.config();
+
+import crypto from "crypto";
+import mongoose from "mongoose";
 import User from "../model/UserModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { sendNotification } from "../discordBot/NotificationBot.js";
 import { OAuth2Client } from "google-auth-library";
 import { sendOtpEmail } from "../services/emailService.js";
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-import dotenv from "dotenv";
-dotenv.config();
+
+const client = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const generateToken = (id, role, expireIn) => {
+  try {
+    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+      expiresIn: expireIn,
+    });
+  } catch (error) {
+    console.error("Failed to generate JWT Token:", error);
+    throw error;
+  }
+};
+
+const hashOtp = (otp) => {
+  return crypto.createHash("sha256").update(otp.trim()).digest("hex");
+};
+
+
+export const refreshToken = async (req, res) => {
+  try {
+    console.log("cookies",req.cookies)
+    const refreshT = req.cookies?.refreshToken;
+    if (!refreshT) {
+      return res.status(401).json({ message: "Refresh token not provided" });
+    }
+
+    const decoded = jwt.verify(refreshT, process.env.JWT_SECRET);
+    const token = generateToken(decoded.id, decoded.role, "15m");
+
+    return res.status(200).json({
+      message: "Access token refreshed",
+      accessToken: token,
+    });
+  } catch (error) {
+    console.error("Failed to refresh token:", error.message);
+    return res.status(403).json({ message: "Unauthorized: Invalid or expired token" });
+  }
+};
 
 export const handleGoogleLogin = async (req, res) => {
   try {
-    let { token } = req.body;
-
+    const { token } = req.body;
     if (!token) {
       return res.status(400).json({ message: "No token provided" });
     }
 
-    const ticket = await client.verifyIdToken({
+    const googleClient = client();
+    const ticket = await googleClient.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
     const { email, name, picture, sub } = ticket.getPayload();
-    console.log(email, name, picture, sub);
+    const normalizedEmail = email.toLowerCase().trim();
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       user = await User.create({
-        email,
+        email: normalizedEmail,
         name,
         password: sub,
         avatar: picture,
@@ -36,93 +77,102 @@ export const handleGoogleLogin = async (req, res) => {
       await sendNotification("register", user);
     }
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET is missing");
-    }
+    const refreshToken = generateToken(user._id, user.role, "30d");
+    const accessToken = generateToken(user._id, user.role, "15m");
 
-    const jwtToken = jwt.sign(
-      { id: user._id.toString(), role: "user", email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/user/refresh",
+    });
 
-    res.json({
-      jwtToken,
+    return res.status(200).json({
+      accessToken,
       user: {
         id: user._id,
         name: user.name,
         role: user.role,
         email: user.email,
       },
+      message: "Google login successful!",
     });
   } catch (error) {
     console.error("Error in Google Login:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 export const registerUser = async (req, res) => {
   try {
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password, phone } = req.body;
     if (!name || !email || !password) {
-      return res.status(400).json({
-        message: "details missing",
-      });
+      return res.status(400).json({ message: "Details missing" });
     }
-    const userExists = await User.findOne({ email });
-    if (userExists)
-      return res.status(409).json({ message: "User already exists" });
 
-    const newUser = new User({ name, email, password, phone, role });
+    const normalizedEmail = email.toLowerCase().trim();
+    const userExists = await User.findOne({ email: normalizedEmail });
+    if (userExists) {
+      return res.status(409).json({ message: "User already exists" });
+    }
+
+    const newUser = new User({
+      name: name.trim(),
+      email: normalizedEmail,
+      password,
+      phone: phone?.trim(),
+    });
 
     await newUser.save();
-    const token = jwt.sign(
-      { id: newUser._id, role: "user", name: name, email: email },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
     await sendNotification("register", newUser);
-    res.status(201).json({
+
+    return res.status(201).json({
       message: "User registered successfully",
       user: {
         name: newUser.name,
         email: newUser.email,
         id: newUser._id,
       },
-      token,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
 
-    if (!user)
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" },
-    );
+    const refreshToken = generateToken(user._id, user.role, "30d");
+    const accessToken = generateToken(user._id, user.role, "15m");
 
-    res.cookie("token", token, {
+    res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/api/user/refresh",
     });
+
     await sendNotification("login", user);
 
-    res.json({
+    return res.json({
       message: "Login successful",
-      token,
+      accessToken,
       user: {
         id: user._id,
         name: user.name,
@@ -132,18 +182,25 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Internal Server error", error: error.message });
   }
 };
 
 export const logoutUser = (req, res) => {
-  res.cookie("token", "", { httpOnly: true, expires: new Date(0) });
-  res.json({ message: "Logged out successfully" });
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "lax",
+    path: "/api/user/refresh",
+  });
+  return res.json({ message: "Logged out successfully" });
 };
+
+// --- USER MANAGEMENT CONTROLLERS ---
+
 export const searchUser = async (req, res) => {
   try {
     const { query, role } = req.query;
-
     let filter = {};
 
     if (query) {
@@ -154,9 +211,7 @@ export const searchUser = async (req, res) => {
       ];
     }
 
-    if (role) {
-      filter.role = role;
-    }
+    if (role) filter.role = role;
 
     const users = await User.find(filter).select("-password");
 
@@ -164,78 +219,97 @@ export const searchUser = async (req, res) => {
       return res.status(404).json({ message: "No users found" });
     }
 
-    res.status(200).json({ message: "Users found", users });
+    return res.status(200).json({ message: "Users found", users });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}, "-password");
-    res.status(200).json(users);
+    const users = await User.find({}).select("-password");
+    return res.status(200).json(users);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id, "-password");
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid User ID format" });
+    }
+
+    const user = await User.findById(req.params.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.status(200).json(user);
+    return res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const makeAdmin = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid User ID format" });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.role = "admin";
     await user.save();
 
-    res.status(200).json({ message: "User promoted to admin", user });
+    return res.status(200).json({ message: "User promoted to admin", user });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
 export const removeAdmin = async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ message: "Invalid User ID format" });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     user.role = "user";
     await user.save();
 
-    res.status(200).json({ message: "Admin demoted to user", user });
+    return res.status(200).json({ message: "Admin demoted to user", user });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    await User.findByIdAndDelete(id);
-    res.status(200).json({ message: "User deleted successfully" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid User ID format" });
+    }
+
+    const deletedUser = await User.findByIdAndDelete(id);
+    if (!deletedUser) return res.status(404).json({ message: "User not found" });
+
+    return res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
+
 export const getProfile = async (req, res) => {
   try {
     const user = req?.user;
+    if (!user?._id) return res.status(401).json({ message: "Unauthorized" });
+
     const userData = await User.findById(user._id).select("-password");
-    return res.status(200).json({
-      message: "Fetched Profile",
-      userData,
-    });
+    return res.status(200).json({ message: "Fetched Profile", userData });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -243,7 +317,7 @@ export const updateUser = async (req, res) => {
   const { email, name, phone, password } = req.body;
   try {
     const user = req?.user;
-    if (!user) {
+    if (!user?._id) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
@@ -253,8 +327,9 @@ export const updateUser = async (req, res) => {
     }
 
     if (email) {
+      const normalizedEmail = email.toLowerCase().trim();
       const emailUsed = await User.findOne({
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         _id: { $ne: user._id },
       });
       if (emailUsed) {
@@ -262,19 +337,18 @@ export const updateUser = async (req, res) => {
           .status(409)
           .json({ message: "An account already exists with this email" });
       }
-      userData.email = email.toLowerCase().trim();
+      userData.email = normalizedEmail;
     }
 
     if (phone) userData.phone = phone.trim();
     if (name) userData.name = name.trim();
-    if (password) userData.password = password;
-
+    if (password) userData.password = password; 
     await userData.save();
 
     return res.status(200).json({ message: "User data updated successfully" });
   } catch (error) {
     console.error("Update user error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
@@ -296,15 +370,14 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate 6-digit numeric OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
 
-    user.resetPasswordOtp = otp;
+    user.resetPasswordOtp = hashOtp(rawOtp);
     user.resetPasswordOtpExpires = otpExpires;
     await user.save();
-    console.log(`Generated OTP for ${user.email} (expires at ${otpExpires})`);
-    await sendOtpEmail(user.email, otp);
+
+    await sendOtpEmail(user.email, rawOtp);
 
     return res.status(200).json({
       message: "6-digit OTP has been sent to your email address",
@@ -327,9 +400,11 @@ export const verifyOtp = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const hashedInputOtp = hashOtp(otp);
+
     if (
       !user.resetPasswordOtp ||
-      user.resetPasswordOtp !== otp.trim() ||
+      user.resetPasswordOtp !== hashedInputOtp ||
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {
@@ -359,9 +434,11 @@ export const resetPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const hashedInputOtp = hashOtp(otp);
+
     if (
       !user.resetPasswordOtp ||
-      user.resetPasswordOtp !== otp.trim() ||
+      user.resetPasswordOtp !== hashedInputOtp ||
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {

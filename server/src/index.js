@@ -19,6 +19,7 @@ import cors from "cors";
 import axios from "axios";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser"
 
 const app = express();
 app.set("trust proxy", 1);
@@ -50,6 +51,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "ah-http-key"],
   })
 );
+
+app.use(cookieParser())
 
 // 3. General Rate Limiter (100 requests / 15 mins per IP)
 const generalLimiter = rateLimit({
