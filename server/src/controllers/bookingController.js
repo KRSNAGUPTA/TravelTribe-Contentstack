@@ -29,12 +29,21 @@ export const createBooking = async (req, res) => {
       phone,
       gender,
       amount,
-      receiptId
-    } = req.body;
+      receiptId,
+    } = req.body || {};
 
     if (
-      !checkIn || !checkOut || !hostelId || !roomSelection || !amount ||
-      !name || !email || !phone || !gender || !receiptId
+      !checkIn ||
+      !checkOut ||
+      !hostelId ||
+      !roomSelection ||
+      amount === undefined ||
+      amount === null ||
+      !name ||
+      !email ||
+      !phone ||
+      !gender ||
+      !receiptId
     ) {
       console.error("Incomplete details while Creating Booking.");
       return res.status(400).json({ message: "All fields are required" });
@@ -45,6 +54,20 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
+    const normalizedGender = String(gender).toLowerCase().trim();
+    if (!["male", "female", "other"].includes(normalizedGender)) {
+      return res.status(400).json({
+        message: "Invalid gender value. Allowed values are male, female, or other.",
+      });
+    }
+
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({
+        message: "Invalid booking amount.",
+      });
+    }
+
     // Find or initialize Hostel document in MongoDB from Contentstack CMS
     let hostel = await Hostel.findOne({ hostelId: hostelId });
     if (!hostel) {
@@ -53,7 +76,7 @@ export const createBooking = async (req, res) => {
         const cmsRes = await cmsClient.get(
           `/content_types/hostel/entries/${hostelId}?environment=${env}`
         );
-        const cmsEntry = cmsRes.data.entry;
+        const cmsEntry = cmsRes.data?.entry;
         if (cmsEntry) {
           const roomTypes = (cmsEntry.room_types || []).map((room) => ({
             room_key: room.room_key,
@@ -72,24 +95,28 @@ export const createBooking = async (req, res) => {
       }
     }
 
-    let roomType = hostel?.room_types?.find(room => room.room_key === roomSelection);
+    let roomType = hostel?.room_types?.find(
+      (room) => room.room_key === roomSelection
+    );
 
     if (roomType && roomType.available_beds <= 0) {
-      return res.status(400).json({ message: "No available rooms for this type" });
+      return res
+        .status(400)
+        .json({ message: "No available rooms for this type" });
     }
 
     const newBooking = new Booking({
       user: req.user._id,
-      checkInDate: checkIn,
-      checkOutDate: checkOut,
-      roomSelection,
-      hostelId,
-      amount,
-      name,
-      email,
-      phone,
-      gender,
-      receiptId,
+      checkInDate: new Date(checkIn),
+      checkOutDate: new Date(checkOut),
+      roomSelection: String(roomSelection).trim(),
+      hostelId: String(hostelId).trim(),
+      amount: numericAmount,
+      name: String(name).trim(),
+      email: String(email).toLowerCase().trim(),
+      phone: String(phone).trim(),
+      gender: normalizedGender,
+      receiptId: String(receiptId).trim(),
       status: "confirmed",
     });
 
@@ -161,11 +188,15 @@ export const cancelBooking = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    if (booking.status === "cancelled") {
+      return res.status(400).json({ message: "Booking is already cancelled" });
+    }
+
     const hostel = await Hostel.findOne({ hostelId: booking.hostelId });
     if (hostel) {
       const roomType = hostel.room_types?.find(room => room.room_key === booking.roomSelection);
       if (roomType) {
-        roomType.available_beds += 1;
+        roomType.available_beds = Math.min(roomType.total_beds || 10, (roomType.available_beds || 0) + 1);
         await hostel.save();
       }
     }
@@ -205,6 +236,7 @@ export const generateReceipt = async (req, res) => {
       message: "Receipt Generated Successfully",
       receipt: {
         bookingId: booking._id,
+        receiptId: booking.receiptId,
         user: booking.name,
         email: booking.email,
         phone: booking.phone,
@@ -212,7 +244,7 @@ export const generateReceipt = async (req, res) => {
         checkOut: booking.checkOutDate,
         roomSelection: booking.roomSelection,
         totalAmount: booking.amount,
-        transactionId: booking.transactionId,
+        transactionId: booking.receiptId,
         status: booking.status,
       },
     });

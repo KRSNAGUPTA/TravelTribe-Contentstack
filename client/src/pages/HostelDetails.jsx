@@ -84,6 +84,323 @@ import { AuthContext } from "@/context/AuthContext";
 import { XCircle } from "lucide-react";
 import { trackEvent } from "@/Lytics/config";
 
+// ─── Star Picker ──────────────────────────────────────────────────────────────
+
+function StarPicker({ value, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onChange(star)}
+          onMouseEnter={() => setHover(star)}
+          onMouseLeave={() => setHover(0)}
+          className="focus:outline-none"
+        >
+          <Star
+            className={`w-7 h-7 transition-colors ${
+              star <= (hover || value)
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Reviews Section ──────────────────────────────────────────────────────────
+
+function ReviewsSection({ hostelId, user, reviews, setReviews }) {
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+      : 0;
+
+  const userAlreadyReviewed = user
+    ? reviews.some(
+        (r) =>
+          r.user === user._id ||
+          r.user?._id === user._id
+      )
+    : false;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!rating) {
+      toast({ title: "Please select a star rating", variant: "destructive" });
+      return;
+    }
+    if (comment.trim().length < 5) {
+      toast({ title: "Comment must be at least 5 characters", variant: "destructive" });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await api.post(`/api/hostel/${hostelId}/reviews`, {
+        rating,
+        comment: comment.trim(),
+      });
+      setReviews((prev) => [res.data.review, ...prev]);
+      setRating(0);
+      setComment("");
+      setShowForm(false);
+      toast({ title: "Review submitted! Thank you." });
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Failed to submit review";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (reviewId) => {
+    setDeletingId(reviewId);
+    try {
+      await api.delete(`/api/hostel/${hostelId}/reviews/${reviewId}`);
+      setReviews((prev) => prev.filter((r) => (r._id || r.id) !== reviewId));
+      toast({ title: "Review deleted" });
+    } catch (err) {
+      const msg = err?.response?.data?.message || "Failed to delete review";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Average rating summary */}
+      {reviews.length > 0 && (
+        <Card>
+          <CardContent className="p-5 flex items-center gap-5">
+            <div className="text-center">
+              <p className="text-4xl font-bold text-gray-800">
+                {avgRating.toFixed(1)}
+              </p>
+              <div className="flex gap-0.5 justify-center mt-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star
+                    key={s}
+                    className={`w-4 h-4 ${
+                      s <= Math.round(avgRating)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            <div className="flex-1 space-y-1">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = reviews.filter((r) => r.rating === star).length;
+                const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                return (
+                  <div key={star} className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="w-2">{star}</span>
+                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
+                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-yellow-400 rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-6 text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Write a review CTA / form */}
+      {user ? (
+        userAlreadyReviewed ? (
+          <Card>
+            <CardContent className="p-4 flex items-center gap-2 text-sm text-gray-500">
+              <Check className="w-4 h-4 text-green-500" />
+              You have already reviewed this hostel.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="p-5">
+              {!showForm ? (
+                <Button
+                  className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+                  onClick={() => setShowForm(true)}
+                >
+                  Write a Review
+                </Button>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <h3 className="font-semibold text-gray-800">Your Review</h3>
+
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Rating</p>
+                    <StarPicker value={rating} onChange={setRating} />
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Comment</p>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Share your experience…"
+                      rows={4}
+                      maxLength={1000}
+                      className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
+                    />
+                    <p className="text-xs text-gray-400 text-right">
+                      {comment.length}/1000
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+                    >
+                      {submitting ? "Submitting…" : "Submit Review"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-full"
+                      onClick={() => {
+                        setShowForm(false);
+                        setRating(0);
+                        setComment("");
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <Card>
+          <CardContent className="p-4 text-sm text-gray-500">
+            <a href="/login" className="text-purple-600 underline font-medium">
+              Log in
+            </a>{" "}
+            to write a review (only available after a confirmed booking).
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Reviews list */}
+      {reviews.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-center space-y-2">
+            <Star className="w-10 h-10 text-gray-300 mx-auto" />
+            <p className="text-gray-600 font-medium">No reviews yet</p>
+            <p className="text-sm text-gray-500">Be the first to share your experience</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {reviews.map((review) => {
+            const reviewId = review._id || review.id;
+            const isOwner =
+              user &&
+              (review.user === user._id ||
+                review.user?._id === user._id);
+            const isAdmin = user?.role === "admin";
+
+            return (
+              <Card key={reviewId}>
+                <CardContent className="p-5 flex gap-4">
+                  {/* Avatar */}
+                  <div className="w-11 h-11 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    {review.img ? (
+                      <img
+                        src={review.img}
+                        alt={review.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <h4 className="font-semibold text-gray-800 text-sm">
+                        {review.name || "Anonymous"}
+                      </h4>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              className={`w-4 h-4 ${
+                                s <= review.rating
+                                  ? "fill-yellow-400 text-yellow-400"
+                                  : "text-gray-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+
+                        {(isOwner || isAdmin) && (
+                          <button
+                            onClick={() => handleDelete(reviewId)}
+                            disabled={deletingId === reviewId}
+                            className="text-gray-400 hover:text-red-500 transition-colors ml-1"
+                            title="Delete review"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 break-words">{review.comment}</p>
+
+                    {review.createdAt && (
+                      <p className="text-xs text-gray-400">
+                        {new Date(review.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── HostelDetails page ───────────────────────────────────────────────────────
+
 export default function HostelDetails() {
   const { id } = useParams();
   const [hostel, setHostel] = useState(null);
@@ -758,74 +1075,12 @@ export default function HostelDetails() {
 
             {/* Reviews Tab */}
             <TabsContent value="reviews" className="space-y-6">
-              {reviews.length === 0 ? (
-                <Card>
-                  <CardContent className="p-6 text-center space-y-3">
-                    <Star className="w-10 h-10 text-gray-300 mx-auto" />
-                    <p className="text-gray-600 font-medium">No reviews yet</p>
-                    <p className="text-sm text-gray-500">
-                      Be the first to share your experience
-                    </p>
-
-                    <Button
-                      className="mt-2 rounded-full text-black"
-                      onClick={() =>
-                        toast({ title: "Review feature coming soon" })
-                      }
-                    >
-                      Write a Review
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                // <div className="space-y-4">
-                //   {reviews.map((review, index) => (
-                //     <Card key={review._id || index}>
-                //       <CardContent className="p-5 flex gap-4">
-
-                //         {/* Avatar */}
-                //         <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                //           <User className="w-6 h-6 text-gray-500" />
-                //         </div>
-
-                //         {/* Content */}
-                //         <div className="flex-1 space-y-1">
-                //           <div className="flex items-center justify-between">
-                //             <h4 className="font-semibold text-gray-800">
-                //               {review.user_name || "Anonymous"}
-                //             </h4>
-
-                //             {/* Rating */}
-                //             <div className="flex gap-1">
-                //               {[...Array(5)].map((_, i) => (
-                //                 <Star
-                //                   key={i}
-                //                   className={`w-4 h-4 ${i < review.rating
-                //                     ? "fill-yellow-500 text-yellow-500"
-                //                     : "text-gray-300"
-                //                     }`}
-                //                 />
-                //               ))}
-                //             </div>
-                //           </div>
-
-                //           <p className="text-sm text-gray-600">
-                //             {review.comment}
-                //           </p>
-
-                //           {review.createdAt && (
-                //             <p className="text-xs text-gray-400">
-                //               {new Date(review.createdAt).toLocaleDateString()}
-                //             </p>
-                //           )}
-                //         </div>
-
-                //       </CardContent>
-                //     </Card>
-                //   ))}
-                // </div>
-                ""
-              )}
+              <ReviewsSection
+                hostelId={id}
+                user={userData}
+                reviews={reviews}
+                setReviews={setReviews}
+              />
             </TabsContent>
           </Tabs>
 

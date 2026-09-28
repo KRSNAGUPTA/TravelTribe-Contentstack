@@ -6,7 +6,7 @@ const ProtectedRoute = ({children}) => {
   const { user, isInitializing } = useAuth();
   const location = useLocation();
 
-  console.log("protectedRoute")
+  // console.log("protectedRoute")
 
   // console.log("ProtectedRoute -> user:", user?.email, "| isInitializing:", isInitializing);
 
@@ -21,7 +21,7 @@ const ProtectedRoute = ({children}) => {
       </div>
     );
   }
-  console.log("p: user", user)
+  // console.log("p: user", user)
   return user ? (
     children
   ) : (

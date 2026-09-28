@@ -65,7 +65,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        console.log("Refreshing token")
+        // console.log("Refreshing token")
         const res = await axios.post(
           `${import.meta.env.VITE_API_URL}/api/user/refresh`,
           {},

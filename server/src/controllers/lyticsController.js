@@ -24,15 +24,13 @@ const fetchLyticsProfile = async (req, res) => {
     console.log("Lytics Profile Response", response.data);
     return res.status(200).json(response.data.data.entity);
   } catch (error) {
-    console.log("here")
-    console.error("Error fetching user profile from Lytics:", error.status);
-    if(error.status === 404){
+    console.error("Error fetching user profile from Lytics:", error?.response?.status || error.message);
+    if (error?.response?.status === 404 || error.status === 404) {
       return res.status(404).json({ error: "Profile not found for the provided email" });
     }
     return res.status(500).json({ 
       error: "Failed to fetch profile from Lytics",
       details: error.message,
-      staus: error
     });
   }
 };

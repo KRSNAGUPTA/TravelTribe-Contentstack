@@ -4,8 +4,8 @@ import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from 'react-router-dom';
-import { track } from '@vercel/analytics/react';
 import { trackEvent } from '@/Lytics/config';
+
 const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateForm }) => {
   const navigate = useNavigate()
   const [isProcessing, setIsProcessing] = useState(false);
@@ -18,7 +18,6 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         hostelId,
         receiptId
       };
-      
       
       const res = await api.post("/api/booking/", bookingData);
 
@@ -88,17 +87,28 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         name: "Travel Tribe",
         description: "Hostel Booking Payment",
         order_id: orderResponse.data.id,
+        prefill: {
+          name: formData.name || "",
+          email: formData.email || "",
+          contact: cleanPhone,
+        },
         theme: {
           color: "var(--primary)",
         },
+        modal: {
+          ondismiss: () => {
+            setIsProcessing(false);
+          },
+        },
         handler: async (response) => {
+          setIsProcessing(true);
           try {
             const verifyResponse = await api.post(
               "/api/payment/verify-payment",
               response
             );
 
-            if (verifyResponse.data.success) {
+            if (verifyResponse.data?.success) {
               toast({
                 title: "Payment Successful!",
                 description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
@@ -113,19 +123,32 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
                 name: formData.name || null,
               });
               await handleBooking(orderResponse.data.receipt);
+            } else {
+              throw new Error(verifyResponse.data?.message || "Verification failed");
             }
           } catch (error) {
-            console.log(error)
+            console.error("Payment verification failed:", error);
             toast({
               variant: "destructive",
               title: "Payment Verification Failed",
               description: "Please contact support if amount was deducted"
             });
+          } finally {
+            setIsProcessing(false);
           }
         },
       };
 
       const razorpayInstance = new window.Razorpay(options);
+      razorpayInstance.on("payment.failed", function (response) {
+        console.error("Razorpay payment failed:", response.error);
+        setIsProcessing(false);
+        toast({
+          variant: "destructive",
+          title: "Payment Failed",
+          description: response.error?.description || "Payment failed or cancelled.",
+        });
+      });
       razorpayInstance.open();
     } catch (error) {
       console.log(error)
@@ -134,7 +157,6 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         title: "⚠️ Payment Failed",
         description: "Please try again or contact support"
       });
-    } finally {
       setIsProcessing(false);
     }
   };

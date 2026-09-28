@@ -27,7 +27,6 @@ const hostelDataHook = async (req, res) => {
     console.log("Webhook environment:", webhookEnvironment);
     console.log("Fetching hostel data for entry ID:", hostelEntryId);
 
-
     // Fetch full entry from CMS
     const hostelData = (
       await cmsClient.get(
@@ -38,13 +37,13 @@ const hostelDataHook = async (req, res) => {
           },
         }
       )
-    ).data.entry;
+    ).data?.entry;
 
-    const roomTypes = hostelData.room_types.map((room) => ({
+    const roomTypes = (hostelData?.room_types || []).map((room) => ({
       room_key: room.room_key,           // from CMS Select
       room_name: room.room_name,         // display name
-      total_beds: room.total_beds,
-      available_beds: room.total_beds,  // initialize 
+      total_beds: room.total_beds || 10,
+      available_beds: room.total_beds || 10,  // initialize 
     }));
 
     // Create hostel document
