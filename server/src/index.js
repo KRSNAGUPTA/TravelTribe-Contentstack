@@ -24,14 +24,14 @@ import cookieParser from "cookie-parser"
 const app = express();
 app.set("trust proxy", 1);
 
-// 1. Helmet HTTP Security Headers
+// Helmet HTTP Security Headers
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// 2. Production CORS Setup
+// Production CORS Setup
 const allowedOrigins = [
   process.env.CORS_ORIGIN,
   "http://localhost:5173",
@@ -41,7 +41,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(null, true);
@@ -54,7 +54,7 @@ app.use(
 
 app.use(cookieParser())
 
-// 3. General Rate Limiter (100 requests / 15 mins per IP)
+// General Rate Limiter (100 requests / 15 mins per IP)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: process.env.NODE_ENV == 'production' ? 100 : 500,
@@ -64,7 +64,7 @@ const generalLimiter = rateLimit({
 });
 app.use("/api", generalLimiter);
 
-// 4. Strict Auth/OTP Rate Limiter (10 requests / 15 mins per IP)
+// Strict Auth/OTP Rate Limiter (10 requests / 15 mins per IP)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -77,7 +77,7 @@ app.use("/api/user/verify-otp", authLimiter);
 app.use("/api/user/login", authLimiter);
 app.use("/api/user/signup", authLimiter);
 
-// 5. Payload size limiting (Protects against Memory DoS)
+// Payload size limiting (Protects against Memory DoS)
 app.use(express.json({ limit: "50kb" }));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 

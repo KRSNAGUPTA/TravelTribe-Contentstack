@@ -83,7 +83,7 @@ export const handleGoogleLogin = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "None",
       path: "/api/user/refresh",
     });
 
@@ -164,7 +164,7 @@ export const loginUser = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "None",
       path: "/api/user/refresh",
     });
 
@@ -190,7 +190,7 @@ export const logoutUser = (req, res) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
     expires: new Date(0),
-    sameSite: "lax",
+    sameSite: "None",
     path: "/api/user/refresh",
   });
   return res.json({ message: "Logged out successfully" });
