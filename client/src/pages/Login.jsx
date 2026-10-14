@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useContext,
-  useEffect,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -142,9 +136,7 @@ const Login = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("login");
 
-  const [factIndex] = useState(() =>
-    Math.floor(Math.random() * FACTS.length)
-  );
+  const [factIndex] = useState(() => Math.floor(Math.random() * FACTS.length));
   const currentFact = FACTS[factIndex];
 
   const wavePath = useMemo(() => {
@@ -388,8 +380,6 @@ const Login = () => {
 
       {/* ==================== RIGHT ==================== */}
       <section className="relative flex w-full flex-1 items-center justify-center overflow-y-auto bg-bg-muted-soft px-5 py-8 sm:px-8 lg:w-1/2 lg:px-12">
-        
-
         <div className="w-full max-w-md pt-16 lg:pt-0">
           <Card className="rounded-3xl border border-border-subtle bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
             <CardContent className="p-6 sm:p-7">
@@ -413,7 +403,7 @@ const Login = () => {
                         try {
                           const res = await api.post(
                             "/api/user/google/callback",
-                            { token: credentialResponse.credential }
+                            { token: credentialResponse.credential },
                           );
 
                           const returnedUser = res.data.user;
@@ -423,7 +413,7 @@ const Login = () => {
                           setUser(returnedUser);
                           localStorage.setItem(
                             "user",
-                            JSON.stringify(returnedUser)
+                            JSON.stringify(returnedUser),
                           );
 
                           toast({ title: "Login successful" });
@@ -433,15 +423,21 @@ const Login = () => {
                           });
                           navigate("/");
                         } catch (googleErr) {
+                          // console.log("Google Error",googleErr.status)
                           toast({
                             title: "Google login failed",
+                            description:
+                              googleErr.status === 429
+                                ? "Rate Limit exceed wait few minute"
+                                : "",
                             variant: "destructive",
                           });
                         }
                       }}
-                      onError={() => {
+                      onError={(e) => {
                         toast({
                           title: "Google login failed",
+                          description: e?.message || "",
                           variant: "destructive",
                         });
                       }}
