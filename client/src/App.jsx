@@ -8,6 +8,7 @@ import { applyTheme } from "./lib/applyTheme";
 import { fetchEntries } from "./contentstack/utils";
 import { LyticsProvider } from "./context/LyticsContext";
 import { StickyBar } from "./components/StickyBanner";
+import { Toaster } from "./components/ui/toaster";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const HostelPage = lazy(() => import("./pages/HostelsPage"));
@@ -62,6 +63,7 @@ function App() {
       <LyticsProvider>
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <AuthProvider>
+            <Toaster/>
             <Suspense fallback={<Loading />}>
               <Routes>
                 <Route path="/" element={<HomePage />} />
