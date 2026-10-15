@@ -49,11 +49,6 @@ export default function HostelsPage() {
   const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
   const indexName = import.meta.env.VITE_ALGOLIA_INDEX_NAME || "travel_tribe";
 
-  let data = {
-    entryUid: "blt637d48315eb69a7b",
-    contenttype: "hostel_listing",
-    locale: import.meta.env.VITE_CS_LOCALE,
-  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -101,8 +96,8 @@ export default function HostelsPage() {
         const listingEntry = (
           await fetchEntries("hostel_listing", import.meta.env.VITE_SDK, null)
         )[0];
+        // console.log("Listing", listingEntry)
         if (listingEntry) {
-          data.entryUid = listingEntry?.uid;
           document.title = listingEntry.page_title || "Hostels | Travel Tribe";
           setListingPageData(listingEntry);
         }
@@ -117,7 +112,6 @@ export default function HostelsPage() {
       top:0,
       behavior:'smooth'
     })
-    setDataForChromeExtension(data);
   }, []);
 
   // Fetch paginated hostels from backend server

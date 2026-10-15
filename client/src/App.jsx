@@ -9,6 +9,7 @@ import { fetchEntries } from "./contentstack/utils";
 import { LyticsProvider } from "./context/LyticsContext";
 import { StickyBar } from "./components/StickyBanner";
 import { Toaster } from "./components/ui/toaster";
+import TermsOfService from "./pages/TermsOfService";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const HostelPage = lazy(() => import("./pages/HostelsPage"));
@@ -90,6 +91,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/*" element={<NotFound />} />
               </Routes>
             </Suspense>

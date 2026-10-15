@@ -1,178 +1,183 @@
-import React, { useEffect, useState } from "react";
-import Loading from "./Loading";
+import React from "react";
 import Header from "@/components/Header";
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntryById,
-  fetchEntries,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
 import Footer from "@/components/Footer";
 
 export default function PrivacyPolicy() {
-  const [privacyData, setPrivacyData] = useState(null);
-  const data = {
-    entryUid: "blta8e91d738392bd3d",
-    contenttype: "privacy_page",
-    locale: import.meta.env.VITE_CS_LOCALE,
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // const entry = await fetchEntryById(
-        //   data.contenttype,
-        //   data.entryUid,
-        //   import.meta.env.VITE_SDK,
-        //   null,
-        // );
-        const entry = (await Stack.ContentType("privacy_page").Entry(data.entryUid).toJSON().fetch());
-        setPrivacyData(entry);
-        if (entry?.title) document.title = entry.title;
-      } catch (error) {
-        console.error("Error fetching privacy page data", error);
-      }
-    };
-
-
-    onEntryChange(fetchData);
-    setDataForChromeExtension(data);
-  }, []);
-
-
-
-
-  if (!privacyData) return <Loading />;
-
   return (
     <>
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="fixed bottom-4 left-1/2 z-10 -translate-x-1/2 transform">
         <Header />
       </div>
 
-      <main className="bg-white">
-        {/* Hero */}
-        <section className="border-b bg-purple-50/50">
-          <div className="max-w-5xl mx-auto px-4 py-20 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900" {...privacyData?.$?.title}>
-              {privacyData?.title}
+      <main className="bg-bg-muted-soft text-text-dark">
+        <section className="relative overflow-hidden border-b border-border-subtle">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: `
+                radial-gradient(50% 60% at 50% 0%, hsl(var(--primary) / 0.10) 0%, transparent 65%)
+              `,
+            }}
+          />
+          <div className="relative mx-auto max-w-5xl px-6 py-20 text-center sm:px-10 sm:py-24">
+            <h1 className="text-[2rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.75rem]">
+              Privacy Policy
             </h1>
-            <p className="mt-4 text-sm text-muted-foreground" {...privacyData?.$?.last_updated}>
+            <p className="mt-4 text-sm font-light text-text-muted">
               Last updated on{" "}
-              {privacyData?.last_updated ? new Date(privacyData.last_updated).toLocaleDateString() : ""}
+              {new Date().toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
             </p>
           </div>
         </section>
 
-        {/* Content */}
-        <section className="max-w-4xl mx-auto px-4 py-16 space-y-14">
-
-          {/* Intro */}
+        <section className="mx-auto max-w-4xl space-y-14 px-6 py-16 sm:px-10 sm:py-20">
           <div className="space-y-3">
-            <h2 className="text-2xl font-semibold text-gray-900" {...privacyData?.intro?.$?.heading}>
-              {privacyData?.intro?.heading}
+            <h2 className="text-2xl font-semibold tracking-[-0.02em] text-text-dark">
+              Introduction
             </h2>
-            <p className="text-muted-foreground leading-relaxed" {...privacyData?.intro?.$?.description}>
-              {privacyData?.intro?.description}
+            <p className="leading-relaxed text-text-muted">
+              Travel Tribe is committed to protecting your privacy. This
+              policy explains how we collect, use, and safeguard your
+              information when you use our platform to discover and book
+              student accommodations.
             </p>
           </div>
 
-          {/* Sections */}
-          {privacyData?.sections?.map((section) => (
-            <div
-              key={section._metadata.uid}
-              className="space-y-4"
-            >
-              <h3 className="text-xl font-semibold text-gray-900" {...section?.$?.title}>
-                {section?.title}
-              </h3>
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-text-dark">
+              Information We Collect
+            </h3>
+            <p className="leading-relaxed text-text-muted">
+              We collect information you provide directly to us, such as when
+              you create an account, make a booking, or contact us for
+              support. This may include your name, email address, phone
+              number, and payment details.
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-text-muted">
+              <li>Account details — name, email, phone number</li>
+              <li>Booking information — hostel, room type, stay dates</li>
+              <li>Payment data — processed securely via third-party providers</li>
+              <li>Usage data — pages visited, device, browser information</li>
+            </ul>
+          </div>
 
-              <p className="text-muted-foreground leading-relaxed" {...section?.$?.content}>
-                {section?.content}
-              </p>
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-text-dark">
+              How We Use Your Information
+            </h3>
+            <p className="leading-relaxed text-text-muted">
+              We use the information we collect to provide, maintain, and
+              improve our services, process bookings, communicate with you,
+              and ensure the safety of our platform.
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-text-muted">
+              <li>Process and confirm your hostel bookings</li>
+              <li>Send booking confirmations and service updates</li>
+              <li>Personalize your experience on our platform</li>
+              <li>Detect and prevent fraudulent activity</li>
+            </ul>
+          </div>
 
-              {section.bullets?.length > 0 && (
-                <ul className="pl-5 list-disc space-y-1 text-muted-foreground">
-                  {section.bullets.map((b) => (
-                    <li key={b._metadata.uid} {...b?.$?.bullet}>{b.bullet}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+          <div className="border-t border-border-subtle" />
 
-          {/* Divider */}
-          <div className="border-t" />
+          <div className="rounded-2xl bg-primary/[0.05] p-6 ring-1 ring-primary/10 sm:p-8">
+            <h3 className="mb-4 text-xl font-semibold text-text-dark">
+              Your Rights
+            </h3>
+            <ul className="list-disc space-y-2 pl-5 text-text-muted">
+              <li>Access the personal data we hold about you</li>
+              <li>Request correction of inaccurate information</li>
+              <li>Request deletion of your account and associated data</li>
+              <li>Opt out of marketing communications at any time</li>
+              <li>Lodge a complaint with a data protection authority</li>
+            </ul>
+          </div>
 
-          {/* User Rights */}
-          {privacyData.user_rights?.map((block) => (
-            <div
-              key={block._metadata.uid}
-              className="bg-purple-50 rounded-xl p-6"
-            >
-              <h3 className="text-xl font-semibold mb-3" {...block?.$?.heading}>
-                {block.heading}
-              </h3>
-              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                {block.rights.map((r) => (
-                  <li key={r._metadata.uid} {...r?.$?.right}>{r.right}</li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold text-text-dark">Cookies</h3>
+            <p className="text-text-muted">
+              We use cookies and similar tracking technologies to enhance your
+              experience, remember preferences, and analyze how our platform
+              is used.
+            </p>
 
-          {/* Cookies */}
-          {privacyData.cookies?.enabled && (
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold">Cookies</h3>
-              <p className="text-muted-foreground" {...privacyData?.cookies?.$?.description}>
-                {privacyData?.cookies?.description}
-              </p>
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                {privacyData?.cookies?.types?.map((cookie) => (
-                  <div
-                    key={cookie._metadata.uid}
-                    className="border rounded-lg p-4"
-                  >
-                    <p className="font-medium" {...cookie?.$?.name}>{cookie.name}</p>
-                    <p className="text-sm text-muted-foreground" {...cookie?.$?.purpose}>
-                      {cookie.purpose}
-                    </p>
-                  </div>
-                ))}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-border-subtle bg-white p-4">
+                <p className="font-medium text-text-dark">Essential Cookies</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Required for core site functionality like authentication and
+                  booking flows.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border-subtle bg-white p-4">
+                <p className="font-medium text-text-dark">Analytics Cookies</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Help us understand how visitors interact with the site so we
+                  can improve it.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border-subtle bg-white p-4">
+                <p className="font-medium text-text-dark">Preference Cookies</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Remember your settings and choices across visits.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border-subtle bg-white p-4">
+                <p className="font-medium text-text-dark">Marketing Cookies</p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Used to deliver relevant advertisements and measure campaign
+                  performance.
+                </p>
               </div>
             </div>
-          )}
-
-          {/* Third Parties */}
-          {privacyData.third_parties?.enabled && (
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold">
-                Third-Party Services
-              </h3>
-              <ul className="space-y-1 text-muted-foreground">
-                {privacyData.third_parties.services.map((s) => (
-                  <li key={s._metadata.uid}>
-                      <span className="font-medium" {...s?.$?.name}>{s.name}</span> — <span {...s?.$?.purpose}>{s.purpose}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Contact */}
-          <div className="border rounded-xl p-6 text-center">
-              <h3 className="text-lg font-semibold mb-1" {...privacyData?.contact?.$?.heading}>
-                {privacyData?.contact?.heading}
-              </h3>
-              <p className="text-muted-foreground" {...privacyData?.contact?.$?.email}>
-                {privacyData?.contact?.email}
-              </p>
           </div>
 
+          <div className="space-y-3">
+            <h3 className="text-xl font-semibold text-text-dark">
+              Third-Party Services
+            </h3>
+            <ul className="space-y-2 text-text-muted">
+              <li>
+                <span className="font-medium text-text-dark">Razorpay</span> —
+                secure payment processing for bookings.
+              </li>
+              <li>
+                <span className="font-medium text-text-dark">Google Analytics</span> —
+                anonymized usage analytics.
+              </li>
+              <li>
+                <span className="font-medium text-text-dark">Contentstack</span> —
+                content delivery and CMS hosting.
+              </li>
+              <li>
+                <span className="font-medium text-text-dark">Lytics</span> —
+                personalization and audience insights.
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-border-subtle bg-white p-6 text-center sm:p-8">
+            <h3 className="mb-2 text-lg font-semibold text-text-dark">
+              Questions?
+            </h3>
+            <p className="text-text-muted">
+              Reach out to us at{" "}
+              <a
+                href="mailto:privacy@traveltribe.in"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                privacy@traveltribe.in
+              </a>
+            </p>
+          </div>
         </section>
-        <Footer/>
+
+        <Footer />
       </main>
     </>
   );
