@@ -1,4 +1,26 @@
 from app.contentstack_client import fetch_all_hostels
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_pinecone import PineconeVectorStore
+from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
+from app.config import settings
+
+
+_store = None
+_embedder = None
+
+def get_embedder():
+    if _embedder is None:
+        _embedder = NVIDIAEmbeddings(
+            model="nvidia/nemotron-3-embed-1b",
+            api_key=settings.nvidia_api_key,
+        )
+    return _embedder
+
+def get_store():
+    if _store is None:
+        _store = PineconeVectorStore(index_name=settings.pinecone_index_name,embedding=get_embedder(), pinecone_api_key=settings.pinecone_api_key)
+    return _store
 
 
 def _hostel_to_text(entry: dict) -> str:
@@ -55,7 +77,50 @@ def _hostel_to_text(entry: dict) -> str:
     return "\n".join(lines)
 
 
+def _hostel_to_docs(entry: dict)->list[Document]:
+    text = _hostel_to_text(entry)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=80)
+    chunks = splitter.split_text(text)
+
+    return [
+        Document(
+            page_content=chunk,
+            metadata = {"hostel_uid": entry.get("uid"), "hostel_name": entry.get("title"), "chunk_index": i, "hostel_type": entry.get("type", "")}
+        )
+        for i, chunk in enumerate(chunks)
+    ]
+
+
+def upsert_hostel(entry: dict)->int:
+    store = get_store()
+    uid = entry.get("uid")
+
+    if not uid: return 0
+
+    try:
+        store.delete(filter={"hostel_uid": uid})
+    except Exception as e:
+        print(f"[Delete warn] {uid}: {e}")
+    docs = _hostel_to_docs(entry)
+
+    if docs:
+        store.add_documents(docs)
+    return len(docs)
+
+
+def full_reindex(entries: list[dict])->int:
+    total = 0
+    for entry in entries:
+        n = upsert_hostel(entry)
+        print(f" ${entry.get('uid')}: {n} chunks" )
+        total += 0
+
+    return total
+
+    
+
+
+
 if __name__ == "__main__":
-    hostels = fetch_all_hostels()
-    print(f"Fetched {len(hostels)} hostels\n")
-    print(_hostel_to_text(hostels[0]))
+    entries = fetch_all_hostels()
+    full_reindex(entries)
