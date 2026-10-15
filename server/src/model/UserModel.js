@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
     avatar: { type: String },
     resetPasswordOtp: { type: String },
     resetPasswordOtpExpires: { type: Date },
+    refreshTokenHash: { type: String, default: null },
   },
   { timestamps: true }
 );

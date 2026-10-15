@@ -1,35 +1,41 @@
+
+NODE_ENV=development
 PORT=5001
-NODE_ENV="development" # production | development
-MONGO_URI_PROD="mongodb+srv://<username>:<password>@traveltribecluster.cexza.mongodb.net/?appName=TravelTribeCluster"
-MONGO_URI="mongodb://mongo:27017/travel_tribe" #for docker, use main atlas for local test without docker
-
-JWT_SECRET=""
-CORS_ORIGIN=""
-
-GOOGLE_CLIENT_ID=""
-
-RAZORPAY_KEY_ID=""
-RAZORPAY_KEY_SECRET=""
-
-
-# webhook for authorised access to hook for cms room data update
-WEBHOOK_SECRET=""
-
-# optional (for discord integration)
-DISCORD_BOT_WEBHOOK=""
-
-# Contentstack (CS) (region: North America) 
-CS_BASE_URL=https://cdn.contentstack.io/v3
-CS_API_KEY=
-CS_ACCESS_TOKEN= # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
-CS_PREVIEW_TOKEN=
 
 
 
-# Lytics
-LYTICS_BASE_URL=https://api.lytics.io/v2
-LYTICS_API_KEY=
+# Dev connection (used when NODE_ENV !== "production")
+MONGO_URI=mongodb://localhost:27017/traveltribe
 
-# SMTP krx
-EMAIL_USER="<your-email>@gmail.com"
-APP_PASSWORD="<SMTP App Password>"
+# Format: mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/<dbname>?retryWrites=true&w=majority
+MONGO_URI_PROD=mongodb+srv://user:password@cluster0.xxxxx.mongodb.net/traveltribe?retryWrites=true&w=majority
+
+
+JWT_SECRET=replace_with_a_long_random_hex_string_at_least_64_chars
+
+GOOGLE_CLIENT_ID=xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
+
+CORS_ORIGIN=http://localhost:5173
+
+
+CS_API_KEY=<API KEY>
+CS_ACCESS_TOKEN=<Token>
+CS_BASE_URL=https://eu-cdn.contentstack.com/v3
+CS_BRANCH=main
+
+CS_DEV_ENV=dev
+RAZORPAY_KEY_ID=<RAZORPAY KEY>
+RAZORPAY_KEY_SECRET=<RAZORPAY SECRET>
+
+EMAIL_USER=traveltribe.notifications@gmail.com
+APP_PASSWORD=xxxx xxxx xxxx xxxx
+
+
+DISCORD_BOT_WEBHOOK=<URL>
+
+
+# ─────────────────────────────────────────────────────────────────────
+# LYTICS (optional — endpoint exists but marked "not using")
+# ─────────────────────────────────────────────────────────────────────
+LYTICS_BASE_URL=https://api.lytics.io
+LYTICS_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

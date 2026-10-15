@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    hostelId: { //cms entry id
+    hostelId: {
       type: String,
       required: true,
     },
@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    amount: { //per day charges * days
+    amount: {
       type: Number,
       required: true,
     },
@@ -54,9 +54,24 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "cancelled"],
       default: "pending",
     },
+    payment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Payment",
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+bookingSchema.index({
+  hostelId: 1,
+  roomSelection: 1,
+  checkInDate: 1,
+  checkOutDate: 1,
+});
+
+bookingSchema.index({ user: 1, createdAt: -1 });
+bookingSchema.index({ status: 1 });
 
 const Booking = mongoose.model("Booking", bookingSchema);
 

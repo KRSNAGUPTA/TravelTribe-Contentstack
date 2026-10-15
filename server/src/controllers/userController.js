@@ -12,40 +12,117 @@ import { sendOtpEmail } from "../services/emailService.js";
 
 const client = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const generateToken = (id, role, expireIn) => {
+const ACCESS_TOKEN_TTL = "15m";
+const REFRESH_TOKEN_TTL = "30d";
+
+const generateToken = (id, role, isRefresh, expireIn) => {
   try {
-    return jwt.sign({ id, role }, process.env.JWT_SECRET, {
-      expiresIn: expireIn,
-    });
+    return jwt.sign(
+      { id, role, isRefresh },
+      process.env.JWT_SECRET,
+      { expiresIn: expireIn }
+    );
   } catch (error) {
     console.error("Failed to generate JWT Token:", error);
     throw error;
   }
 };
 
+const generateAccessToken = (id, role) =>
+  generateToken(id, role, false, ACCESS_TOKEN_TTL);
+
+const generateRefreshToken = (id, role) =>
+  generateToken(id, role, true, REFRESH_TOKEN_TTL);
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
 const hashOtp = (otp) => {
   return crypto.createHash("sha256").update(otp.trim()).digest("hex");
 };
 
+const setRefreshCookie = (res, token) => {
+  res.cookie("refreshToken", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "None",
+    path: "/api/user/refresh",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+};
+
+const clearRefreshCookie = (res) => {
+  res.cookie("refreshToken", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "None",
+    path: "/api/user/refresh",
+  });
+};
+
+const issueTokens = async (user) => {
+  const accessToken = generateAccessToken(user._id, user.role);
+  const refreshToken = generateRefreshToken(user._id, user.role);
+
+  user.refreshTokenHash = hashToken(refreshToken);
+  await user.save();
+
+  return { accessToken, refreshToken };
+};
 
 export const refreshToken = async (req, res) => {
   try {
-    console.log("Refreshing token for:", req.cookies?.refreshToken )
     const refreshT = req.cookies?.refreshToken;
     if (!refreshT) {
       return res.status(401).json({ message: "Refresh token not provided" });
     }
 
-    const decoded = jwt.verify(refreshT, process.env.JWT_SECRET);
-    const token = generateToken(decoded.id, decoded.role, "15m");
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshT, process.env.JWT_SECRET);
+    } catch (err) {
+      clearRefreshCookie(res);
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Invalid or expired token" });
+    }
+
+    if (decoded.isRefresh !== true) {
+      clearRefreshCookie(res);
+      return res.status(403).json({ message: "Unauthorized: Invalid token type" });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      clearRefreshCookie(res);
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Invalid or expired token" });
+    }
+
+    const incomingHash = hashToken(refreshT);
+    if (!user.refreshTokenHash || user.refreshTokenHash !== incomingHash) {
+      user.refreshTokenHash = null;
+      await user.save();
+      clearRefreshCookie(res);
+      return res.status(403).json({
+        message: "Refresh token has been revoked or already used. Please log in again.",
+      });
+    }
+
+    const { accessToken, refreshToken: newRefresh } = await issueTokens(user);
+    setRefreshCookie(res, newRefresh);
 
     return res.status(200).json({
       message: "Access token refreshed",
-      accessToken: token,
+      accessToken,
     });
   } catch (error) {
     console.error("Failed to refresh token:", error.message);
-    return res.status(403).json({ message: "Unauthorized: Invalid or expired token" });
+    clearRefreshCookie(res);
+    return res
+      .status(403)
+      .json({ message: "Unauthorized: Invalid or expired token" });
   }
 };
 
@@ -66,6 +143,8 @@ export const handleGoogleLogin = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     let user = await User.findOne({ email: normalizedEmail });
+    let isNewUser = false;
+
     if (!user) {
       user = await User.create({
         email: normalizedEmail,
@@ -74,18 +153,19 @@ export const handleGoogleLogin = async (req, res) => {
         avatar: picture,
         isGoogleUser: true,
       });
-      await sendNotification("register", user);
+      isNewUser = true;
     }
 
-    const refreshToken = generateToken(user._id, user.role, "30d");
-    const accessToken = generateToken(user._id, user.role, "15m");
+    const { accessToken, refreshToken: refreshTok } = await issueTokens(user);
+    setRefreshCookie(res, refreshTok);
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      path: "/api/user/refresh",
-    });
+    if (isNewUser) {
+      setImmediate(() => {
+        sendNotification("register", user).catch((err) =>
+          console.error("Discord notify failed:", err.message)
+        );
+      });
+    }
 
     return res.status(200).json({
       accessToken,
@@ -110,6 +190,12 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Details missing" });
     }
 
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
+    }
+
     const normalizedEmail = email.toLowerCase().trim();
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
@@ -124,7 +210,12 @@ export const registerUser = async (req, res) => {
     });
 
     await newUser.save();
-    await sendNotification("register", newUser);
+
+    setImmediate(() => {
+      sendNotification("register", newUser).catch((err) =>
+        console.error("Discord notify failed:", err.message)
+      );
+    });
 
     return res.status(201).json({
       message: "User registered successfully",
@@ -158,17 +249,14 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    const refreshToken = generateToken(user._id, user.role, "30d");
-    const accessToken = generateToken(user._id, user.role, "15m");
+    const { accessToken, refreshToken: refreshTok } = await issueTokens(user);
+    setRefreshCookie(res, refreshTok);
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
-      path: "/api/user/refresh",
+    setImmediate(() => {
+      sendNotification("login", user).catch((err) =>
+        console.error("Discord notify failed:", err.message)
+      );
     });
-
-    await sendNotification("login", user);
 
     return res.json({
       message: "Login successful",
@@ -182,21 +270,38 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: "Internal Server error", error: error.message });
+    return res
+      .status(500)
+      .json({ message: "Internal Server error", error: error.message });
   }
 };
 
-export const logoutUser = (req, res) => {
-  res.cookie("refreshToken", "", {
-    httpOnly: true,
-    expires: new Date(0),
-    sameSite: "None",
-    path: "/api/user/refresh",
-  });
-  return res.json({ message: "Logged out successfully" });
-};
+export const logoutUser = async (req, res) => {
+  try {
+    const refreshT = req.cookies?.refreshToken;
 
-// --- USER MANAGEMENT CONTROLLERS ---
+    if (refreshT) {
+      try {
+        const decoded = jwt.verify(refreshT, process.env.JWT_SECRET);
+        if (decoded.isRefresh === true) {
+          const user = await User.findById(decoded.id);
+          if (user) {
+            user.refreshTokenHash = null;
+            await user.save();
+          }
+        }
+      } catch (err) {
+        // token invalid or expired — nothing to revoke
+      }
+    }
+
+    clearRefreshCookie(res);
+    return res.json({ message: "Logged out successfully" });
+  } catch (error) {
+    clearRefreshCookie(res);
+    return res.json({ message: "Logged out successfully" });
+  }
+};
 
 export const searchUser = async (req, res) => {
   try {
@@ -213,7 +318,7 @@ export const searchUser = async (req, res) => {
 
     if (role) filter.role = role;
 
-    const users = await User.find(filter).select("-password");
+    const users = await User.find(filter).select("-password -refreshTokenHash");
 
     if (users.length === 0) {
       return res.status(404).json({ message: "No users found" });
@@ -227,7 +332,7 @@ export const searchUser = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find({}).select("-password");
+    const users = await User.find({}).select("-password -refreshTokenHash");
     return res.status(200).json(users);
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -240,7 +345,9 @@ export const getUserById = async (req, res) => {
       return res.status(400).json({ message: "Invalid User ID format" });
     }
 
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id).select(
+      "-password -refreshTokenHash"
+    );
     if (!user) return res.status(404).json({ message: "User not found" });
 
     return res.status(200).json(user);
@@ -261,7 +368,15 @@ export const makeAdmin = async (req, res) => {
     user.role = "admin";
     await user.save();
 
-    return res.status(200).json({ message: "User promoted to admin", user });
+    return res.status(200).json({
+      message: "User promoted to admin",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -279,7 +394,15 @@ export const removeAdmin = async (req, res) => {
     user.role = "user";
     await user.save();
 
-    return res.status(200).json({ message: "Admin demoted to user", user });
+    return res.status(200).json({
+      message: "Admin demoted to user",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -306,7 +429,9 @@ export const getProfile = async (req, res) => {
     const user = req?.user;
     if (!user?._id) return res.status(401).json({ message: "Unauthorized" });
 
-    const userData = await User.findById(user._id).select("-password");
+    const userData = await User.findById(user._id).select(
+      "-password -refreshTokenHash"
+    );
     return res.status(200).json({ message: "Fetched Profile", userData });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -342,7 +467,16 @@ export const updateUser = async (req, res) => {
 
     if (phone) userData.phone = phone.trim();
     if (name) userData.name = name.trim();
-    if (password) userData.password = password; 
+
+    if (password) {
+      if (password.length < 6) {
+        return res
+          .status(400)
+          .json({ message: "Password must be at least 6 characters" });
+      }
+      userData.password = password;
+    }
+
     await userData.save();
 
     return res.status(200).json({ message: "User data updated successfully" });
@@ -371,7 +505,7 @@ export const forgotPassword = async (req, res) => {
     }
 
     const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     user.resetPasswordOtp = hashOtp(rawOtp);
     user.resetPasswordOtpExpires = otpExpires;
@@ -384,7 +518,9 @@ export const forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error("Forgot password error:", error);
-    return res.status(500).json({ message: "Failed to send OTP. Please try again." });
+    return res
+      .status(500)
+      .json({ message: "Failed to send OTP. Please try again." });
   }
 };
 
@@ -426,7 +562,9 @@ export const resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
@@ -448,9 +586,12 @@ export const resetPassword = async (req, res) => {
     user.password = newPassword;
     user.resetPasswordOtp = undefined;
     user.resetPasswordOtpExpires = undefined;
+    user.refreshTokenHash = null;
     await user.save();
 
-    return res.status(200).json({ message: "Password reset successful! You can now log in." });
+    return res.status(200).json({
+      message: "Password reset successful! You can now log in.",
+    });
   } catch (error) {
     console.error("Reset password error:", error);
     return res.status(500).json({ message: "Internal server error" });

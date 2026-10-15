@@ -7,7 +7,22 @@ const connectDB = async () => {
         ? process.env.MONGO_URI_PROD
         : process.env.MONGO_URI;
 
-    await mongoose.connect(uri);
+    if (!uri) {
+      console.error("MongoDB URI is not set in environment variables.");
+      process.exit(1);
+    }
+
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      maxPoolSize: 20,
+      minPoolSize: 2,
+      maxIdleTimeMS: 30000,
+      retryWrites: true,
+      retryReads: true,
+    });
+
     console.log("MongoDB connected");
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);

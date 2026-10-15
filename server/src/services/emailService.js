@@ -1,59 +1,106 @@
 import nodemailer from "nodemailer";
 import dns from "dns/promises";
 
-const getSmtpHost = async () => {
+let cachedHost = null;
+let cachedTransporter = null;
+let verifyPromise = null;
+
+const resolveSmtpHost = async () => {
+  if (cachedHost) return cachedHost;
   try {
     const addresses = await dns.resolve4("smtp.gmail.com");
     if (addresses && addresses.length > 0) {
       console.log("Resolved smtp.gmail.com to IPv4:", addresses[0]);
-      return addresses[0];
+      cachedHost = addresses[0];
+      return cachedHost;
     }
   } catch (err) {
     console.error("Failed to resolve IPv4 for smtp.gmail.com:", err.message);
   }
-  return "smtp.gmail.com";
+  cachedHost = "smtp.gmail.com";
+  return cachedHost;
 };
 
-const getTransporter = async () => {
+const createTransporter = async () => {
   const user = process.env.EMAIL_USER;
   const pass = process.env.APP_PASSWORD
     ? process.env.APP_PASSWORD.replace(/\s+/g, "")
     : "";
 
   if (!user || !pass) {
-    console.error("Email user or app password is not set in environment variables.");
-    throw new Error("Email user or app password is not set in environment variables.");
+    console.error(
+      "Email user or app password is not set in environment variables."
+    );
+    throw new Error(
+      "Email user or app password is not set in environment variables."
+    );
   }
 
-  const host = await getSmtpHost();
+  const host = await resolveSmtpHost();
 
   return nodemailer.createTransport({
     host,
     port: 587,
-    secure: false, // STARTTLS over port 587 (Port 465 SSL times out / is blocked on Render)
-    auth: {
-      user,
-      pass,
-    },
+    secure: false,
+    auth: { user, pass },
     tls: {
       rejectUnauthorized: false,
       servername: "smtp.gmail.com",
     },
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
     connectionTimeout: 15000,
     greetingTimeout: 15000,
     socketTimeout: 15000,
   });
 };
 
+const getTransporter = async () => {
+  if (cachedTransporter) return cachedTransporter;
+  cachedTransporter = await createTransporter();
+  return cachedTransporter;
+};
+
+const ensureVerifiedOnce = async () => {
+  if (verifyPromise) return verifyPromise;
+  verifyPromise = (async () => {
+    try {
+      const transporter = await getTransporter();
+      await transporter.verify();
+      console.log("Email transporter verified and ready");
+    } catch (err) {
+      console.error("Email transporter verification failed:", err.message);
+      cachedTransporter = null;
+      verifyPromise = null;
+      throw err;
+    }
+  })();
+  return verifyPromise;
+};
+
+const formatDateStr = (d) => {
+  if (!d) return "";
+  const date = new Date(d);
+  return isNaN(date.getTime())
+    ? String(d)
+    : date.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+};
+
 export const sendOtpEmail = async (toEmail, otp) => {
   try {
-  const transporter = await getTransporter();
+    await ensureVerifiedOnce();
+    const transporter = await getTransporter();
 
-  const mailOptions = {
-    from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
-    to: toEmail,
-    subject: "Your Password Reset OTP - Travel Tribe",
-    html: `
+    const mailOptions = {
+      from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
+      to: toEmail,
+      subject: "Your Password Reset OTP - Travel Tribe",
+      html: `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; background-color: #ffffff;">
         <h2 style="color: #6d28d9; text-align: center; margin-bottom: 20px;">Travel Tribe</h2>
         <p style="font-size: 15px; color: #333333;">Hello,</p>
@@ -68,11 +115,11 @@ export const sendOtpEmail = async (toEmail, otp) => {
         <p style="font-size: 12px; color: #999999; text-align: center;">&copy; ${new Date().getFullYear()} Travel Tribe. All rights reserved.</p>
       </div>
     `,
-  };
+    };
 
-  const info = await transporter.sendMail(mailOptions);
-  console.log("OTP Email sent:", info.messageId);
-  return info;
+    const info = await transporter.sendMail(mailOptions);
+    console.log("OTP Email sent:", info.messageId);
+    return info;
   } catch (error) {
     console.error("Error sending OTP email:", error);
     throw error;
@@ -81,19 +128,8 @@ export const sendOtpEmail = async (toEmail, otp) => {
 
 export const sendBookingConfirmationEmail = async (booking) => {
   try {
+    await ensureVerifiedOnce();
     const transporter = await getTransporter();
-
-    const formatDateStr = (d) => {
-      if (!d) return "";
-      const date = new Date(d);
-      return isNaN(date.getTime())
-        ? String(d)
-        : date.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
-    };
 
     const mailOptions = {
       from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
@@ -156,6 +192,7 @@ export const sendBookingConfirmationEmail = async (booking) => {
     console.log("Booking confirmation email sent successfully:", info.messageId);
     return info;
   } catch (err) {
-    console.error("Failed to send booking confirmation email:", err);
+    console.error("Failed to send booking confirmation email:", err.message);
+    throw err;
   }
 };

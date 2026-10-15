@@ -22,22 +22,22 @@ export const getEntryByUrl = async (contentTypeUid, locale, entryUrl) => {
 
 export const setDataForChromeExtension = (data) => {
   // console.log("data", data)
-  if (!data.entryUid || !data.contenttype || !data.locale) {
-    console.error("Util.js:  Incomplete data for chrome extension");
-    console.error("Received data:", data);
-    return;
-  }
-  try {
-    document.body.setAttribute("data-pageref", data.entryUid);
-    document.body.setAttribute("data-contenttype", data.contenttype);
-    document.body.setAttribute("data-locale", data.locale);
-    // console.log("done")
-  } catch (error) {
-    console.error(
-      "util.js:  Error while setting data for chrome extension",
-      error,
-    );
-  }
+  // if (!data.entryUid || !data.contenttype || !data.locale) {
+  //   console.error("Util.js:  Incomplete data for chrome extension");
+  //   console.error("Received data:", data);
+  //   return;
+  // }
+  // try {
+  //   document.body.setAttribute("data-pageref", data.entryUid);
+  //   document.body.setAttribute("data-contenttype", data.contenttype);
+  //   document.body.setAttribute("data-locale", data.locale);
+  //   // console.log("done")
+  // } catch (error) {
+  //   console.error(
+  //     "util.js:  Error while setting data for chrome extension",
+  //     error,
+  //   );
+  // }
 };
 
 export const fetchEntries = async (contentType, viaSdk, ref) => {

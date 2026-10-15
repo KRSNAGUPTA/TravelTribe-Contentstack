@@ -1,5 +1,8 @@
 import Hostel from "../model/HostelModel.js";
+import Booking from "../model/BookingModel.js";
 import cmsClient from "../contentstackClient.js";
+
+const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed"];
 
 export const getAllHostels = async (req, res) => {
   try {
@@ -7,45 +10,23 @@ export const getAllHostels = async (req, res) => {
     const limit = parseInt(req.query.limit, 10) || 6;
     const { q, college, location, price } = req.query;
 
-    // Fetch entries from Contentstack CMS
-    const env = process.env.CS_DEV_ENV || "dev";
-    let cmsHostels = [];
+    let processed = [];
     try {
-      const response = await cmsClient.get(
-        `/content_types/hostel/entries?environment=${env}`
-      );
-      cmsHostels = response.data.entries || [];
+      const response = await cmsClient.get("/content_types/hostel/entries", {
+        params: { environment: process.env.CS_DEV_ENV || "dev" },
+      });
+      processed = response.data.entries || [];
     } catch (cmsErr) {
-      console.error("Error fetching hostels from Contentstack:", cmsErr.message);
+      console.error(
+        "Error fetching hostels from Contentstack:",
+        cmsErr.response?.status,
+        cmsErr.response?.data || cmsErr.message
+      );
+      return res
+        .status(502)
+        .json({ message: "Failed to fetch hostels from Contentstack" });
     }
 
-    // Fetch MongoDB records for availability status
-    // let mongoHostels = [];
-    // try {
-    //   mongoHostels = await Hostel.find();
-    // } catch (dbErr) {
-    //   console.error("Error fetching hostels from MongoDB:", dbErr.message);
-    // }
-
-    // const mongoMap = new Map();
-    // mongoHostels.forEach((h) => mongoMap.set(h.hostelId, h));
-
-    // Combine CMS data with MongoDB availability
-    // let processed = cmsHostels.map((cmsItem) => {
-    //   const mongoItem = mongoMap.get(cmsItem.uid);
-    //   const backendRooms = mongoItem?.room_types || [];
-    //   const hasAvailableRooms = mongoItem
-    //     ? backendRooms.some((r) => r.available_beds > 0)
-    //     : true;
-
-    //   return {
-    //     ...cmsItem,
-    //     isAvailable: hasAvailableRooms,
-    //     mongoData: mongoItem || null,
-    //   };
-    // });
-  let processed = cmsHostels;
-    // 1. Search Query filter (title & address)
     if (q && q.trim()) {
       const queryStr = q.trim().toLowerCase();
       processed = processed.filter(
@@ -55,7 +36,6 @@ export const getAllHostels = async (req, res) => {
       );
     }
 
-    // 2. College filter
     if (college && college !== "all") {
       const targetCollege = college.toLowerCase();
       processed = processed.filter(
@@ -69,7 +49,6 @@ export const getAllHostels = async (req, res) => {
       );
     }
 
-    // 3. Location filter
     if (location && location !== "all") {
       const targetLoc = location.toLowerCase();
       processed = processed.filter((item) =>
@@ -77,7 +56,6 @@ export const getAllHostels = async (req, res) => {
       );
     }
 
-    // 4. Max Price filter
     if (price && price !== "none") {
       const maxPriceLimit = Number(price);
       if (Number.isFinite(maxPriceLimit)) {
@@ -96,7 +74,6 @@ export const getAllHostels = async (req, res) => {
       }
     }
 
-    // 5. Server-side Pagination
     const total = processed.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const currentPage = Math.max(1, Math.min(page, totalPages));
@@ -124,13 +101,9 @@ export const getHostelById = async (req, res) => {
   try {
     const id = req?.params?.id;
     if (!id) {
-      return res.status(400).json({
-        message: "Id not provided",
-      });
+      return res.status(400).json({ message: "Id not provided" });
     }
-    let hostel = await Hostel.findOne({
-      hostelId: id,
-    });
+    const hostel = await Hostel.findOne({ hostelId: id });
     if (!hostel) {
       return res.status(200).json({
         hostelId: id,
@@ -148,17 +121,31 @@ export const deleteHostel = async (req, res) => {
   try {
     const id = req?.params?.id;
     if (!id) {
-      return res.status(400).json({
-        message: "Id not provided",
+      return res.status(400).json({ message: "Id not provided" });
+    }
+
+    const activeBookings = await Booking.countDocuments({
+      hostelId: id,
+      status: { $in: ACTIVE_BOOKING_STATUSES },
+    });
+
+    if (activeBookings > 0) {
+      return res.status(409).json({
+        message: `Cannot delete: ${activeBookings} active booking${
+          activeBookings === 1 ? "" : "s"
+        } exist for this hostel`,
       });
     }
 
-    await Hostel.findOneAndDelete({
-      hostelId: id,
-    });
-    res.status(200).json({ message: "Hostel deleted successfully" });
+    const result = await Hostel.findOneAndDelete({ hostelId: id });
+    if (!result) {
+      return res.status(404).json({
+        message: "Hostel not initialized in Mongo (nothing to delete)",
+      });
+    }
+
+    return res.status(200).json({ message: "Hostel deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
