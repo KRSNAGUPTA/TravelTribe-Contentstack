@@ -1,35 +1,23 @@
-VITE_API_URL=http://localhost:5001
+# Backend API
+VITE_API_URL=https://traveltribe-contentstack.onrender.com
 
-# up.## Google account
-VITE_GOOGLE_CLIENT_ID=
+# Google OAuth up.x
+VITE_GOOGLE_CLIENT_ID=<GOOGLE_CLIENT_ID>
 
-VITE_RAZORPAY_KEY_ID=<rzp_test_>
+# Razorpay
+VITE_RAZORPAY_KEY_ID=<RAZORPAY_KEY_ID>
 
-# Contentstack (CS) (region: North America) (CDA)
-VITE_CS_BASE_URL=https://cdn.contentstack.io/v3
-VITE_CS_API_KEY= 
-VITE_CS_ACCESS_TOKEN= # Delivery Token and Access Token are the same. Since Access Token is used in the header, we're using it here as well
-VITE_CS_PREVIEW_TOKEN=
+# Contentstack
+VITE_CS_API_KEY=<CONTENTSTACK_API_KEY>
+VITE_CS_ACCESS_TOKEN=<CONTENTSTACK_DELIVERY_TOKEN>
+VITE_CS_PREVIEW_TOKEN=<CONTENTSTACK_PREVIEW_TOKEN>
 VITE_CS_BRANCH=main
 VITE_CS_LOCALE=en-us
-
-VITE_SDK=true #to switch between SDK and CDA mode, SDK mode required for live preview
-# Contentstack (CS) (region: North America) (SDK)
-# for live preview (development environment) #production
-VITE_CS_DEV_ENV=dev #production for no cslp
-VITE_CS_DEV_PREVIEW_HOST=rest-preview.contentstack.com
-VITE_CS_DEV_API_HOST=cdn.contentstack.io
-VITE_CS_DEV_APP_HOST=app.contentstack.com
+VITE_CS_REGION=eu
+VITE_CS_DEV_ENV=dev
 VITE_CS_ENABLE_LIVE_PREVIEW=true
 
-# Contentstack Personalization
-VITE_CS_PERSONALIZE_PROJECT_UID=
-
-# Algolia Search
-VITE_ALGOLIA_APP_ID=
-VITE_ALGOLIA_SEARCH_KEY=
+# Algolia
+VITE_ALGOLIA_APP_ID=<ALGOLIA_APP_ID>
+VITE_ALGOLIA_SEARCH_KEY=<ALGOLIA_SEARCH_KEY>
 VITE_ALGOLIA_INDEX_NAME=travel-tribe
-
-# Lytics
-VITE_LYTICS_STREAM = "default" 
-VITE_LYTICS_CID=""

@@ -4,7 +4,6 @@ import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { trackEvent } from "@/Lytics/config";
 
 const RazorPayPayment = ({
   hostelId,
@@ -17,24 +16,37 @@ const RazorPayPayment = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
+  // Pull the live primary color from the CSS token so Razorpay's modal
+  // matches the app theme without hardcoding a hex value.
+  const getPrimaryHex = () => {
+    if (typeof window === "undefined") return "#ff6b3d";
+    const triplet = getComputedStyle(document.documentElement)
+      .getPropertyValue("--primary")
+      .trim();
+    if (!triplet) return "#ff6b3d";
+
+    const [h, s, l] = triplet
+      .split(/\s+/)
+      .map((v) => parseFloat(v.replace("%", "")));
+
+    // HSL → hex (Razorpay requires hex, not hsl()).
+    const sN = s / 100;
+    const lN = l / 100;
+    const k = (n) => (n + h / 30) % 12;
+    const a = sN * Math.min(lN, 1 - lN);
+    const f = (n) =>
+      lN - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const toHex = (n) =>
+      Math.round(255 * f(n))
+        .toString(16)
+        .padStart(2, "0");
+
+    return `#${toHex(0)}${toHex(8)}${toHex(4)}`;
+  };
+
   const handleBooking = async ({ receiptId, paymentId }) => {
-    const bookingData = {
-      ...formData,
-      hostelId,
-      receiptId,
-      paymentId,
-    };
-
+    const bookingData = { ...formData, hostelId, receiptId, paymentId };
     const res = await api.post("/api/booking/", bookingData);
-
-    trackEvent("booking_successful", {
-      hostel_id: hostelId,
-      total_amount: formData.amount,
-      hostel_name: hostelName,
-      room_type: roomType,
-      email: formData.email || null,
-      name: formData.name || null,
-    });
 
     toast({
       title: "Booking successful",
@@ -48,21 +60,7 @@ const RazorPayPayment = ({
   const handlePayment = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) {
-      return;
-    }
-
-    trackEvent("booking_initiated", {
-      _e: "booking_initiated",
-      hostel_id: hostelId,
-      hostel_name: hostelName,
-      room_type: roomType,
-      total_amount: formData.amount,
-      check_in: formData.checkIn,
-      check_out: formData.checkOut,
-      email: formData.email || null,
-      name: formData.name || null,
-    });
+    if (!validateForm()) return;
 
     setIsProcessing(true);
 
@@ -73,21 +71,18 @@ const RazorPayPayment = ({
         hostelId: `${hostelId}`,
       });
 
-      trackEvent("currency_selected", {
-        _e: "currency_selected",
-        currency: "INR",
-        email: formData.email || null,
-        name: formData.name || null,
-      });
-
       const cleanPhone = formData.phone?.replace(/\D/g, "").slice(-10) || "";
+
+      const description = roomType
+        ? `Booking — ${hostelName || "Hostel"} (${roomType})`
+        : `Booking — ${hostelName || "Hostel"}`;
 
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderResponse.data.amount,
         currency: "INR",
         name: "Travel Tribe",
-        description: "Hostel Booking Payment",
+        description,
         order_id: orderResponse.data.id,
         prefill: {
           name: formData.name || "",
@@ -95,12 +90,10 @@ const RazorPayPayment = ({
           contact: cleanPhone,
         },
         theme: {
-          color: "#FF6B3D",
+          color: getPrimaryHex(),
         },
         modal: {
-          ondismiss: () => {
-            setIsProcessing(false);
-          },
+          ondismiss: () => setIsProcessing(false),
         },
         handler: async (response) => {
           setIsProcessing(true);
@@ -117,7 +110,6 @@ const RazorPayPayment = ({
             }
 
             const { paymentId } = verifyResponse.data;
-
             if (!paymentId) {
               throw new Error(
                 "Server did not return a paymentId after verification"
@@ -127,16 +119,6 @@ const RazorPayPayment = ({
             toast({
               title: "Payment successful",
               description: `₹${orderResponse.data.amount / 100} received`,
-            });
-
-            trackEvent("payment_successful", {
-              _e: "payment_successful",
-              hostel_id: hostelId,
-              total_amount: formData.amount,
-              hostel_name: hostelName,
-              room_type: roomType,
-              email: formData.email || null,
-              name: formData.name || null,
             });
 
             await handleBooking({
@@ -173,7 +155,7 @@ const RazorPayPayment = ({
 
       const razorpayInstance = new window.Razorpay(options);
 
-      razorpayInstance.on("payment.failed", function (response) {
+      razorpayInstance.on("payment.failed", (response) => {
         console.error("Razorpay payment failed:", response.error);
         setIsProcessing(false);
         toast({
@@ -200,18 +182,39 @@ const RazorPayPayment = ({
     <Button
       onClick={handlePayment}
       disabled={isProcessing}
-      className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black rounded-full border"
+      className="group h-11 gap-2 rounded-full bg-primary px-6 text-on-primary shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active"
     >
       {isProcessing ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Processing...
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Processing...</span>
         </>
       ) : (
-        "Pay Now"
+        <>
+          <RazorpayMark className="h-4 w-4" />
+          <span>Pay Now</span>
+        </>
       )}
     </Button>
   );
 };
+
+// Inline Razorpay mark — stroke-based so it inherits currentColor from the button.
+function RazorpayMark({ className }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M4 16 20 4l-3 10-6 3-3 5-4-6z" />
+    </svg>
+  );
+}
 
 export default RazorPayPayment;

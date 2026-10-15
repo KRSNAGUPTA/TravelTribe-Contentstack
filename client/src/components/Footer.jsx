@@ -4,13 +4,9 @@ import { Toaster } from "./ui/toaster";
 import { useEffect, useState, useContext } from "react";
 import api from "@/api";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntries,
-} from "@/contentstack/utils";
+import { fetchEntries } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { LyticsContext } from "@/context/LyticsContext";
-import { trackEvent } from "@/Lytics/config";
 import {
   Tooltip,
   TooltipContent,
@@ -22,11 +18,34 @@ import { Mail, ArrowRight, Check } from "lucide-react";
 const Footer = () => {
   const [email, setEmail] = useState("");
   const [footerData, setFooterData] = useState({});
+  const [isAlreadySubscribed, setIsAlreadySubscribed] = useState(false);
   const navigate = useNavigate();
 
   const { user } = useContext(AuthContext);
-  const { profile } = useContext(LyticsContext);
-  const isAlreadySubscribed = Boolean(profile?.user?.newsletter_subscribed);
+
+  useEffect(() => {
+    if (user?.newsletter_subscribed) {
+      setIsAlreadySubscribed(true);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.email) setEmail(user.email);
+  }, [user?.email]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const entry = (await fetchEntries("footer"))[0];
+        setFooterData(entry || {});
+      } catch (error) {
+        console.error("Error fetching footer data", error);
+      }
+    };
+
+    fetchData();
+    onEntryChange(fetchData);
+  }, []);
 
   const isInternalLink = (href = "") =>
     href.startsWith("/") && !href.startsWith("//");
@@ -39,7 +58,9 @@ const Footer = () => {
     href.startsWith("tel:");
 
   const getAnchorAttrs = (href = "") =>
-    isExternalLink(href) ? { target: "_blank", rel: "noopener noreferrer" } : {};
+    isExternalLink(href)
+      ? { target: "_blank", rel: "noopener noreferrer" }
+      : {};
 
   const handleFooterLinkClick = (event, href) => {
     if (!href) return;
@@ -67,32 +88,6 @@ const Footer = () => {
     );
   };
 
-  const footerEntryMeta = {
-    entryUid: "bltf643a3bf4a1a7316",
-    contenttype: "footer",
-    locale: import.meta.env.VITE_CS_LOCALE,
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const entry = (await fetchEntries(
-          "footer",
-          import.meta.env.VITE_SDK,
-          null
-        ))[0];
-        setFooterData(entry || {});
-      } catch (error) {
-        console.error("Error fetching footer data", error);
-      }
-    };
-    onEntryChange(fetchData);
-  }, []);
-
-  useEffect(() => {
-    if (user?.email) setEmail(user.email);
-  }, [user?.email]);
-
   const handleSubscribe = async () => {
     if (isAlreadySubscribed) {
       return toast({ title: "You are already subscribed." });
@@ -111,12 +106,6 @@ const Footer = () => {
       });
     }
 
-    trackEvent("newsletter_subscribe", {
-      _e: "newsletter_subscribe",
-      email,
-      name: user?.name || null,
-    });
-
     try {
       await api.post("/api/subscribe", {
         email,
@@ -124,6 +113,7 @@ const Footer = () => {
       });
       toast({ title: "Thank you for subscribing to TravelTribe!" });
       setEmail("");
+      setIsAlreadySubscribed(true);
     } catch (error) {
       toast({
         variant: "destructive",
@@ -135,7 +125,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative  overflow-hidden bg-[#0f0d0c] text-white print:hidden">
+    <footer className="relative overflow-hidden bg-[#0f0d0c] text-white print:hidden">
       <Toaster />
 
       <div
@@ -154,10 +144,9 @@ const Footer = () => {
 
       <div className="relative mx-auto w-full max-w-6xl px-6 py-16 sm:px-10 lg:px-12">
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-12 lg:gap-10">
-          {/* Brand — 4 cols */}
           <div className="lg:col-span-4">
             <h2
-              className="pacifico-regular text-2xl font-semibold tracking-tight  sm:text-3xl"
+              className="pacifico-regular text-2xl font-semibold tracking-tight sm:text-3xl"
               {...footerData?.$?.title}
             >
               {footerData?.title}
@@ -186,10 +175,7 @@ const Footer = () => {
           </div>
 
           {footerData?.section_group?.map((section) => (
-            <div
-              key={section._metadata.uid}
-              className="lg:col-span-2"
-            >
+            <div key={section._metadata.uid} className="lg:col-span-2">
               <h3
                 className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white/50"
                 {...section?.$?.group_title}
@@ -208,6 +194,7 @@ const Footer = () => {
               </ul>
             </div>
           ))}
+
           <div className="sm:col-span-2 lg:col-span-4">
             <h3
               className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-white/50"
@@ -215,7 +202,6 @@ const Footer = () => {
             >
               {footerData?.email_title}
             </h3>
-          
 
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <input
@@ -269,7 +255,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom bar */}
         <div className="mt-14 flex flex-col gap-4 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <p
             className="text-[0.78rem] text-white/50"
@@ -310,7 +295,6 @@ const Footer = () => {
         </div>
       </div>
 
-      {/* Clearance for the floating dock */}
       <div className="h-24" aria-hidden="true" />
     </footer>
   );

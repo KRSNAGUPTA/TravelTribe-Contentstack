@@ -36,7 +36,7 @@ function PillInput({
         <Icon
           aria-hidden="true"
           className={`pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 transition-colors ${
-            focused ? "text-primary" : "text-text-muted"
+            focused ? "text-primary" : "text-ink-muted"
           }`}
         />
       )}
@@ -117,7 +117,7 @@ function Contact() {
   };
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+    <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
       <Toaster />
 
       <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
@@ -155,10 +155,10 @@ function Contact() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-20">
           {/* LEFT — copy */}
           <aside className="flex flex-col items-left justify-center lg:col-span-5">
-            <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark sm:text-[2.5rem]">
+            <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
               Say hello.
             </h1>
-            <p className="mt-4 max-w-sm text-[0.95rem] font-light leading-[1.6] text-text-muted">
+            <p className="mt-4 max-w-sm text-[0.95rem] font-light leading-[1.6] text-ink-muted">
               Questions, feedback, partnerships — drop us a line and we&apos;ll
               get back to you.
             </p>
@@ -169,7 +169,7 @@ function Contact() {
               </span>
               <a
                 href="mailto:up.krishnagupta@gmail.com"
-                className="text-[0.9rem] font-medium text-text-dark transition-colors hover:text-primary"
+                className="text-[0.9rem] font-medium text-ink transition-colors hover:text-primary"
               >
                 up.krishnagupta@gmail.com
               </a>
@@ -179,7 +179,7 @@ function Contact() {
           {/* RIGHT — form card */}
           <div className="lg:col-span-7">
             <div className="w-full lg:mx-auto lg:max-w-md">
-              <div className="rounded-3xl border border-border-subtle bg-white p-6 shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] sm:p-7">
+              <div className="rounded-3xl border border-hairline bg-white p-6 shadow-[0_20px_60px_-15px_var(--card-shadow-hover)] sm:p-7">
                 <form onSubmit={sendMessage} className="space-y-3">
                   <div>
                     <Label htmlFor="name" className="sr-only">
@@ -222,7 +222,7 @@ function Contact() {
                     >
                       <SelectTrigger
                         id="topic"
-                        className="h-11 rounded-full border-input px-5 text-left data-[placeholder]:text-text-muted focus:ring-primary/30"
+                        className="h-11 rounded-full border-input px-5 text-left data-[placeholder]:text-ink-muted focus:ring-primary/30"
                       >
                         <SelectValue placeholder="What's this about?" />
                       </SelectTrigger>
@@ -267,7 +267,7 @@ function Contact() {
                   </Button>
                 </form>
 
-                <p className="mt-4 text-center text-[0.72rem] text-text-muted">
+                <p className="mt-4 text-center text-[0.72rem] text-ink-muted">
                   Usually replies within 24 hours.
                 </p>
               </div>

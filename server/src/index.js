@@ -13,7 +13,6 @@ import userRoutes from "./routes/userRoutes.js";
 import hostelRoutes from "./routes/hostelRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
-import lyticsRoutes from "./routes/lyticsRoutes.js";
 import supportRoutes from "./routes/supportRoutes.js";
 import subscribeRoutes from "./routes/subscribeRoutes.js";
 import cors from "cors";
@@ -94,7 +93,6 @@ app.use("/api/user", userRoutes);
 app.use("/api/hostel", hostelRoutes);
 app.use("/api/booking", bookingRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/lytics", lyticsRoutes);
 app.use("/api/support", supportRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 

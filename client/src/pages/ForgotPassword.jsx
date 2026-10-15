@@ -33,7 +33,7 @@ function PillInput({
             ? "text-destructive"
             : focused
               ? "text-primary"
-              : "text-text-muted"
+              : "text-ink-muted"
         }`}
       />
       <Input
@@ -109,7 +109,7 @@ function OtpInput({ value, onChange, onComplete }) {
           onChange={handleChange(i)}
           onKeyDown={handleKeyDown(i)}
           onFocus={(e) => e.target.select()}
-          className="h-12 w-full min-w-0 rounded-2xl border border-input bg-transparent text-center text-lg font-semibold text-text-dark shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          className="h-12 w-full min-w-0 rounded-2xl border border-input bg-transparent text-center text-lg font-semibold text-ink shadow-sm transition-colors focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
         />
       ))}
     </div>
@@ -120,7 +120,7 @@ function StepNumber({ value, state }) {
   const front =
     state === "active"
       ? "text-primary opacity-100"
-      : "text-text-muted opacity-35";
+      : "text-ink-muted opacity-35";
   const back =
     state === "active"
       ? "text-accent opacity-100"
@@ -278,7 +278,7 @@ export default function ForgotPassword() {
       type="button"
       onClick={() => setShowNewPassword((s) => !s)}
       aria-label={showNewPassword ? "Hide password" : "Show password"}
-      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-text-muted transition hover:bg-primary/10 hover:text-primary"
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
     >
       {showNewPassword ? (
         <EyeOff className="h-4 w-4" />
@@ -293,7 +293,7 @@ export default function ForgotPassword() {
       type="button"
       onClick={() => setShowConfirmPassword((s) => !s)}
       aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-text-muted transition hover:bg-primary/10 hover:text-primary"
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
     >
       {showConfirmPassword ? (
         <EyeOff className="h-4 w-4" />
@@ -306,7 +306,7 @@ export default function ForgotPassword() {
   const activeStep = steps[step - 1];
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+    <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
       <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
         <Header />
       </div>
@@ -337,7 +337,7 @@ export default function ForgotPassword() {
       <main className="relative mx-auto flex w-full max-w-5xl flex-1 items-center justify-center px-5 pb-32 pt-12 sm:px-8 sm:pt-16 lg:px-12 lg:pb-36">
         <div className="w-full max-w-sm lg:hidden">
           <div className="mb-8 flex items-center justify-center gap-3">
-            <span className="text-[0.66rem] font-semibold uppercase tracking-[0.28em] text-text-muted">
+            <span className="text-[0.66rem] font-semibold uppercase tracking-[0.28em] text-ink-muted">
               Account recovery
             </span>
           </div>
@@ -347,10 +347,10 @@ export default function ForgotPassword() {
             <p className="mt-4 text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-accent-ink">
               Step {step} of 3
             </p>
-            <h1 className="mt-2 text-[1.7rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark">
+            <h1 className="mt-2 text-[1.7rem] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
               {activeStep.label}
             </h1>
-            <p className="mt-1.5 text-[0.85rem] font-light text-text-muted">
+            <p className="mt-1.5 text-[0.85rem] font-light text-ink-muted">
               {activeStep.desc}
             </p>
           </div>
@@ -369,7 +369,7 @@ export default function ForgotPassword() {
             />
           </div>
 
-          <Card className="rounded-3xl border border-border-subtle bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
+          <Card className="rounded-3xl border border-hairline bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
             <CardContent className="p-6">
               {step === 1 && (
                 <form
@@ -405,9 +405,9 @@ export default function ForgotPassword() {
                   className="space-y-5"
                   noValidate
                 >
-                  <p className="text-center text-[0.82rem] text-text-muted">
+                  <p className="text-center text-[0.82rem] text-ink-muted">
                     Code sent to{" "}
-                    <span className="font-medium text-text-dark">{email}</span>
+                    <span className="font-medium text-ink">{email}</span>
                   </p>
                   <Label className="sr-only">6-digit OTP code</Label>
                   <OtpInput
@@ -483,10 +483,10 @@ export default function ForgotPassword() {
                 </form>
               )}
 
-              <div className="mt-6 border-t border-border-subtle pt-4 text-center">
+              <div className="mt-6 border-t border-hairline pt-4 text-center">
                 <Link
                   to="/login"
-                  className="inline-flex items-center text-[0.82rem] font-medium text-text-muted transition-colors hover:text-primary"
+                  className="inline-flex items-center text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-primary"
                 >
                   <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to login
                 </Link>
@@ -498,17 +498,17 @@ export default function ForgotPassword() {
         <div className="hidden w-full lg:grid lg:grid-cols-12 lg:gap-20">
           <aside className="lg:col-span-5">
             <div className="mb-10 flex items-center gap-3">
-              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-text-muted">
+              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-ink-muted">
                 Account recovery
               </span>
             </div>
 
-            <h1 className="max-w-md text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark">
+            <h1 className="max-w-md text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-ink">
               Reset your
               <br />
               password.
             </h1>
-            <p className="mt-4 max-w-sm text-[0.95rem] font-light leading-[1.6] text-text-muted">
+            <p className="mt-4 max-w-sm text-[0.95rem] font-light leading-[1.6] text-ink-muted">
               Three quick steps and you&apos;re back in.
             </p>
 
@@ -535,7 +535,7 @@ export default function ForgotPassword() {
                         className={`block text-[0.65rem] font-semibold uppercase tracking-[0.22em] transition-colors ${
                           state === "active"
                             ? "text-accent-ink"
-                            : "text-text-muted opacity-70"
+                            : "text-ink-muted opacity-70"
                         }`}
                       >
                         {state === "done" ? (
@@ -552,15 +552,15 @@ export default function ForgotPassword() {
                       <h2
                         className={`mt-1 text-[1.15rem] font-semibold tracking-[-0.02em] transition-colors ${
                           state === "active"
-                            ? "text-text-dark"
-                            : "text-text-muted opacity-70"
+                            ? "text-ink"
+                            : "text-ink-muted opacity-70"
                         }`}
                       >
                         {s.label}
                       </h2>
 
                       {state === "active" && (
-                        <p className="mt-1 max-w-xs text-[0.85rem] font-light leading-[1.5] text-text-muted">
+                        <p className="mt-1 max-w-xs text-[0.85rem] font-light leading-[1.5] text-ink-muted">
                           {s.desc}
                         </p>
                       )}
@@ -572,7 +572,7 @@ export default function ForgotPassword() {
           </aside>
 
           <div className="flex items-center lg:col-span-7">
-            <Card className="w-full max-w-md rounded-3xl border border-border-subtle bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
+            <Card className="w-full max-w-md rounded-3xl border border-hairline bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
               <CardContent className="p-8">
                 {step === 1 && (
                   <form
@@ -580,7 +580,7 @@ export default function ForgotPassword() {
                     className="space-y-4"
                     noValidate
                   >
-                    <p className="text-[0.9rem] font-light leading-[1.6] text-text-muted">
+                    <p className="text-[0.9rem] font-light leading-[1.6] text-ink-muted">
                       Enter your registered email and we&apos;ll send a 6-digit
                       code.
                     </p>
@@ -612,9 +612,9 @@ export default function ForgotPassword() {
                     className="space-y-5"
                     noValidate
                   >
-                    <p className="text-[0.9rem] font-light leading-[1.6] text-text-muted">
+                    <p className="text-[0.9rem] font-light leading-[1.6] text-ink-muted">
                       We sent a code to{" "}
-                      <span className="font-medium text-text-dark">
+                      <span className="font-medium text-ink">
                         {email}
                       </span>
                     </p>
@@ -652,7 +652,7 @@ export default function ForgotPassword() {
                     className="space-y-4"
                     noValidate
                   >
-                    <p className="text-[0.9rem] font-light leading-[1.6] text-text-muted">
+                    <p className="text-[0.9rem] font-light leading-[1.6] text-ink-muted">
                       Choose a new password. At least 6 characters.
                     </p>
                     <div>
@@ -698,10 +698,10 @@ export default function ForgotPassword() {
                   </form>
                 )}
 
-                <div className="mt-6 border-t border-border-subtle pt-4 text-center">
+                <div className="mt-6 border-t border-hairline pt-4 text-center">
                   <Link
                     to="/login"
-                    className="inline-flex items-center text-[0.82rem] font-medium text-text-muted transition-colors hover:text-primary"
+                    className="inline-flex items-center text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-primary"
                   >
                     <ArrowLeft className="mr-1 h-3.5 w-3.5" /> Back to login
                   </Link>

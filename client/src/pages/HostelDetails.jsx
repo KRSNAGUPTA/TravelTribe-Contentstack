@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Carousel,
   CarouselContent,
@@ -12,7 +10,6 @@ import {
   MapPin,
   Utensils,
   ShieldCheck,
-  Home,
   Wifi,
   ParkingCircle,
   Share2,
@@ -20,29 +17,17 @@ import {
   User,
   Calendar,
   Clock,
-  Music,
-  Sparkles,
-  Coffee,
-  AlignVerticalJustifyCenterIcon,
   BookOpen,
   School,
-  Bed,
   Phone,
   Mail,
   ChevronRight,
-  Landmark,
   Building,
-  Zap,
   ShowerHead,
-  Tv,
   UtensilsCrossed,
-  Bike,
   GraduationCap,
-  Footprints,
   HeartPulse,
-  BellRing,
   Contact,
-  AudioWaveform,
   Check,
   CircleCheck,
   Mars,
@@ -63,29 +48,24 @@ import {
   Microwave,
   House,
   TvMinimalPlayIcon,
+  XCircle,
 } from "lucide-react";
-import Autoplay from "embla-carousel-autoplay";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import api from "@/api";
 import { toast } from "@/hooks/use-toast";
 import Loading from "./Loading";
 import { Toaster } from "@/components/ui/toaster";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntryById,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
-import RecentlyViewedHostel from "@/components/RecentlyViewedHostel";
-import { useContext } from "react";
+import { fetchEntryById } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
-import { XCircle } from "lucide-react";
-import { trackEvent } from "@/Lytics/config";
 
-// ─── Star Picker ──────────────────────────────────────────────────────────────
+const todayISO = () => new Date().toISOString().split("T")[0];
+const tomorrowISO = () =>
+  new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
+// ─── Star picker ────────────────────────────────────────────────────────────
 function StarPicker({ value, onChange }) {
   const [hover, setHover] = useState(0);
   return (
@@ -100,10 +80,10 @@ function StarPicker({ value, onChange }) {
           className="focus:outline-none"
         >
           <Star
-            className={`w-7 h-7 transition-colors ${
+            className={`h-6 w-6 transition-colors ${
               star <= (hover || value)
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-gray-300"
+                ? "fill-amber-400 text-amber-400"
+                : "text-border-strong"
             }`}
           />
         </button>
@@ -112,8 +92,7 @@ function StarPicker({ value, onChange }) {
   );
 }
 
-// ─── Reviews Section ──────────────────────────────────────────────────────────
-
+// ─── Reviews ────────────────────────────────────────────────────────────────
 function ReviewsSection({ hostelId, user, reviews, setReviews }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -121,17 +100,12 @@ function ReviewsSection({ hostelId, user, reviews, setReviews }) {
   const [deletingId, setDeletingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  const avgRating =
-    reviews.length > 0
-      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-      : 0;
+  const avgRating = reviews.length
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
+    : 0;
 
   const userAlreadyReviewed = user
-    ? reviews.some(
-        (r) =>
-          r.user === user._id ||
-          r.user?._id === user._id
-      )
+    ? reviews.some((r) => r.user === user._id || r.user?._id === user._id)
     : false;
 
   const handleSubmit = async (e) => {
@@ -141,10 +115,12 @@ function ReviewsSection({ hostelId, user, reviews, setReviews }) {
       return;
     }
     if (comment.trim().length < 5) {
-      toast({ title: "Comment must be at least 5 characters", variant: "destructive" });
+      toast({
+        title: "Comment must be at least 5 characters",
+        variant: "destructive",
+      });
       return;
     }
-
     setSubmitting(true);
     try {
       const res = await api.post(`/api/hostel/${hostelId}/reviews`, {
@@ -155,10 +131,12 @@ function ReviewsSection({ hostelId, user, reviews, setReviews }) {
       setRating(0);
       setComment("");
       setShowForm(false);
-      toast({ title: "Review submitted! Thank you." });
+      toast({ title: "Review submitted" });
     } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to submit review";
-      toast({ title: msg, variant: "destructive" });
+      toast({
+        title: err?.response?.data?.message || "Failed to submit review",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -171,351 +149,328 @@ function ReviewsSection({ hostelId, user, reviews, setReviews }) {
       setReviews((prev) => prev.filter((r) => (r._id || r.id) !== reviewId));
       toast({ title: "Review deleted" });
     } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to delete review";
-      toast({ title: msg, variant: "destructive" });
+      toast({
+        title: err?.response?.data?.message || "Failed to delete review",
+        variant: "destructive",
+      });
     } finally {
       setDeletingId(null);
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Average rating summary */}
+    <div className="space-y-5">
       {reviews.length > 0 && (
-        <Card>
-          <CardContent className="p-5 flex items-center gap-5">
-            <div className="text-center">
-              <p className="text-4xl font-bold text-gray-800">
-                {avgRating.toFixed(1)}
-              </p>
-              <div className="flex gap-0.5 justify-center mt-1">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    className={`w-4 h-4 ${
-                      s <= Math.round(avgRating)
-                        ? "fill-yellow-400 text-yellow-400"
-                        : "text-gray-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {reviews.length} review{reviews.length !== 1 ? "s" : ""}
-              </p>
+        <div className="flex items-center gap-6 rounded-lg border border-hairline bg-white p-5">
+          <div className="text-center">
+            <p className="text-3xl font-semibold text-ink">
+              {avgRating.toFixed(1)}
+            </p>
+            <div className="mt-1 flex justify-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={`h-3.5 w-3.5 ${
+                    s <= Math.round(avgRating)
+                      ? "fill-amber-400 text-amber-400"
+                      : "text-border-strong"
+                  }`}
+                />
+              ))}
             </div>
+            <p className="mt-1 text-xs text-ink-muted">
+              {reviews.length} review{reviews.length !== 1 ? "s" : ""}
+            </p>
+          </div>
 
-            <div className="flex-1 space-y-1">
-              {[5, 4, 3, 2, 1].map((star) => {
-                const count = reviews.filter((r) => r.rating === star).length;
-                const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
-                return (
-                  <div key={star} className="flex items-center gap-2 text-xs text-gray-500">
-                    <span className="w-2">{star}</span>
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-yellow-400 rounded-full transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <span className="w-6 text-right">{count}</span>
+          <div className="flex-1 space-y-1">
+            {[5, 4, 3, 2, 1].map((star) => {
+              const count = reviews.filter((r) => r.rating === star).length;
+              const pct = reviews.length ? (count / reviews.length) * 100 : 0;
+              return (
+                <div
+                  key={star}
+                  className="flex items-center gap-2 text-xs text-ink-muted"
+                >
+                  <span className="w-2">{star}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-border-subtle">
+                    <div
+                      className="h-full bg-amber-400"
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                  <span className="w-5 text-right">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
-      {/* Write a review CTA / form */}
+      {/* Write review CTA / form */}
       {user ? (
         userAlreadyReviewed ? (
-          <Card>
-            <CardContent className="p-4 flex items-center gap-2 text-sm text-gray-500">
-              <Check className="w-4 h-4 text-green-500" />
-              You have already reviewed this hostel.
-            </CardContent>
-          </Card>
+          <div className="flex items-center gap-2 rounded-lg border border-hairline bg-white p-4 text-sm text-ink-muted">
+            <Check className="h-4 w-4 text-emerald-500" />
+            You have already reviewed this hostel.
+          </div>
+        ) : showForm ? (
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 rounded-lg border border-hairline bg-white p-5"
+          >
+            <div>
+              <p className="mb-2 text-sm font-medium text-ink">Rating</p>
+              <StarPicker value={rating} onChange={setRating} />
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-medium text-ink">Comment</p>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Share your experience"
+                rows={4}
+                maxLength={1000}
+                className="w-full resize-none rounded-lg border border-hairline bg-white p-3 text-sm text-ink outline-none transition focus:border-primary/60 focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="mt-1 text-right text-xs text-ink-muted">
+                {comment.length}/1000
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="rounded-full bg-primary px-5 text-on-primary hover:bg-primary-hover disabled:opacity-60"
+              >
+                {submitting ? "Submitting" : "Submit"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => {
+                  setShowForm(false);
+                  setRating(0);
+                  setComment("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         ) : (
-          <Card>
-            <CardContent className="p-5">
-              {!showForm ? (
-                <Button
-                  className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
-                  onClick={() => setShowForm(true)}
-                >
-                  Write a Review
-                </Button>
-              ) : (
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <h3 className="font-semibold text-gray-800">Your Review</h3>
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Rating</p>
-                    <StarPicker value={rating} onChange={setRating} />
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Comment</p>
-                    <textarea
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
-                      placeholder="Share your experience…"
-                      rows={4}
-                      maxLength={1000}
-                      className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none"
-                    />
-                    <p className="text-xs text-gray-400 text-right">
-                      {comment.length}/1000
-                    </p>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
-                    >
-                      {submitting ? "Submitting…" : "Submit Review"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-full"
-                      onClick={() => {
-                        setShowForm(false);
-                        setRating(0);
-                        setComment("");
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </CardContent>
-          </Card>
+          <Button
+            className="rounded-full bg-primary px-5 text-on-primary hover:bg-primary-hover"
+            onClick={() => setShowForm(true)}
+          >
+            Write a review
+          </Button>
         )
       ) : (
-        <Card>
-          <CardContent className="p-4 text-sm text-gray-500">
-            <a href="/login" className="text-purple-600 underline font-medium">
-              Log in
-            </a>{" "}
-            to write a review (only available after a confirmed booking).
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-hairline bg-white p-4 text-sm text-ink-muted">
+          <a
+            href="/login"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Log in
+          </a>{" "}
+          to write a review.
+        </div>
       )}
 
-      {/* Reviews list */}
+      {/* List */}
       {reviews.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center space-y-2">
-            <Star className="w-10 h-10 text-gray-300 mx-auto" />
-            <p className="text-gray-600 font-medium">No reviews yet</p>
-            <p className="text-sm text-gray-500">Be the first to share your experience</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-hairline bg-white p-8 text-center">
+          <Star className="mx-auto h-8 w-8 text-border-strong" />
+          <p className="mt-2 text-sm font-medium text-ink">No reviews yet</p>
+          <p className="text-xs text-ink-muted">
+            Be the first to share your experience
+          </p>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <ul className="space-y-3">
           {reviews.map((review) => {
             const reviewId = review._id || review.id;
             const isOwner =
               user &&
-              (review.user === user._id ||
-                review.user?._id === user._id);
+              (review.user === user._id || review.user?._id === user._id);
             const isAdmin = user?.role === "admin";
 
             return (
-              <Card key={reviewId}>
-                <CardContent className="p-5 flex gap-4">
-                  {/* Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                    {review.img ? (
-                      <img
-                        src={review.img}
-                        alt={review.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
+              <li
+                key={reviewId}
+                className="flex gap-3 rounded-lg border border-hairline bg-white p-4"
+              >
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                  {review.img ? (
+                    <img
+                      src={review.img}
+                      alt={review.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <User className="h-4 w-4 text-primary" />
+                  )}
+                </div>
 
-                  {/* Content */}
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <h4 className="font-semibold text-gray-800 text-sm">
-                        {review.name || "Anonymous"}
-                      </h4>
-
-                      <div className="flex items-center gap-2">
-                        <div className="flex gap-0.5">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star
-                              key={s}
-                              className={`w-4 h-4 ${
-                                s <= review.rating
-                                  ? "fill-yellow-400 text-yellow-400"
-                                  : "text-gray-200"
-                              }`}
-                            />
-                          ))}
-                        </div>
-
-                        {(isOwner || isAdmin) && (
-                          <button
-                            onClick={() => handleDelete(reviewId)}
-                            disabled={deletingId === reviewId}
-                            className="text-gray-400 hover:text-red-500 transition-colors ml-1"
-                            title="Delete review"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium text-ink">
+                      {review.name || "Anonymous"}
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`h-3.5 w-3.5 ${
+                              s <= review.rating
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-border-strong"
+                            }`}
+                          />
+                        ))}
                       </div>
+                      {(isOwner || isAdmin) && (
+                        <button
+                          onClick={() => handleDelete(reviewId)}
+                          disabled={deletingId === reviewId}
+                          className="text-ink-muted transition hover:text-destructive"
+                          title="Delete review"
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
-
-                    <p className="text-sm text-gray-600 break-words">{review.comment}</p>
-
-                    {review.createdAt && (
-                      <p className="text-xs text-gray-400">
-                        {new Date(review.createdAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </p>
-                    )}
                   </div>
-                </CardContent>
-              </Card>
+
+                  <p className="mt-1 break-words text-sm text-ink-muted">
+                    {review.comment}
+                  </p>
+
+                  {review.createdAt && (
+                    <p className="mt-1 text-xs text-ink-muted/70">
+                      {new Date(review.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                  )}
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
     </div>
   );
 }
 
-// ─── HostelDetails page ───────────────────────────────────────────────────────
-
+// ─── Page ───────────────────────────────────────────────────────────────────
 export default function HostelDetails() {
   const { id } = useParams();
-  const [hostel, setHostel] = useState(null);
-  const [roomAvailability, setRoomAvailability] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [userData, setUserData] = useState(null);
-  const plugin = useRef(Autoplay({ delay: 2000, stopOnInteraction: true }));
-  const data = {
-    entryUid: id,
-    contenttype: "hostel",
-    locale: import.meta.env.VITE_CS_LOCALE,
-  };
-
+  const navigate = useNavigate();
   const { user } = useContext(AuthContext);
 
-  useEffect(() => {
-    setUserData(user);
-  }, [user]);
+  const [hostel, setHostel] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [availabilityMap, setAvailabilityMap] = useState({});
+  const [userData, setUserData] = useState(null);
+  const plugin = useRef(null);
+
+  useEffect(() => setUserData(user), [user]);
 
   useEffect(() => {
-    const fetchAPIData = async () => {
+    let cancelled = false;
+
+    const fetchBackend = async () => {
       try {
-        const apiRes = await api.get(`/api/hostel/${id}`);
-        setRoomAvailability(apiRes.data);
-        setReviews(apiRes.data.reviews || []);
-      } catch (error) {
-        console.log("Error fetching hostel data from backend", error);
+        const res = await api.get(`/api/hostel/${id}`);
+        if (!cancelled) setReviews(res.data?.reviews || []);
+      } catch (err) {
+        console.error("[HostelDetails] backend fetch failed:", err);
       }
     };
 
-    const fetchData = async () => {
+    const fetchAvailability = async () => {
       try {
-        const entry = await fetchEntryById(
-          data.contenttype,
-          data.entryUid,
-          import.meta.env.VITE_SDK,
-          null,
-        );
-        setHostel(entry);
-
-        // console.log("email",JSON.parse(localStorage.getItem("user"))?.email)
-
-        trackEvent("viewed_hostel", {
-          hostel_id: entry.uid,
-          hostel_name: entry.title,
-          email: user?.email || null,
-          name: user?.name || null,
+        const res = await api.get("/api/hostel/availability", {
+          params: {
+            hostelId: id,
+            checkIn: todayISO(),
+            checkOut: tomorrowISO(),
+          },
         });
-
-        // console.log("Viewed hostel tracked");
-      } catch (error) {
-        console.error("Error fetching hostel data", error);
-        setHostel(null);
-      } finally {
-        setLoading(false);
+        if (cancelled) return;
+        const row = res.data?.calendar?.find((d) => d.date === todayISO());
+        if (row?.rooms) {
+          const map = {};
+          Object.entries(row.rooms).forEach(([k, v]) => {
+            map[k] = v.available ?? 0;
+          });
+          setAvailabilityMap(map);
+        }
+      } catch (err) {
+        console.warn("[HostelDetails] availability fetch failed:", err);
       }
     };
 
-    onEntryChange(fetchData);
-    setDataForChromeExtension(data);
-    fetchAPIData();
-  }, [id]);
+    const fetchCms = async () => {
+      try {
+        const entry = await fetchEntryById("hostel", id);
+
+        if (cancelled) return;
+        setHostel(entry);
+      } catch (err) {
+        console.error("[HostelDetails] CMS fetch failed:", err);
+        if (!cancelled) setHostel(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    onEntryChange(fetchCms);
+
+    fetchCms();
+    fetchBackend();
+    fetchAvailability();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, user?.email, user?.name]);
+
+  useEffect(() => {
+    if (hostel?.title) document.title = `${hostel.title} | Travel Tribe`;
+  }, [hostel]);
 
   const mergedRooms = useMemo(() => {
     if (!hostel?.room_types) return [];
-
-    if (!roomAvailability?.room_types) {
-      return hostel.room_types.map((cmsRoom) => ({
-        ...cmsRoom,
-        total_beds: cmsRoom.total_beds ?? 10,
-        available_beds: cmsRoom.available_beds ?? 10,
-        is_available: true,
-      }));
-    }
-
-    const apiRoomMap = roomAvailability.room_types.reduce((acc, room) => {
-      acc[room.room_key] = room;
-      return acc;
-    }, {});
-
     return hostel.room_types.map((cmsRoom) => {
-      const apiRoom = apiRoomMap[cmsRoom.room_key];
-
+      const total = Number(cmsRoom.total_beds) || 0;
+      const live = availabilityMap[cmsRoom.room_key];
+      const available = typeof live === "number" ? live : total;
       return {
         ...cmsRoom,
-        total_beds: apiRoom?.total_beds ?? cmsRoom.total_beds ?? 10,
-        available_beds: apiRoom?.available_beds ?? cmsRoom.available_beds ?? 10,
-        is_available: apiRoom ? (apiRoom.available_beds > 0) : true,
+        total_beds: total,
+        available_beds: available,
+        is_available: available > 0,
       };
     });
-  }, [hostel, roomAvailability]);
+  }, [hostel, availabilityMap]);
 
-  useEffect(() => {
-    document.title = `${hostel?.title} | Travel Tribe`;
+  const minRoom = useMemo(() => {
+    if (!hostel?.room_types?.length) return null;
+    return hostel.room_types.reduce((min, r) =>
+      Number(r.base_price) < Number(min.base_price) ? r : min,
+    );
   }, [hostel]);
 
-  const navigate = useNavigate();
-
   const goToBooking = ({ roomKey, roomPrice, source }) => {
-    if (!roomKey || !hostel?.uid) {
-      return;
-    }
-
-    trackEvent("cart_add", {
-      hostel_id: hostel.uid,
-      hostel_name: hostel.title,
-      room_type: roomKey,
-      room_price_per_day: roomPrice ?? null,
-      email: user?.email || null,
-      name: user?.name || null,
-      hostel_link: window.location.href,
-      source,
-    });
-
+    if (!roomKey || !hostel?.uid) return;
     navigate(`/hostel/${hostel.uid}/book?room=${roomKey}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -525,608 +480,499 @@ export default function HostelDetails() {
       try {
         await navigator.share({
           title: hostel?.title,
-          text: `Check out ${hostel?.title} in ${hostel?.address}`,
+          text: `Check out ${hostel?.title}`,
           url: window.location.href,
         });
-      } catch (error) {
-        console.error("Error sharing:", error);
+      } catch {
+        // cancelled
       }
     } else {
       navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link copied to clipboard!" });
+      toast({ title: "Link copied" });
     }
   };
 
-  if (!hostel && !loading) {
+  if (loading) return <Loading />;
+
+  if (!hostel) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-xl text-gray-600">Hostel not found</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
+        <p className="text-lg font-medium text-ink">Hostel not found</p>
+        <Button onClick={() => navigate("/hostels")} className="rounded-full">
+          Back to hostels
+        </Button>
       </div>
     );
   }
 
-  if (loading) {
-    return <Loading />;
-  }
-
-  const base = "w-5 h-5";
-
+  const i = "h-4 w-4";
   const FACILITY_MAP = {
     wifi: {
       label: "Free Wi-Fi",
-      icon: <Wifi className={`${base} text-sky-500`} />,
+      icon: <Wifi className={`${i} text-sky-600`} />,
     },
     parking: {
       label: "Parking",
-      icon: <ParkingCircle className={`${base} text-slate-500`} />,
+      icon: <ParkingCircle className={`${i} text-slate-600`} />,
     },
-    cctv: {
-      label: "CCTV Surveillance",
-      icon: <Cctv className={`${base} text-indigo-500`} />,
-    },
+    cctv: { label: "CCTV", icon: <Cctv className={`${i} text-indigo-600`} /> },
     security_guard: {
       label: "24×7 Security",
-      icon: <ShieldCheck className={`${base} text-emerald-600`} />,
+      icon: <ShieldCheck className={`${i} text-emerald-600`} />,
     },
     drinking_water: {
       label: "Drinking Water",
-      icon: <Droplets className={`${base} text-blue-500`} />,
+      icon: <Droplets className={`${i} text-blue-600`} />,
     },
     lockers: {
       label: "Lockers",
-      icon: <LockKeyhole className={`${base} text-gray-600`} />,
+      icon: <LockKeyhole className={`${i} text-slate-600`} />,
     },
     wheelchair_access: {
       label: "Wheelchair Access",
-      icon: <Accessibility className={`${base} text-teal-600`} />,
+      icon: <Accessibility className={`${i} text-teal-600`} />,
     },
     fire_safety: {
       label: "Fire Safety",
-      icon: <Flame className={`${base} text-amber-500`} />,
+      icon: <Flame className={`${i} text-amber-600`} />,
     },
     first_aid: {
       label: "First Aid",
-      icon: <HeartPulse className={`${base} text-rose-500`} />,
+      icon: <HeartPulse className={`${i} text-rose-600`} />,
     },
     ac: {
       label: "Air Conditioner",
-      icon: <Snowflake className={`${base} text-cyan-500`} />,
+      icon: <Snowflake className={`${i} text-cyan-600`} />,
     },
     "non-ac": {
-      label: "Non-AC Room",
-      icon: <Fan className={`${base} text-neutral-500`} />,
+      label: "Non-AC",
+      icon: <Fan className={`${i} text-slate-500`} />,
     },
     hot_water: {
       label: "Hot Water",
-      icon: <ShowerHead className={`${base} text-orange-500`} />,
+      icon: <ShowerHead className={`${i} text-orange-600`} />,
     },
     laundry: {
       label: "Laundry",
-      icon: <WashingMachine className={`${base} text-indigo-400`} />,
+      icon: <WashingMachine className={`${i} text-indigo-500`} />,
     },
     power_backup: {
       label: "Power Backup",
-      icon: <BatteryCharging className={`${base} text-lime-600`} />,
+      icon: <BatteryCharging className={`${i} text-lime-600`} />,
     },
     housekeeping: {
       label: "Housekeeping",
-      icon: <House className={`${base} text-emerald-500`} />,
+      icon: <House className={`${i} text-emerald-500`} />,
     },
     study_area: {
       label: "Study Area",
-      icon: <BookOpen className={`${base} text-violet-500`} />,
+      icon: <BookOpen className={`${i} text-violet-600`} />,
     },
     tv: {
       label: "Television",
-      icon: <TvMinimalPlayIcon className={`${base} text-fuchsia-500`} />,
+      icon: <TvMinimalPlayIcon className={`${i} text-fuchsia-600`} />,
     },
     common_area: {
       label: "Common Area",
-      icon: <Users className={`${base} text-purple-500`} />,
+      icon: <Users className={`${i} text-purple-600`} />,
     },
     kitchen: {
       label: "Kitchen",
-      icon: <CookingPot className={`${base} text-amber-600`} />,
+      icon: <CookingPot className={`${i} text-amber-700`} />,
     },
     microwave: {
       label: "Microwave",
-      icon: <Microwave className={`${base} text-pink-500`} />,
+      icon: <Microwave className={`${i} text-pink-600`} />,
     },
   };
 
   const HOSTEL_TYPE_MAP = {
-    Boys: {
-      label: "Boys Only",
-      icon: Mars,
-      color: "text-blue-600",
-    },
-    Girls: {
-      label: "Girls Only",
-      icon: Venus,
-      color: "text-pink-600",
-    },
-    Unisex: {
-      label: "Unisex",
-      icon: VenusAndMars,
-      color: "text-purple-600",
-    },
+    Boys: { label: "Boys Only", icon: Mars, color: "text-blue-600" },
+    Girls: { label: "Girls Only", icon: Venus, color: "text-pink-600" },
+    Unisex: { label: "Unisex", icon: VenusAndMars, color: "text-purple-600" },
   };
-
-  const minRoom = hostel.room_types.reduce((min, room) =>
-    room.base_price < min.base_price ? room : min,
-  );
-
-  const minPrice = minRoom.base_price;
-  const minRoomType = minRoom.room_key;
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gray-50">
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
+        <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
           <Header />
         </div>
-        <div className="max-w-5xl mx-auto p-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <Toaster />
+
+        <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-32 pt-10 sm:px-8 sm:pt-14 lg:px-12 lg:pt-16">
+          {/* ── Breadcrumb ── */}
+          <nav className="mb-4 text-xs text-ink-muted">
+            <button
+              onClick={() => navigate("/hostels")}
+              className="transition-colors hover:text-primary"
+            >
+              Hostels
+            </button>
+            <span className="mx-2">/</span>
+            <span className="text-ink">{hostel.title}</span>
+          </nav>
+
+          {/* ── Title + share ── */}
+          <header className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h1
-                className="text-3xl font-bold text-gray-800 mb-1"
-                {...hostel?.$?.title}
-              >
-                {hostel?.title}
+              <h1 className="text-2xl font-semibold leading-tight tracking-[-0.02em] text-ink sm:text-3xl">
+                {hostel.title}
               </h1>
-              <div
-                className="flex items-center text-sm text-gray-500"
-                {...hostel?.$?.address}
-              >
-                <MapPin className="w-4 h-4 mr-1" />
-                <p className="max-w-lg">{hostel?.address}</p>
+              <div className="mt-1.5 flex items-start gap-1.5 text-sm text-ink-muted">
+                <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                <p className="max-w-xl">{hostel.address}</p>
               </div>
             </div>
             <Button
               variant="outline"
-              className="flex items-center gap-2 rounded-full bg-[var(--hero-grad-start)] hover:bg-[var(--primary)] hover:text-white transition-all duration-500 ease-in-out"
               onClick={handleShare}
+              className="h-9 shrink-0 rounded-full border-hairline-strong text-ink hover:border-primary/40 hover:text-primary"
             >
-              <Share2 className="w-4 h-4" />
+              <Share2 className="mr-2 h-3.5 w-3.5" />
               Share
             </Button>
-          </div>
+          </header>
 
-          {/* Carousel with navigation */}
-          <div className="relative mb-8 rounded-xl overflow-hidden bg-black/5">
-            <Carousel
-              plugins={[plugin.current]}
-              className="w-full"
-              onMouseEnter={plugin.current.stop}
-              onMouseLeave={plugin.current.reset}
-            >
-              <CarouselContent>
-                {hostel?.images.map((image, index) => (
-                  <CarouselItem key={index}>
-                    <div className="relative h-64 sm:h-96 w-full">
-                      <img
-                        src={image?.url}
-                        alt={`${hostel?.title} - Image ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
-          </div>
-
-          {/* Tabs for different sections */}
-          <Tabs defaultValue="details" className="mb-8">
-            <TabsList className="grid grid-cols-4 mb-6">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="rooms">Rooms</TabsTrigger>
-              <TabsTrigger value="facilities">Facilities</TabsTrigger>
-              <TabsTrigger value="reviews">Reviews</TabsTrigger>
-            </TabsList>
-
-            {/* Details Tab */}
-            <TabsContent value="details" className="space-y-6">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Hostel Information */}
-                    <div>
-                      <h3 className="flex items-center gap-2 text-lg font-semibold mb-4">
-                        <Building className="w-5 h-5 text-purple-500" />
-                        Hostel Information
-                      </h3>
-
-                      <div className="rounded-xl bg-gray-50 p-4 space-y-3 text-sm text-gray-700">
-                        {hostel?.type &&
-                          HOSTEL_TYPE_MAP[hostel.type] &&
-                          (() => {
-                            const {
-                              icon: Icon,
-                              label,
-                              color,
-                            } = HOSTEL_TYPE_MAP[hostel.type];
-
-                            return (
-                              <div className="flex items-center gap-2">
-                                <Icon className={`w-4 h-4 ${color}`} />
-                                <span className="font-medium">Type:</span>
-                                <span>{label}</span>
-                              </div>
-                            );
-                          })()}
+          {/* ── Images ── */}
+          {hostel.images?.length > 0 && (
+            <div className="mb-6 overflow-hidden rounded-lg bg-primary/5">
+              <Carousel plugins={plugin.current ? [plugin.current] : []}>
+                <CarouselContent>
+                  {hostel.images.map((image, idx) => (
+                    <CarouselItem key={idx}>
+                      <div className="relative h-60 w-full sm:h-80 md:h-96">
+                        <img
+                          src={image?.url}
+                          alt={`${hostel.title} ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+              </Carousel>
+            </div>
+          )}
+
+          {/* ── Two column: info + booking sidebar ── */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+            {/* LEFT: content */}
+            <div className="space-y-10">
+              {/* Overview */}
+              <section>
+                <h2 className="mb-3 text-lg font-semibold text-ink">
+                  About this hostel
+                </h2>
+                <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+                  {hostel.type && HOSTEL_TYPE_MAP[hostel.type] && (
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const {
+                          icon: Icon,
+                          label,
+                          color,
+                        } = HOSTEL_TYPE_MAP[hostel.type];
+                        return (
+                          <>
+                            <Icon className={`${i} ${color}`} />
+                            <span className="text-ink-muted">Type:</span>
+                            <span className="font-medium text-ink">
+                              {label}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </div>
-
-                    {/* Contact Information */}
-                    <div>
-                      <h3 className="flex items-center gap-2 text-lg font-semibold mb-4">
-                        <Contact className="w-5 h-5 text-purple-500" />
-                        Contact Information
-                      </h3>
-
-                      <div className="rounded-xl bg-gray-50 p-4 space-y-3 text-sm text-gray-700">
-                        {hostel?.contact?.name && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-black" />
-                            <span className="font-medium">Name:</span>
-                            <span {...hostel?.contact?.$?.name}>
-                              {hostel.contact.name}
-                            </span>
-                          </div>
-                        )}
-
-                        {hostel?.contact?.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-black" />
-                            <span className="font-medium">Phone:</span>
-                            <span {...hostel?.contact?.$?.phone}>
-                              {" "}
-                              +91 {hostel.contact.phone}
-                            </span>
-                          </div>
-                        )}
-
-                        {hostel?.contact?.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-black" />
-                            <span className="font-medium">Email:</span>
-                            <span {...hostel?.contact?.$?.email}>
-                              {hostel.contact.email}
-                            </span>
-                          </div>
-                        )}
-
-                        {hostel?.google_map_link && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 w-fit flex items-center gap-2 rounded-full"
-                            onClick={() =>
-                              window.open(hostel.google_map_link, "_blank")
-                            }
-                          >
-                            <MapPin className="w-4 h-4 text-purple-600" />
-                            View on Maps
-                          </Button>
-                        )}
-                      </div>
+                  )}
+                  {hostel?.contact?.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className={`${i} text-primary`} />
+                      <span className="text-ink-muted">Phone:</span>
+                      <a
+                        href={`tel:${hostel.contact.phone}`}
+                        className="font-medium text-ink hover:text-primary"
+                      >
+                        +91 {hostel.contact.phone}
+                      </a>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  )}
+                  {hostel?.contact?.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className={`${i} text-primary`} />
+                      <span className="text-ink-muted">Email:</span>
+                      <a
+                        href={`mailto:${hostel.contact.email}`}
+                        className="font-medium text-ink hover:text-primary"
+                      >
+                        {hostel.contact.email}
+                      </a>
+                    </div>
+                  )}
+                  {hostel?.contact?.name && (
+                    <div className="flex items-center gap-2">
+                      <User className={`${i} text-primary`} />
+                      <span className="text-ink-muted">Contact:</span>
+                      <span className="font-medium text-ink">
+                        {hostel.contact.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
-              {hostel?.nearby_college && hostel?.nearby_college.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg flex items-center">
-                      <GraduationCap className="w-5 h-5 text-blue-500 mr-2" />
-                      Nearby Colleges
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {hostel?.nearby_college
-                        ? hostel.nearby_college.map((college, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center gap-2 bg-blue-50 p-3 rounded-lg transition-all hover:bg-blue-100"
-                            >
-                              <School className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                              <span className="text-blue-800 font-medium">
-                                {college}
-                              </span>
+                {hostel?.google_map_link && (
+                  <a
+                    href={hostel.google_map_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    View on Google Maps
+                  </a>
+                )}
+              </section>
+
+              {/* Rooms */}
+              <section>
+                <h2 className="mb-3 text-lg font-semibold text-ink">
+                  Rooms & pricing
+                </h2>
+
+                {mergedRooms.length > 0 ? (
+                  <div className="divide-y divide-border-subtle rounded-lg border border-hairline bg-white">
+                    {mergedRooms.map((room) => (
+                      <div key={room.room_key} className="p-4 sm:p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <BedSingle className={`${i} text-primary`} />
+                              <h3 className="text-base font-medium text-ink">
+                                {room.room_name}
+                              </h3>
                             </div>
-                          ))
-                        : "No Nearby College Available"}
-                    </div>
-                  </CardContent>
-                </Card>
+                            {room.description && (
+                              <p className="mt-1 text-sm text-ink-muted">
+                                {room.description}
+                              </p>
+                            )}
+                            <p className="mt-2 text-xs text-ink-muted">
+                              {room.is_available
+                                ? `${room.available_beds} of ${room.total_beds} beds available`
+                                : "Sold out"}
+                            </p>
+                          </div>
+
+                          <div className="text-right">
+                            <p className="text-lg font-semibold text-ink">
+                              ₹{room.base_price}
+                              <span className="text-xs font-normal text-ink-muted">
+                                {" "}
+                                / day
+                              </span>
+                            </p>
+                            <Button
+                              disabled={!room.is_available}
+                              onClick={() =>
+                                goToBooking({
+                                  roomKey: room.room_key,
+                                  roomPrice: room.base_price,
+                                  source: "room_card",
+                                })
+                              }
+                              className="mt-2 h-9 rounded-full bg-primary px-4 text-xs font-medium text-on-primary hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-border-strong/40 disabled:text-ink-muted"
+                            >
+                              {room.is_available ? "Book" : "Sold out"}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-ink-muted">No rooms listed yet.</p>
+                )}
+              </section>
+
+              {/* Facilities */}
+              {hostel?.facilities?.length > 0 && (
+                <section>
+                  <h2 className="mb-3 text-lg font-semibold text-ink">
+                    Facilities
+                  </h2>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {hostel.facilities.map((key) => {
+                      const f = FACILITY_MAP[key];
+                      if (!f) return null;
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-2 text-sm"
+                        >
+                          {f.icon}
+                          <span className="text-ink">{f.label}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               )}
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Utensils className="w-5 h-5 text-orange-500" />
-                    Food & Meals
-                  </CardTitle>
-                </CardHeader>
+              {/* Food */}
+              {hostel.food_info && (
+                <section>
+                  <h2 className="mb-3 text-lg font-semibold text-ink">
+                    Food & meals
+                  </h2>
 
-                <CardContent>
-                  {hostel.food_info?.available ? (
-                    <div className="rounded-xl border border-green-100 bg-green-50/50 p-4 space-y-4">
-                      {/* Status */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-green-700 font-semibold">
-                          <CircleCheck className="w-4 h-4 text-green-500" />
-                          Food Available
-                        </div>
-
-                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                  {hostel.food_info.available ? (
+                    <div className="rounded-lg border border-emerald-100 bg-emerald-50/40 p-4 text-sm">
+                      <div className="flex items-center gap-2 font-medium text-emerald-700">
+                        <CircleCheck className="h-4 w-4 text-emerald-500" />
+                        Food available
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-normal">
                           Optional
                         </span>
                       </div>
-
-                      {/* Details */}
-                      <div className="grid gap-2 text-sm text-gray-700">
-                        <div className="flex items-center gap-2">
-                          <Utensils className="w-4 h-4 text-orange-500" />
-                          <span className="font-medium">Type:</span>
-                          <span>{hostel.food_info.food_type.join(", ")}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-purple-500" />
-                          <span className="font-medium">Meals:</span>
-                          <span>{hostel.food_info.meals.join(", ")}</span>
-                        </div>
-
+                      <div className="mt-2 space-y-1 text-ink">
+                        {hostel.food_info.food_type?.length > 0 && (
+                          <p>
+                            <span className="text-ink-muted">Type: </span>
+                            {hostel.food_info.food_type.join(", ")}
+                          </p>
+                        )}
+                        {hostel.food_info.meals?.length > 0 && (
+                          <p>
+                            <span className="text-ink-muted">Meals: </span>
+                            {hostel.food_info.meals.join(", ")}
+                          </p>
+                        )}
                         {hostel.food_info.extra_cost && (
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Extra Cost:</span>
-                            <span className="text-gray-900">
-                              ₹{hostel.food_info.extra_cost} / day
-                            </span>
-                          </div>
+                          <p>
+                            <span className="text-ink-muted">Extra cost: </span>
+                            ₹{hostel.food_info.extra_cost} / day
+                          </p>
                         )}
                       </div>
-
-                      {/* Notes */}
                       {hostel.food_info.notes && (
-                        <div className="text-xs text-gray-500 border-t pt-2">
+                        <p className="mt-2 border-t border-emerald-100 pt-2 text-xs text-ink-muted">
                           {hostel.food_info.notes}
-                        </div>
+                        </p>
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-start gap-3">
-                      <UtensilsCrossed className="w-5 h-5 text-gray-400 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-gray-700">
-                          Food not available
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Residents need to arrange meals independently
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-3 rounded-lg border border-hairline bg-white p-4 text-sm">
+                      <UtensilsCrossed className={`${i} text-ink-muted`} />
+                      <span className="text-ink-muted">
+                        Food is not available. Residents arrange meals
+                        independently.
+                      </span>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </section>
+              )}
 
+              {/* Nearby colleges */}
+              {hostel?.nearby_college?.length > 0 && (
+                <section>
+                  <h2 className="mb-3 text-lg font-semibold text-ink">
+                    Nearby colleges
+                  </h2>
+                  <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {hostel.nearby_college.map((c, idx) => (
+                      <li
+                        key={idx}
+                        className="flex items-center gap-2 rounded-lg border border-hairline bg-white px-3 py-2 text-sm"
+                      >
+                        <GraduationCap className={`${i} text-primary`} />
+                        <span className="text-ink">{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {/* House rules */}
               {hostel?.house_rules?.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <ShieldCheck className="w-5 h-5 text-red-500" />
-                      House Rules
-                    </CardTitle>
-                  </CardHeader>
-
-                  <CardContent className="pt-0">
-                    <div className="rounded-xl border border-red-100 bg-red-50/40 p-4">
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
-                        {hostel.house_rules.map((rule, index) => (
-                          <li
-                            key={index}
-                            className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 shadow-sm"
-                          >
-                            <ChevronRight className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                            <span>{rule}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
+                <section>
+                  <h2 className="mb-3 text-lg font-semibold text-ink">
+                    House rules
+                  </h2>
+                  <ul className="space-y-2 text-sm">
+                    {hostel.house_rules.map((rule, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-ink">
+                        <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
+                        <span>{rule}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               )}
-            </TabsContent>
 
-            {/* Rooms Tab */}
-            <TabsContent value="rooms" className="space-y-6">
-              {mergedRooms.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {mergedRooms.map((room) => (
-                    <Card key={room.room_key}>
-                      <CardContent className="p-5 space-y-3">
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <BedSingle className="w-5 h-5 text-purple-500" />
-                            <h3
-                              className="text-lg font-semibold"
-                              {...room?.$?.room_name}
-                            >
-                              {room.room_name}
-                            </h3>
-                          </div>
+              {/* Reviews */}
+              <section>
+                <h2 className="mb-3 text-lg font-semibold text-ink">Reviews</h2>
+                <ReviewsSection
+                  hostelId={id}
+                  user={userData}
+                  reviews={reviews}
+                  setReviews={setReviews}
+                />
+              </section>
+            </div>
 
-                          <span
-                            className={`text-xs font-medium px-2 py-1 rounded-full ${
-                              room.is_available
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {room.is_available ? "Available" : "Sold Out"}
-                          </span>
-                        </div>
-
-                        {/* Description */}
-                        <p
-                          className="text-sm text-gray-600 min-h-[1.2rem]"
-                          {...room?.$?.description}
-                        >
-                          {room.description || ""}
-                        </p>
-
-                        {/* Availability */}
-                        <div className="flex items-center justify-between text-sm text-gray-700">
-                          <span>
-                            Beds Available:{" "}
-                            <span className="font-medium">
-                              {room.available_beds} / {room.total_beds}
-                            </span>
-                          </span>
-
-                          <span
-                            className="font-semibold text-gray-900"
-                            {...room?.$?.base_price}
-                          >
-                            ₹{room.base_price} / day
-                          </span>
-                        </div>
-
-                        {/* Book room */}
-                        <Button
-                          disabled={!room.is_available}
-                          onClick={() =>
-                            goToBooking({
-                              roomKey: room.room_key,
-                              roomPrice: room.base_price,
-                              source: "room_card",
-                            })
-                          }
-                          className={`
-    w-full rounded-full text-white font-medium
-    transition-all duration-300
-    ${
-      room.is_available
-        ? "bg-[var(--primary)] hover:bg-[var(--primary-hover)] hover:translate-y-1 active:translate-y-1 transition-all hover:scale-105 shadow-md hover:shadow-lg"
-        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-    }
-  `}
-                        >
-                          {room.is_available ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <Calendar className="w-4 h-4" />
-                              Book Room
-                            </span>
-                          ) : (
-                            <span className="flex items-center justify-center gap-2">
-                              <XCircle className="w-4 h-4" />
-                              Fully Booked
-                            </span>
-                          )}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-600">No room information available.</p>
-              )}
-            </TabsContent>
-
-            <TabsContent value="facilities" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl flex items-center">
-                    <Sparkles className="w-5 h-5 text-purple-500 mr-2" />
-                    Facilities
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {hostel?.facilities?.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                      {hostel.facilities.map((key) => {
-                        const facility = FACILITY_MAP[key];
-                        if (!facility) return null;
-
-                        return (
-                          <div
-                            key={key}
-                            className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-                          >
-                            {facility.icon}
-                            <span className="font-medium text-gray-700">
-                              {facility.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p>No facilities available</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Reviews Tab */}
-            <TabsContent value="reviews" className="space-y-6">
-              <ReviewsSection
-                hostelId={id}
-                user={userData}
-                reviews={reviews}
-                setReviews={setReviews}
-              />
-            </TabsContent>
-          </Tabs>
-
-          <div className="sticky bottom-0 left-0 right-0 bg-white p-4 shadow-lg rounded-lg border-t z-10 md:relative md:shadow-none md:p-0 md:border-0">
-            <div className="flex flex-col sm:flex-row gap-4 justify-center sm:justify-between items-center max-w-5xl mx-auto">
-              <div className="text-center sm:text-left">
-                {hostel?.room_types && hostel?.room_types.length > 0 && (
-                  <div className="ml-4 m-2">
-                    <p className="text-sm text-gray-500">Starts from</p>
-                    <p className="text-xl font-bold text-gray-800">
-                      {minPrice && minPrice > 0
-                        ? `₹ ${minPrice}
-                      / day`
-                        : "Not Available"}
+            {/* RIGHT: booking sidebar */}
+            <aside className="lg:sticky lg:top-24 lg:h-fit">
+              <div className="rounded-lg border border-hairline bg-white p-5">
+                {minRoom ? (
+                  <>
+                    <p className="text-xs uppercase tracking-wider text-ink-muted">
+                      Starts from
                     </p>
-                  </div>
+                    <p className="mt-1 text-2xl font-semibold text-ink">
+                      ₹{minRoom.base_price}
+                      <span className="text-sm font-normal text-ink-muted">
+                        {" "}
+                        / day
+                      </span>
+                    </p>
+
+                    <Button
+                      onClick={() =>
+                        goToBooking({
+                          roomKey: minRoom.room_key,
+                          roomPrice: minRoom.base_price,
+                          source: "sidebar_book",
+                        })
+                      }
+                      className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-medium text-on-primary hover:bg-primary-hover"
+                    >
+                      <Calendar className="h-4 w-4" />
+                      Book now
+                    </Button>
+
+                    <p className="mt-3 text-center text-xs text-ink-muted">
+                      Security deposit refundable at checkout
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-center text-sm text-ink-muted">
+                    No rooms available
+                  </p>
                 )}
               </div>
-              <Button
-                onClick={() =>
-                  goToBooking({
-                    roomKey: minRoomType,
-                    roomPrice: minPrice,
-                    source: "sticky_book_now",
-                  })
-                }
-                className="w-full sm:w-auto flex items-center gap-2 bg-[var(--primary)] hover:bg-[var(--primary-hover)] active:bg-[var(--primary-active)] text-[var(--on-primary)] px-8 py-6 rounded-full"
-              >
-                <Calendar className="w-5 h-5" />
-                Book Now
-              </Button>
-            </div>
+            </aside>
           </div>
 
-          <Toaster />
-
-          {/* recent hostel */}
-
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Recently Viewed Hostels
+          {/* Recently viewed */}
+          {/* <section className="mt-14">
+            <h2 className="mb-4 text-lg font-semibold text-ink">
+              Recently viewed
             </h2>
-
             <RecentlyViewedHostel email={user?.email || null} />
-          </div>
-        </div>
+          </section> */}
+        </main>
+
         <Footer />
       </div>
     </TooltipProvider>

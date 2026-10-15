@@ -28,7 +28,7 @@ const aboutSections = [
 
 function About() {
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+    <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
       {/* Fixed dock — highest z, sits above footer */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-4">
         <div className="pointer-events-auto">
@@ -99,7 +99,7 @@ function About() {
         </section>
 
         {/* ---- Content ---- */}
-        <div className="relative z-10 -mt-px bg-bg-muted-soft sm:mt-0">
+        <div className="relative z-10 -mt-px bg-paper sm:mt-0">
           <section className="mx-auto max-w-6xl px-6 pb-24 pt-14 sm:px-10 sm:pb-28 sm:pt-20 md:px-20 md:pb-36 md:pt-28">
             <div className="flex flex-col gap-24 sm:gap-24 md:gap-28">
               {aboutSections.map((section, index) => {
@@ -137,13 +137,13 @@ function About() {
                           <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.26em] text-accent-ink">
                             {section.kicker}
                           </p>
-                          <h2 className="text-[1.75rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark">
+                          <h2 className="text-[1.75rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink">
                             {section.title}
                           </h2>
                         </div>
                       </div>
 
-                      <p className="text-[1.15rem] font-light leading-[1.7] tracking-[-0.005em] text-text-muted">
+                      <p className="text-[1.15rem] font-light leading-[1.7] tracking-[-0.005em] text-ink-muted">
                         {section.description}
                       </p>
                     </div>
@@ -175,12 +175,12 @@ function About() {
                           {section.kicker}
                         </p>
 
-                        <h2 className="mb-4 text-[1.6rem] font-semibold leading-[1.15] tracking-[-0.03em] text-text-dark sm:text-3xl md:text-[2.4rem]">
+                        <h2 className="mb-4 text-[1.6rem] font-semibold leading-[1.15] tracking-[-0.03em] text-ink sm:text-3xl md:text-[2.4rem]">
                           {section.title}
                         </h2>
 
                         <p
-                          className={`max-w-2xl text-[1.02rem] font-light leading-[1.8] tracking-[-0.005em] text-text-muted sm:text-[1.08rem] sm:leading-[1.85] ${
+                          className={`max-w-2xl text-[1.02rem] font-light leading-[1.8] tracking-[-0.005em] text-ink-muted sm:text-[1.08rem] sm:leading-[1.85] ${
                             flip ? "sm:ml-auto" : ""
                           }`}
                         >

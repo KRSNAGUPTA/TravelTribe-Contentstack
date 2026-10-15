@@ -22,7 +22,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { GoogleLogin } from "@react-oauth/google";
 import { Separator } from "@/components/ui/separator";
 import api, { setAccessToken } from "@/api";
-import { trackEvent } from "@/Lytics/config";
 import { StickyBar } from "@/components/StickyBanner";
 
 const FACTS = [
@@ -98,7 +97,7 @@ function PillInput({
             ? "text-destructive"
             : focused
               ? "text-primary"
-              : "text-text-muted"
+              : "text-ink-muted"
         }`}
       />
       <Input
@@ -301,7 +300,7 @@ const Login = () => {
       type="button"
       onClick={() => setShowPassword((s) => !s)}
       aria-label={showPassword ? "Hide password" : "Show password"}
-      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-text-muted transition hover:bg-primary/10 hover:text-primary"
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
     >
       {showPassword ? (
         <EyeOff className="h-4 w-4" />
@@ -312,7 +311,7 @@ const Login = () => {
   );
 
   return (
-    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-bg-muted-soft text-text-dark lg:flex-row">
+    <div className="relative flex h-screen w-full flex-col overflow-hidden bg-paper text-ink lg:flex-row">
       <StickyBar />
       <Toaster />
 
@@ -379,15 +378,15 @@ const Login = () => {
       </aside>
 
       {/* ==================== RIGHT ==================== */}
-      <section className="relative flex w-full flex-1 items-center justify-center overflow-y-auto bg-bg-muted-soft px-5 py-8 sm:px-8 lg:w-1/2 lg:px-12">
+      <section className="relative flex w-full flex-1 items-center justify-center overflow-y-auto bg-paper px-5 py-8 sm:px-8 lg:w-1/2 lg:px-12">
         <div className="w-full max-w-md pt-16 lg:pt-0">
-          <Card className="rounded-3xl border border-border-subtle bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
+          <Card className="rounded-3xl border border-hairline bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
             <CardContent className="p-6 sm:p-7">
               <div className="space-y-1 text-center">
                 <h2 className="pacifico-regular text-2xl font-semibold tracking-tight text-primary sm:text-3xl">
                   Travel Tribe
                 </h2>
-                <p className="text-xs text-text-muted sm:text-sm">
+                <p className="text-xs text-ink-muted sm:text-sm">
                   Welcome back. Let&apos;s get you in.
                 </p>
               </div>
@@ -417,10 +416,6 @@ const Login = () => {
                           );
 
                           toast({ title: "Login successful" });
-                          trackEvent("google_login", {
-                            email: returnedUser.email,
-                            name: returnedUser.name,
-                          });
                           navigate("/");
                         } catch (googleErr) {
                           // console.log("Google Error",googleErr.status)
@@ -452,7 +447,7 @@ const Login = () => {
 
               <div className="my-3.5 flex items-center gap-3">
                 <Separator className="flex-1" />
-                <span className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-text-muted">
+                <span className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-ink-muted">
                   or
                 </span>
                 <Separator className="flex-1" />
@@ -705,7 +700,7 @@ function CheckItem({ label, ok }) {
   return (
     <li
       className={`flex items-center gap-1.5 text-[0.7rem] transition ${
-        ok ? "text-emerald-600" : "text-text-muted"
+        ok ? "text-emerald-600" : "text-ink-muted"
       }`}
     >
       <span

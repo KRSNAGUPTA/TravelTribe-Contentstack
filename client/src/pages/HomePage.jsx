@@ -10,7 +10,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Autoplay from "embla-carousel-autoplay";
-import React, { useEffect, useRef, useState, useContext } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -21,48 +21,28 @@ import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import Loading from "./Loading";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
-import { AuthContext } from "@/context/AuthContext";
-import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
-import { FocusCards } from "@/components/ui/focus-cards";
+import { fetchEntries } from "@/contentstack/utils";
+import { FocusCards } from "@/components/FocusCard";
 import HostelCard from "@/components/HostelCard";
-import { trackEvent } from "@/Lytics/config";
-import { trackPersonalizeEvent } from "@/contentstack/personalizeSdk";
 import { StickyBar } from "@/components/StickyBanner";
 
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
-  const { user } = useContext(AuthContext);
 
-  const searchParams = new URLSearchParams(window.location.search);
-  if (
-    searchParams.get("action") === "unsubscribe" &&
-    searchParams.get("email")
-  ) {
-    return <NewsletterUnsubscribe email={searchParams.get("email")} />;
-  }
+  
 
   useEffect(() => {
     const fetchData = async () => {
       const entry = (
-        await fetchEntries(
-          "landing_page",
-          import.meta.env.VITE_SDK,
-          "page_sections.hostels_section.reference"
-        )
+        await fetchEntries("landing_page", [
+          "page_sections.hostels_section.reference",
+        ])
       )[0];
 
       if (!entry) return;
 
       document.title = entry.title || "Travel Tribe";
       setLandingData(entry.page_sections);
-
-      const data = {
-        entryUid: entry?.uid,
-        contenttype: "landing_page",
-        locale: import.meta.env.VITE_CS_LOCALE,
-      };
-      setDataForChromeExtension(data);
     };
 
     fetchData();
@@ -70,7 +50,6 @@ export default function HomePage() {
   }, []);
 
   const hostelsPlugin = useRef(Autoplay({ delay: 2500 }));
-  const testimonialsPlugin = useRef(Autoplay({ delay: 3000 }));
   const navigate = useNavigate();
 
   if (!landingData) {
@@ -84,7 +63,12 @@ export default function HomePage() {
   const hostelsSection = landingData.find(
     (s) => s.hostels_section
   )?.hostels_section;
-  const featuredHostels = hostelsSection?.reference || [];
+
+  // ── Resolve hostel refs into real hostel objects ──
+  // Resolved refs still carry `_content_type_uid`, so filter for hostels.
+  const featuredHostels = (hostelsSection?.reference || []).filter(
+    (h) => h.title || h.uid
+  );
 
   const testimonialsSection = landingData.find(
     (s) => s.testimonials_section
@@ -100,8 +84,7 @@ export default function HomePage() {
   }));
 
   return (
-    <div className="relative flex w-full flex-col overflow-x-hidden bg-bg-muted-soft text-text-dark">
-      {/* Global layered background */}
+    <div className="relative flex w-full flex-col overflow-x-hidden bg-paper text-ink">
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 -z-10"
@@ -168,14 +151,7 @@ export default function HomePage() {
 
             <div className="mt-7 sm:mt-8">
               <Button
-                onClick={async () => {
-                  trackEvent("hero_cta_clicked", {
-                    cta_title: heroSection?.cta?.title || "Unknown CTA",
-                    email: user?.email || null,
-                    name: user?.name || null,
-                  });
-                  trackPersonalizeEvent("clickCTA");
-
+                onClick={() => {
                   if (heroSection?.cta?.href) {
                     navigate(heroSection.cta.href);
                   }
@@ -221,7 +197,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-10 flex flex-col gap-3 sm:mb-14">
             <h2
-              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[2.25rem]"
               {...featuresSection?.$?.title}
             >
               {featuresSection?.title}
@@ -237,7 +213,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-10 flex flex-col gap-3 sm:mb-14">
             <h2
-              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[2.25rem]"
               {...hostelsSection?.$?.title}
             >
               {hostelsSection?.title}
@@ -266,11 +242,7 @@ export default function HomePage() {
                   key={hostel.uid}
                 >
                   <div className="h-full">
-                    <HostelCard
-                      hostel={hostel}
-                      lytics_event="home_page"
-                      variant="compact"
-                    />
+                    <HostelCard hostel={hostel} variant="compact" />
                   </div>
                 </CarouselItem>
               ))}
@@ -284,7 +256,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl">
           <div className="mb-10 flex flex-col gap-3 text-center sm:mb-14">
             <h2
-              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[2.25rem]"
               {...testimonialsSection?.$?.title}
             >
               {testimonialsSection?.title}
@@ -295,7 +267,7 @@ export default function HomePage() {
             {testimonialsSection?.testimonials?.map((data, index) => (
               <Card
                 key={index}
-                className="flex w-full flex-col rounded-3xl border border-border-subtle bg-white p-5 shadow-[0_10px_40px_-15px_var(--card-shadow-hover)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-15px_var(--card-shadow-hover)] sm:w-[calc(50%-0.875rem)] sm:p-6 lg:w-[calc(33.333%-1.334rem)]"
+                className="flex w-full flex-col rounded-3xl border border-hairline bg-white p-5 shadow-[0_10px_40px_-15px_var(--card-shadow-hover)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-15px_var(--card-shadow-hover)] sm:w-[calc(50%-0.875rem)] sm:p-6 lg:w-[calc(33.333%-1.334rem)]"
               >
                 <CardContent className="flex h-full flex-col items-center p-0 pt-2 text-center sm:pt-4">
                   <Avatar className="h-14 w-14 ring-4 ring-primary/10 sm:h-16 sm:w-16">
@@ -309,7 +281,7 @@ export default function HomePage() {
                   </Avatar>
 
                   <h3
-                    className="mt-4 text-[0.9rem] font-semibold tracking-[-0.01em] text-text-dark sm:mt-5 sm:text-[0.95rem]"
+                    className="mt-4 text-[0.9rem] font-semibold tracking-[-0.01em] text-ink sm:mt-5 sm:text-[0.95rem]"
                     {...data?.$?.user_name}
                   >
                     {data?.user_name}
@@ -317,11 +289,11 @@ export default function HomePage() {
 
                   <div
                     aria-hidden="true"
-                    className="mt-2 h-px w-8 bg-border-strong"
+                    className="mt-2 h-px w-8 bg-hairline-strong"
                   />
 
                   <p
-                    className="mt-3 flex-1 text-[0.85rem] font-light italic leading-[1.6] text-text-muted sm:mt-4 sm:text-[0.88rem] sm:leading-[1.65]"
+                    className="mt-3 flex-1 text-[0.85rem] font-light italic leading-[1.6] text-ink-muted sm:mt-4 sm:text-[0.88rem] sm:leading-[1.65]"
                     {...data?.$?.user_quote}
                   >
                     &ldquo;{data?.user_quote}&rdquo;
@@ -338,7 +310,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-3xl">
           <div className="mb-8 flex flex-col gap-3 text-center sm:mb-12">
             <h2
-              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[2.25rem]"
               {...faqSection?.$?.title}
             >
               {faqSection?.title}
@@ -350,16 +322,16 @@ export default function HomePage() {
               <AccordionItem
                 key={index}
                 value={`item-${index + 1}`}
-                className="overflow-hidden rounded-2xl border border-border-subtle bg-white px-1 shadow-[0_2px_12px_-6px_var(--card-shadow-hover)]"
+                className="overflow-hidden rounded-2xl border border-hairline bg-white px-1 shadow-[0_2px_12px_-6px_var(--card-shadow-hover)]"
               >
                 <AccordionTrigger
-                  className="px-4 py-3.5 text-left text-[0.9rem] font-medium text-text-dark transition-colors hover:text-primary sm:px-5 sm:py-4 sm:text-base"
+                  className="px-4 py-3.5 text-left text-[0.9rem] font-medium text-ink transition-colors hover:text-primary sm:px-5 sm:py-4 sm:text-base"
                   {...item?.$?.question}
                 >
                   {item.question}
                 </AccordionTrigger>
                 <AccordionContent
-                  className="border-t border-border-subtle px-4 pb-4 pt-3 text-[0.85rem] font-light leading-[1.65] text-text-muted sm:px-5 sm:text-[0.9rem] sm:leading-[1.7]"
+                  className="border-t border-hairline px-4 pb-4 pt-3 text-[0.85rem] font-light leading-[1.65] text-ink-muted sm:px-5 sm:text-[0.9rem] sm:leading-[1.7]"
                   {...item?.$?.answer}
                 >
                   {item.answer}

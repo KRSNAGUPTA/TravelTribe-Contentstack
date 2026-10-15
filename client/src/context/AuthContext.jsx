@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { setAccessToken } from "../api.js";
-import { trackEvent } from "@/Lytics/config";
 
 export const AuthContext = createContext();
 
@@ -69,11 +68,6 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       writeStoredUser(userData);
 
-      trackEvent("user_login", {
-        email: userData.email,
-        name: userData.name,
-      });
-
       return userData;
     } catch (err) {
       clearAuthState();
@@ -87,11 +81,6 @@ export const AuthProvider = ({ children }) => {
     setIsAuthProcessing(true);
     try {
       const response = await api.post("/api/user/signup", userData);
-      trackEvent("user_signup", {
-        email: userData.email,
-        name: userData.name,
-        phone: userData.phone,
-      });
       return response.data;
     } catch (err) {
       console.error("Signup Error:", err.message);

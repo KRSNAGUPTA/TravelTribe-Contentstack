@@ -33,9 +33,3 @@ APP_PASSWORD=xxxx xxxx xxxx xxxx
 
 DISCORD_BOT_WEBHOOK=<URL>
 
-
-# ─────────────────────────────────────────────────────────────────────
-# LYTICS (optional — endpoint exists but marked "not using")
-# ─────────────────────────────────────────────────────────────────────
-LYTICS_BASE_URL=https://api.lytics.io
-LYTICS_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

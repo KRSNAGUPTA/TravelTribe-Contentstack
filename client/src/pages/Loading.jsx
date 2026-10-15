@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-bg-muted-soft">
+    <div className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-paper">
       {/* Soft coral radial glow */}
       <div
         aria-hidden="true"
@@ -51,12 +51,12 @@ export default function Loading() {
         </div>
 
         {/* Brand wordmark */}
-        <h1 className="pacifico-regular mt-8 text-3xl font-semibold tracking-tight text-text-dark sm:text-4xl">
+        <h1 className="pacifico-regular mt-8 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
           Travel Tribe
         </h1>
 
         {/* Tagline */}
-        <p className="mt-3 max-w-sm text-[0.9rem] font-light leading-relaxed text-text-muted sm:text-base">
+        <p className="mt-3 max-w-sm text-[0.9rem] font-light leading-relaxed text-ink-muted sm:text-base">
           Finding you the best student accommodations with ease and comfort.
         </p>
 

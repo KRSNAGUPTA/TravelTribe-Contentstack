@@ -77,7 +77,7 @@ function CheckItem({ label, ok }) {
   return (
     <li
       className={`flex items-center gap-1.5 text-[0.68rem] transition ${
-        ok ? "text-emerald-600" : "text-text-muted"
+        ok ? "text-emerald-600" : "text-ink-muted"
       }`}
     >
       <span
@@ -145,7 +145,7 @@ export default function ProfilePage() {
   );
 
   const getStatusColor = (status) =>
-    STATUS_STYLES[status] || "bg-bg-muted text-text-muted border-border-subtle";
+    STATUS_STYLES[status] || "bg-paper-tint text-ink-muted border-hairline";
 
   const validateProfile = () => {
     const errs = {};
@@ -269,7 +269,7 @@ export default function ProfilePage() {
   const pwAllValid = Object.values(pwChecks).every(Boolean);
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+    <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
       <Toaster />
 
       <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
@@ -317,10 +317,10 @@ export default function ProfilePage() {
             <p className="mb-1 text-[0.66rem] font-semibold uppercase tracking-[0.24em] text-accent-ink">
               {PAGE_TEXT.welcomeLabel}
             </p>
-            <h1 className="text-[1.75rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]">
+            <h1 className="text-[1.75rem] font-semibold leading-[1.05] tracking-[-0.03em] text-ink sm:text-[2.25rem]">
               {userData?.name || "Traveler"}
             </h1>
-            <p className="mt-1.5 text-[0.88rem] font-light text-text-muted">
+            <p className="mt-1.5 text-[0.88rem] font-light text-ink-muted">
               {PAGE_TEXT.subtitle}
             </p>
           </div>
@@ -335,7 +335,7 @@ export default function ProfilePage() {
 
             <PopoverContent
               align="end"
-              className="w-[22rem] rounded-3xl border border-border-subtle bg-white p-5 shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]"
+              className="w-[22rem] rounded-3xl border border-hairline bg-white p-5 shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]"
             >
               <div className="space-y-3">
                 <div>
@@ -415,7 +415,7 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => setShowPassword((s) => !s)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-text-muted transition hover:bg-primary/10 hover:text-primary"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -469,10 +469,10 @@ export default function ProfilePage() {
         <section>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-[1.25rem] font-semibold tracking-[-0.02em] text-text-dark sm:text-[1.5rem]">
+              <h2 className="text-[1.25rem] font-semibold tracking-[-0.02em] text-ink sm:text-[1.5rem]">
                 {PAGE_TEXT.bookingLabel}
               </h2>
-              <p className="mt-1 text-[0.82rem] font-light text-text-muted">
+              <p className="mt-1 text-[0.82rem] font-light text-ink-muted">
                 {bookings.length} total
                 {statusFilter !== "all" && ` · filtered by ${statusFilter}`}
               </p>
@@ -493,36 +493,36 @@ export default function ProfilePage() {
           </div>
 
           {bookings.length === 0 ? (
-            <Card className="rounded-3xl border border-border-subtle bg-white p-10 text-center shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
-              <p className="text-[0.9rem] text-text-muted">
+            <Card className="rounded-3xl border border-hairline bg-white p-10 text-center shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
+              <p className="text-[0.9rem] text-ink-muted">
                 {PAGE_TEXT.noBookingText}
               </p>
             </Card>
           ) : (
-            <div className="overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
+            <div className="overflow-hidden rounded-3xl border border-hairline bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border-subtle bg-bg-muted-soft/50 hover:bg-bg-muted-soft/50">
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                    <TableRow className="border-hairline bg-paper/50 hover:bg-paper/50">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Receipt
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Hostel
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Room
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Check-in
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Check-out
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Amount
                       </TableHead>
-                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                      <TableHead className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-ink-muted">
                         Status
                       </TableHead>
                       <TableHead className="w-12" />
@@ -533,12 +533,12 @@ export default function ProfilePage() {
                     {filteredBookings.map((booking) => (
                       <TableRow
                         key={booking.receiptId}
-                        className="border-border-subtle transition hover:bg-bg-muted-soft/40"
+                        className="border-hairline transition hover:bg-paper/40"
                       >
-                        <TableCell className="font-mono text-[0.78rem] text-text-muted">
+                        <TableCell className="font-mono text-[0.78rem] text-ink-muted">
                           {booking.receiptId}
                         </TableCell>
-                        <TableCell className="font-medium text-text-dark">
+                        <TableCell className="font-medium text-ink">
                           <button
                             type="button"
                             onClick={() => handleHostelClick(booking.hostelId)}
@@ -547,20 +547,20 @@ export default function ProfilePage() {
                             {booking.hostelId}
                           </button>
                         </TableCell>
-                        <TableCell className="text-text-muted">
+                        <TableCell className="text-ink-muted">
                           {booking.roomSelection}
                         </TableCell>
-                        <TableCell className="text-text-muted">
+                        <TableCell className="text-ink-muted">
                           {new Date(booking.checkInDate).toLocaleDateString(
                             "en-IN"
                           )}
                         </TableCell>
-                        <TableCell className="text-text-muted">
+                        <TableCell className="text-ink-muted">
                           {new Date(booking.checkOutDate).toLocaleDateString(
                             "en-IN"
                           )}
                         </TableCell>
-                        <TableCell className="font-semibold text-text-dark">
+                        <TableCell className="font-semibold text-ink">
                           ₹{booking.amount}
                         </TableCell>
                         <TableCell>
@@ -585,12 +585,12 @@ export default function ProfilePage() {
                             </PopoverTrigger>
                             <PopoverContent
                               align="end"
-                              className="w-44 rounded-2xl border border-border-subtle p-1.5"
+                              className="w-44 rounded-2xl border border-hairline p-1.5"
                             >
                               <button
                                 type="button"
                                 onClick={() => handleDownloadClick(booking)}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.82rem] text-text-dark transition hover:bg-primary/10 hover:text-primary"
+                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.82rem] text-ink transition hover:bg-primary/10 hover:text-primary"
                               >
                                 <Download className="h-3.5 w-3.5" />
                                 Download PDF
@@ -627,15 +627,15 @@ export default function ProfilePage() {
 
 function InfoTile({ icon: Icon, label, value }) {
   return (
-    <div className="flex items-center gap-3 rounded-3xl border border-border-subtle bg-white px-5 py-4 shadow-[0_2px_12px_-6px_var(--card-shadow-hover)]">
+    <div className="flex items-center gap-3 rounded-3xl border border-hairline bg-white px-5 py-4 shadow-[0_2px_12px_-6px_var(--card-shadow-hover)]">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
         <Icon className="h-4 w-4 text-primary" />
       </span>
       <div className="min-w-0">
-        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-text-muted">
+        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.2em] text-ink-muted">
           {label}
         </p>
-        <p className="truncate text-[0.88rem] font-medium text-text-dark">
+        <p className="truncate text-[0.88rem] font-medium text-ink">
           {value}
         </p>
       </div>

@@ -10,7 +10,7 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       colors: {
-        /* ---- shadcn base tokens ---- */
+        /* Core shadcn tokens */
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -58,14 +58,19 @@ module.exports = {
           5: "hsl(var(--chart-5))",
         },
 
-        /* ---- brand extension tokens ---- */
+        /* Semantic tokens */
         "on-primary": "hsl(var(--on-primary))",
-        "text-dark": "hsl(var(--text-dark))",
-        "text-muted": "hsl(var(--text-muted))",
-        "text-secondary": "hsl(var(--text-secondary))",
-        "bg-muted-soft": "hsl(var(--bg-muted-soft))",
-        "border-subtle": "hsl(var(--border-subtle))",
-        "border-strong": "hsl(var(--border-strong))",
+        ink: "hsl(var(--text-dark))",
+        "ink-muted": "hsl(var(--text-muted))",
+        "ink-secondary": "hsl(var(--text-secondary))",
+        "ink-inverse": "hsl(var(--text-inverse))",
+        paper: "hsl(var(--bg-muted-soft))",
+        "paper-tint": "hsl(var(--bg-muted))",
+        hairline: "hsl(var(--border-subtle))",
+        "hairline-strong": "hsl(var(--border-strong))",
+        "hero-from": "hsl(var(--hero-grad-start))",
+        "hero-to": "hsl(var(--hero-grad-end))",
+        overlay: "hsl(var(--overlay))",
       },
       keyframes: {
         "accordion-down": {

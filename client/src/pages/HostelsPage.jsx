@@ -3,7 +3,6 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HostelCard from "@/components/HostelCard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,14 +12,38 @@ import {
 } from "@/components/ui/select";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
-import {
-  fetchEntries,
-  setDataForChromeExtension,
-} from "@/contentstack/utils";
+import { fetchEntries } from "@/contentstack/utils";
 import api from "@/api";
 import { searchClient } from "@/services/algoliaSearch";
 import { useNavigate } from "react-router-dom";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+
+const buildPageWindow = (current, total, siblings = 1) => {
+  if (total <= 1) return [];
+  const totalNumbers = siblings * 2 + 5;
+  if (total <= totalNumbers) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const leftSibling = Math.max(current - siblings, 1);
+  const rightSibling = Math.min(current + siblings, total);
+
+  const showLeftEllipsis = leftSibling > 2;
+  const showRightEllipsis = rightSibling < total - 1;
+
+  const range = [];
+  const start = showLeftEllipsis ? leftSibling : 1;
+  const end = showRightEllipsis ? rightSibling : total;
+
+  for (let i = start; i <= end; i++) range.push(i);
+
+  const result = [];
+  if (showLeftEllipsis) result.push(1, "…");
+  result.push(...range);
+  if (showRightEllipsis) result.push("…", total);
+
+  return result;
+};
 
 export default function HostelsPage() {
   const navigate = useNavigate();
@@ -48,7 +71,6 @@ export default function HostelsPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
   const indexName = import.meta.env.VITE_ALGOLIA_INDEX_NAME || "travel_tribe";
-
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -94,9 +116,8 @@ export default function HostelsPage() {
     const fetchHeaderData = async () => {
       try {
         const listingEntry = (
-          await fetchEntries("hostel_listing", import.meta.env.VITE_SDK, null)
+          await fetchEntries("hostel_listing")
         )[0];
-        // console.log("Listing", listingEntry)
         if (listingEntry) {
           document.title = listingEntry.page_title || "Hostels | Travel Tribe";
           setListingPageData(listingEntry);
@@ -108,13 +129,9 @@ export default function HostelsPage() {
 
     fetchHeaderData();
     onEntryChange(fetchHeaderData);
-    scrollTo({
-      top:0,
-      behavior:'smooth'
-    })
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
-  // Fetch paginated hostels from backend server
   const fetchPaginatedHostels = async () => {
     try {
       setLoadingHostels(true);
@@ -161,7 +178,6 @@ export default function HostelsPage() {
     };
   }, []);
 
-  // Algolia Search for Autocomplete (uses live searchInput)
   useEffect(() => {
     const query = searchInput.trim();
     if (query.length < 2) {
@@ -180,7 +196,6 @@ export default function HostelsPage() {
             },
           },
         ]);
-        // console.log("Algolia autocomplete search response:", response);  
         const hits = response?.results?.[0]?.hits || [];
         setSuggestions(hits);
       } catch (err) {
@@ -215,7 +230,7 @@ export default function HostelsPage() {
       part.toLowerCase() === query.toLowerCase() ? (
         <mark
           key={`${part}-${idx}`}
-          className="rounded bg-amber-100 px-0.5 text-amber-900"
+          className="rounded bg-primary/15 px-0.5 text-primary"
         >
           {part}
         </mark>
@@ -247,26 +262,29 @@ export default function HostelsPage() {
     setPage(1);
   };
 
+  const pageWindow = buildPageWindow(page, pagination.totalPages, 1);
+
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gray-50">
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+      <div className="min-h-screen bg-paper text-ink">
+        <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
           <Header />
         </div>
 
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-center mb-12 mt-16">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 bubblegum-sans-regular">
+        <main className="container mx-auto px-4 pb-32 pt-24">
+          <div className="mb-12 text-center">
+            <h1 className="mb-2 text-3xl font-semibold tracking-[-0.02em] text-ink sm:text-4xl">
               {listingPageData?.title || "Hostels"}
             </h1>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              {listingPageData?.subtitle || "Discover student hostels & co-living spaces"}
+            <p className="mx-auto max-w-2xl text-sm text-ink-muted sm:text-base">
+              {listingPageData?.subtitle ||
+                "Discover student hostels & co-living spaces"}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-4 justify-center mb-8">
-            <div className="relative w-80" ref={autocompleteBoxRef}>
-              <div className="flex items-center rounded-full border border-purple-200 bg-white p-1 shadow-sm transition-all focus-within:border-purple-400 focus-within:ring-2 focus-within:ring-purple-200">
+          <div className="mb-8 flex flex-wrap justify-center gap-3">
+            <div className="relative w-full max-w-md" ref={autocompleteBoxRef}>
+              <div className="flex items-center rounded-full border border-hairline bg-white p-1 shadow-sm transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20">
                 <input
                   type="text"
                   placeholder={
@@ -279,17 +297,15 @@ export default function HostelsPage() {
                     setIsAutocompleteOpen(true);
                   }}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      executeSearch();
-                    }
+                    if (e.key === "Enter") executeSearch();
                   }}
-                  className="flex-1 bg-transparent pl-4 pr-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none"
+                  className="flex-1 bg-transparent pl-4 pr-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
                 />
 
                 <button
                   type="button"
                   onClick={executeSearch}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-colors shadow-sm"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-on-primary shadow-sm transition hover:bg-primary-hover"
                   aria-label="Search"
                 >
                   <Search className="h-4 w-4" />
@@ -297,10 +313,10 @@ export default function HostelsPage() {
               </div>
 
               {isAutocompleteOpen && searchInput.trim().length >= 2 && (
-                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95 shadow-[0_16px_38px_rgba(15,23,42,0.14)] backdrop-blur-sm">
+                <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-hairline bg-white shadow-[0_16px_38px_-12px_rgba(0,0,0,0.15)]">
                   {suggestions.length === 0 ? (
-                    <div className="px-4 py-4 text-sm text-gray-500">
-                      No suggestions found for "{searchInput.trim()}"
+                    <div className="px-4 py-4 text-sm text-ink-muted">
+                      No suggestions for "{searchInput.trim()}"
                     </div>
                   ) : (
                     <div className="max-h-80 overflow-y-auto py-1">
@@ -314,7 +330,10 @@ export default function HostelsPage() {
                             onClick={() => {
                               if (itemUid) {
                                 setIsAutocompleteOpen(false);
-                                window.scrollTo({ top: 0, behavior: "smooth" });
+                                window.scrollTo({
+                                  top: 0,
+                                  behavior: "smooth",
+                                });
                                 navigate(`/hostel/${itemUid}`);
                                 return;
                               }
@@ -326,10 +345,10 @@ export default function HostelsPage() {
                               setPage(1);
                               setIsAutocompleteOpen(false);
                             }}
-                            className="block w-full border-b border-gray-100/80 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-purple-50/60"
+                            className="block w-full border-b border-hairline/60 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-primary/[0.06]"
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <p className="line-clamp-1 text-sm font-semibold text-gray-900">
+                              <p className="line-clamp-1 text-sm font-semibold text-ink">
                                 {highlightText(
                                   item.title || "Untitled Hostel",
                                   searchInput.trim()
@@ -337,12 +356,12 @@ export default function HostelsPage() {
                               </p>
                               {suggestionPrice ? (
                                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                  from Rs. {suggestionPrice}
+                                  from ₹{suggestionPrice}
                                 </span>
                               ) : null}
                             </div>
                             {item.address && (
-                              <p className="mt-1 line-clamp-1 text-xs text-gray-500">
+                              <p className="mt-1 line-clamp-1 text-xs text-ink-muted">
                                 {item.address}
                               </p>
                             )}
@@ -359,10 +378,10 @@ export default function HostelsPage() {
               value={filters.college}
               onValueChange={(value) => handleFilterChange("college", value)}
             >
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="h-11 w-56 rounded-full border-hairline bg-white">
                 <SelectValue placeholder="Select College" />
               </SelectTrigger>
-              <SelectContent alignItemWithTrigger={true}>
+              <SelectContent>
                 <SelectItem value="all">All Colleges</SelectItem>
                 <SelectItem value="Thakur College of Engineering and Technology">
                   Thakur College of Engineering and Technology
@@ -393,7 +412,7 @@ export default function HostelsPage() {
               value={filters.location}
               onValueChange={(value) => handleFilterChange("location", value)}
             >
-              <SelectTrigger className="w-56">
+              <SelectTrigger className="h-11 w-56 rounded-full border-hairline bg-white">
                 <SelectValue placeholder="Select Location" />
               </SelectTrigger>
               <SelectContent>
@@ -415,7 +434,7 @@ export default function HostelsPage() {
               value={filters.maxPrice}
               onValueChange={(value) => handleFilterChange("maxPrice", value)}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="h-11 w-44 rounded-full border-hairline bg-white">
                 <SelectValue placeholder="Price Range" />
               </SelectTrigger>
               <SelectContent>
@@ -427,34 +446,36 @@ export default function HostelsPage() {
             </Select>
           </div>
 
-          <div className="flex justify-center mb-6">
+          <div className="mb-6 flex justify-center">
             <Button
               onClick={handleReset}
-              className="text-sm rounded-full text-black active:translate-y-1 hover:translate-y-1 transition-all"
+              variant="outline"
+              className="h-10 rounded-full border-hairline-strong text-ink hover:border-primary/40 hover:text-primary"
             >
               {listingPageData?.reset_button_text || "Reset Filters"}
             </Button>
           </div>
 
-          <div className="text-center mb-6 text-gray-600">
-            Found {pagination.total} stays
+          <div className="mb-6 text-center text-sm text-ink-muted">
+            Found{" "}
+            <span className="font-medium text-ink">{pagination.total}</span>{" "}
+            {pagination.total === 1 ? "stay" : "stays"}
           </div>
 
           {loadingHostels ? (
-            <div className="text-center py-12 text-gray-500">
-              Loading hostels...
+            <div className="py-16 text-center text-ink-muted">
+              Loading hostels…
             </div>
           ) : hostels.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="py-16 text-center text-ink-muted">
               No hostels found matching your criteria.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {hostels.map((hostel) => (
                 <HostelCard
                   key={hostel.uid}
                   hostel={hostel}
-                  lytics_event="hostels_page"
                   variant="detailed"
                   isAvailable={hostel.isAvailable ?? true}
                 />
@@ -462,44 +483,61 @@ export default function HostelsPage() {
             </div>
           )}
 
-          {/* Server-Side Pagination Controls */}
           {pagination.totalPages > 1 && (
-            <div className="flex justify-center mb-10">
-              <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-sm">
+            <div className="mb-10 flex justify-center">
+              <div className="flex items-center gap-1 rounded-full border border-hairline bg-white p-1 shadow-sm">
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={!pagination.hasPrevPage}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl p-0 hover:bg-gray-100"
+                  className="flex h-9 w-9 items-center justify-center rounded-full p-0 hover:bg-primary/10 disabled:opacity-40"
+                  aria-label="Previous page"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
 
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-                  (pageNum) => (
+                {pageWindow.map((item, idx) => {
+                  if (item === "…") {
+                    return (
+                      <span
+                        key={`ellipsis-${idx}`}
+                        className="flex h-9 w-9 items-center justify-center text-sm text-ink-muted"
+                      >
+                        …
+                      </span>
+                    );
+                  }
+
+                  const isActive = item === page;
+                  return (
                     <Button
-                      key={pageNum}
-                      variant={page === pageNum ? "default" : "ghost"}
+                      key={item}
+                      variant={isActive ? "default" : "ghost"}
                       size="sm"
-                      onClick={() => setPage(pageNum)}
-                      className={`h-9 min-w-9 rounded-xl px-3 text-sm font-medium transition-colors ${
-                        page === pageNum
-                          ? "bg-[var(--primary)] text-white shadow-sm hover:bg-[var(--primary)]"
-                          : "text-gray-700 hover:bg-gray-100"
+                      onClick={() => setPage(item)}
+                      className={`h-9 min-w-9 rounded-full px-3 text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-primary text-on-primary shadow-sm hover:bg-primary"
+                          : "text-ink hover:bg-primary/10"
                       }`}
                     >
-                      {pageNum}
+                      {item}
                     </Button>
-                  )
-                )}
+                  );
+                })}
 
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={!pagination.hasNextPage}
-                  onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl p-0 hover:bg-gray-100"
+                  onClick={() =>
+                    setPage((p) =>
+                      Math.min(pagination.totalPages, p + 1)
+                    )
+                  }
+                  className="flex h-9 w-9 items-center justify-center rounded-full p-0 hover:bg-primary/10 disabled:opacity-40"
+                  aria-label="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -513,6 +551,3 @@ export default function HostelsPage() {
     </TooltipProvider>
   );
 }
-
-
-

@@ -7,7 +7,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-bg-muted-soft px-6">
+    <div className="relative flex min-h-[100svh] w-full items-center justify-center overflow-hidden bg-paper px-6">
 
       <div
         aria-hidden="true"
@@ -36,11 +36,11 @@ export default function NotFound() {
           404
         </h1>
 
-        <h2 className="mt-4 text-2xl font-semibold tracking-[-0.02em] text-text-dark sm:text-3xl">
+        <h2 className="mt-4 text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">
           Looks like you took a wrong turn
         </h2>
 
-        <p className="mx-auto mt-3 max-w-md text-[0.95rem] font-light leading-relaxed text-text-muted sm:text-base">
+        <p className="mx-auto mt-3 max-w-md text-[0.95rem] font-light leading-relaxed text-ink-muted sm:text-base">
           The page you're looking for doesn't exist, or may have been moved.
           Let's get you back on the road.
         </p>

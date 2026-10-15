@@ -4,10 +4,6 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./middlewares/protectedRoutes";
 import Loading from "./pages/Loading";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { applyTheme } from "./lib/applyTheme";
-import { fetchEntries } from "./contentstack/utils";
-import { LyticsProvider } from "./context/LyticsContext";
-import { StickyBar } from "./components/StickyBanner";
 import { Toaster } from "./components/ui/toaster";
 import TermsOfService from "./pages/TermsOfService";
 
@@ -24,44 +20,9 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Contact = lazy(() => import("./pages/Contact"));
 
 function App() {
-  const [adBlockDetected, setAdBlockDetected] = useState(false);
-
-  // useEffect(() => {
-  //   let mounted = true;
-
-  //   async function loadTheme() {
-  //     try {
-  //       const entries = await fetchEntries(
-  //         "website_theme",
-  //         import.meta.env.VITE_SDK,
-  //         null
-  //       );
-  //       const entry = entries?.[0];
-  //       const base = entry?.primary_color?.hex;
-
-  //       if (!base) {
-  //         console.warn("Theme color not found");
-  //         return;
-  //       }
-
-  //       if (mounted) {
-  //         applyTheme(base);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to load theme:", error);
-  //     }
-  //   }
-
-  //   loadTheme();
-
-  //   return () => {
-  //     mounted = false;
-  //   };
-  // }, []);
 
   return (
     <Router>
-      <LyticsProvider>
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
           <AuthProvider>
             <Toaster/>
@@ -97,7 +58,6 @@ function App() {
             </Suspense>
           </AuthProvider>
         </GoogleOAuthProvider>
-      </LyticsProvider>
     </Router>
   );
 }

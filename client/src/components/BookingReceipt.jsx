@@ -1,31 +1,30 @@
 import React from "react";
 
 function BookingReceipt({ booking, userData }) {
+  const statusStyles = {
+    confirmed: "bg-green-100 text-green-700",
+    pending: "bg-yellow-100 text-yellow-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+
+  const statusClass = statusStyles[booking.status] || "bg-blue-100 text-blue-700";
+
   return (
-    <div
-      id="booking-receipt"
-      className="w-[794px] p-10 font-san"
-    >
+    <div id="booking-receipt" className="w-[794px] p-10 font-sans">
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        
-        {/* Gradient Header */}
+        {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-violet-600 text-white p-8">
-          <h1 className="text-3xl font-bold tracking-wide">
-            Travel Tribe
-          </h1>
-          <p className="text-sm opacity-90 mt-1">
-            Booking Confirmation Receipt
-          </p>
+          <h1 className="text-3xl font-bold tracking-wide">Travel Tribe</h1>
+          <p className="text-sm opacity-90 mt-1">Booking Confirmation Receipt</p>
 
           <div className="mt-4 text-sm">
             Receipt ID: <span className="font-semibold">{booking.receiptId}</span>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Body */}
         <div className="p-10">
-
-          {/* Top Meta Info */}
+          {/* Meta row */}
           <div className="flex justify-between text-sm text-gray-500 mb-8">
             <div>
               Generated On:{" "}
@@ -36,25 +35,15 @@ function BookingReceipt({ booking, userData }) {
             <div>
               Status:{" "}
               <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  booking.status === "confirmed"
-                    ? "bg-green-100 text-green-700"
-                    : booking.status === "pending"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : booking.status === "cancelled"
-                    ? "bg-red-100 text-red-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
+                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${statusClass}`}
               >
                 {booking.status}
               </span>
             </div>
           </div>
 
-          {/* Booking + Guest Grid */}
+          {/* Booking + Guest */}
           <div className="grid grid-cols-2 gap-8">
-
-            {/* Booking Card */}
             <div className="bg-gray-50 border rounded-xl p-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-800">
                 Booking Details
@@ -87,7 +76,6 @@ function BookingReceipt({ booking, userData }) {
               </div>
             </div>
 
-            {/* Guest Card */}
             <div className="bg-gray-50 border rounded-xl p-6">
               <h2 className="text-lg font-semibold mb-4 text-gray-800">
                 Guest Details
@@ -101,20 +89,18 @@ function BookingReceipt({ booking, userData }) {
 
                 <div>
                   <p className="text-gray-500 text-xs">Email</p>
-                  <p className="font-medium">{userData.email}</p>
+                  <p className="font-medium break-all">{userData.email}</p>
                 </div>
 
                 <div>
                   <p className="text-gray-500 text-xs">Phone</p>
-                  <p className="font-medium">
-                    {userData.phone || "N/A"}
-                  </p>
+                  <p className="font-medium">{userData.phone || "N/A"}</p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Payment Section */}
+          {/* Payment */}
           <div className="mt-10 bg-purple-50 border border-purple-200 rounded-xl p-6">
             <h2 className="text-lg font-semibold mb-4 text-gray-800">
               Payment Summary
@@ -127,14 +113,11 @@ function BookingReceipt({ booking, userData }) {
 
           {/* Footer */}
           <div className="mt-12 text-center text-xs text-gray-500">
-            <p>
-              This is a system-generated receipt. No signature required.
-            </p>
+            <p>This is a system-generated receipt. No signature required.</p>
             <p className="mt-1">
               © Travel Tribe 2026 — Your trusted companion for comfortable stays
             </p>
           </div>
-
         </div>
       </div>
     </div>

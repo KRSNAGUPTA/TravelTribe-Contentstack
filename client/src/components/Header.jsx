@@ -10,69 +10,41 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "./ui/tooltip";
-import { Separator } from "@/components/ui/separator"
-import Stack, { onEntryChange } from "@/contentstack/contentstackSDK";
-import {fetchEntries, fetchEntryById} from "@/contentstack/utils";
-import { setDataForChromeExtension } from "@/contentstack/utils";
+import { Separator } from "@/components/ui/separator";
+import { onEntryChange } from "@/contentstack/contentstackSDK";
+import { fetchEntries } from "@/contentstack/utils";
 import { addEditableTags } from "@contentstack/utils";
 
+const TOOLTIP_CLASS =
+  "text-black rounded-full border px-4 py-2 font-bold bg-white";
 
 const Header = () => {
-  const [userInfo, setUserInfo] = useState(null)
+  const [userInfo, setUserInfo] = useState(null);
+  const [icons, setIcons] = useState(null);
   const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
-  const [icons, setIcons] = useState();
+
   useEffect(() => {
-    const fetchCDAData = async () => {
+    const fetchData = async () => {
       try {
-        // console.log("Header entry:");
-        const entry = (await fetchEntries("header", import.meta.env.VITE_SDK, null))[0];
-        // console.log("Header entry:", entry);  
+        const entry = (await fetchEntries("header"))[0];
+        if (!entry) return;
+
+        addEditableTags(entry, "header", true, "en-us");
         setIcons(entry);
-        if (entry?.page_title) document.title = entry.page_title;
+        if (entry.page_title) document.title = entry.page_title;
       } catch (error) {
-        console.error("CDA: Error fetching CMS data for Profiel Page:", error?.message);
+        console.error("Error fetching header:", error?.message);
       }
     };
 
-    const fetchSDKData = async () => {
-      try {
-        // const entry = await Stack
-        //   .ContentType("header")
-        //   .Entry("bltf9dba16208e02dd7")
-        //   .toJSON()
-        //   .fetch();
-        const entry = (await fetchEntries("header", import.meta.env.VITE_SDK, null))[0];
-
-        addEditableTags(entry, "header",true, 'en-us')
-        setIcons(entry);
-        if (entry?.page_title) document.title = entry.page_title;
-
-        // for live preview 
-        const data = {
-          "entryUid": entry?.uid,
-          "contenttype":"header",
-          "locale":import.meta.env.VITE_CS_LOCALE
-        }
-        setDataForChromeExtension(data)
-      } catch (error) {
-        console.error("SDK: Error fetching Profile Page data:", error?.message);
-      }
-    };
-
-    if (import.meta.env.VITE_SDK === "true") {
-      fetchSDKData()
-      onEntryChange(fetchSDKData);
-    } else {
-      fetchCDAData();
-    }
+    fetchData();
+    onEntryChange(fetchData);
   }, []);
 
   useEffect(() => {
-    // console.log("User logined")
     setUserInfo(user);
   }, [user]);
-  const toolTipContentCss = "text-black rounded-full border px-4 py-2 font-bold bg-white"
 
   return (
     <div className="relative">
@@ -80,35 +52,53 @@ const Header = () => {
         <Dock direction="middle">
           <DockIcon>
             <Tooltip>
-              <TooltipTrigger asChild >
-                <div onClick={() => navigate("/")} className="cursor-pointer" {...icons?.$?.home}>
-                  {icons?.home ?
-                  <img src={icons?.home.url} className="size-5 select-none" alt="Home" draggable={false} />
-                  : <House/>
-}
+              <TooltipTrigger asChild>
+                <div
+                  onClick={() => navigate("/")}
+                  className="cursor-pointer"
+                  {...icons?.$?.home}
+                >
+                  {icons?.home ? (
+                    <img
+                      src={icons.home.url}
+                      className="size-5 select-none"
+                      alt="Home"
+                      draggable={false}
+                    />
+                  ) : (
+                    <House />
+                  )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent className={toolTipContentCss}>
+              <TooltipContent className={TOOLTIP_CLASS}>
                 <p>Home</p>
               </TooltipContent>
             </Tooltip>
           </DockIcon>
+
           <Separator orientation="vertical" />
+
           <DockIcon>
             <Tooltip>
               <TooltipTrigger asChild>
                 <div
                   onClick={() => navigate("/hostel")}
-                  className=""
+                  className="cursor-pointer"
                   {...icons?.$?.search}
                 >
-                  {icons?.search ?
-                    <img src={icons?.search.url} className="size-5 select-none" alt="Search" draggable={false} />
-                    : <Search />
-                  }
+                  {icons?.search ? (
+                    <img
+                      src={icons.search.url}
+                      className="size-5 select-none"
+                      alt="Search"
+                      draggable={false}
+                    />
+                  ) : (
+                    <Search />
+                  )}
                 </div>
               </TooltipTrigger>
-              <TooltipContent className={toolTipContentCss}>
+              <TooltipContent className={TOOLTIP_CLASS}>
                 <p>Search</p>
               </TooltipContent>
             </Tooltip>
@@ -121,35 +111,54 @@ const Header = () => {
                   <TooltipTrigger asChild>
                     <div
                       onClick={() => navigate("/profile")}
+                      className="cursor-pointer"
                     >
-                      <Avatar className="size-7" >
+                      <Avatar className="size-7">
                         <AvatarImage
                           src={userInfo?.avatar || "/vite.svg"}
                           alt={userInfo?.name}
                         />
                         <AvatarFallback className="bg-gray-600 text-white text-sm md:text-lg font-semibold">
-                          {userInfo?.name ? userInfo?.name[0].toUpperCase() : "U"}
+                          {userInfo?.name
+                            ? userInfo.name[0].toUpperCase()
+                            : "U"}
                         </AvatarFallback>
                       </Avatar>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className={toolTipContentCss}>
-                    <p>{userInfo?.name ? `Profile | ${userInfo.name}` : "user"}</p>
+                  <TooltipContent className={TOOLTIP_CLASS}>
+                    <p>
+                      {userInfo?.name
+                        ? `Profile | ${userInfo.name}`
+                        : "Profile"}
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               </DockIcon>
+
               <Separator orientation="vertical" />
+
               <DockIcon>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <div onClick={logout} {...icons?.$?.logout}>
-                      {icons?.logout ?
-                        <img src={icons?.logout.url} className="size-5 select-none" alt="Logout" draggable={false} />
-                        : <LogOut />
-                      }
+                    <div
+                      onClick={logout}
+                      className="cursor-pointer"
+                      {...icons?.$?.logout}
+                    >
+                      {icons?.logout ? (
+                        <img
+                          src={icons.logout.url}
+                          className="size-5 select-none"
+                          alt="Logout"
+                          draggable={false}
+                        />
+                      ) : (
+                        <LogOut />
+                      )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className={toolTipContentCss}>
+                  <TooltipContent className={TOOLTIP_CLASS}>
                     <p>Logout</p>
                   </TooltipContent>
                 </Tooltip>
@@ -158,20 +167,28 @@ const Header = () => {
           ) : (
             <>
               <Separator orientation="vertical" />
+
               <DockIcon>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div
                       onClick={() => navigate("/login")}
+                      className="cursor-pointer"
                       {...icons?.$?.login}
                     >
-                      {icons?.login ?
-                        <img src={icons?.login.url} className="size-5 select-none" alt="Login" draggable={false} />
-                        : <LogIn />
-                      }
+                      {icons?.login ? (
+                        <img
+                          src={icons.login.url}
+                          className="size-5 select-none"
+                          alt="Login"
+                          draggable={false}
+                        />
+                      ) : (
+                        <LogIn />
+                      )}
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className={toolTipContentCss}>
+                  <TooltipContent className={TOOLTIP_CLASS}>
                     <p>Login</p>
                   </TooltipContent>
                 </Tooltip>

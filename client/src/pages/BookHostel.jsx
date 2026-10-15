@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,8 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { useAuth } from "@/context/AuthContext";
 import { fetchEntryById } from "@/contentstack/utils";
-import { trackEvent } from "@/Lytics/config";
-import { LyticsContext } from "@/context/LyticsContext";
 
 const today = () => new Date().toISOString().split("T")[0];
 const addDays = (iso, n) => {
@@ -57,13 +55,11 @@ export default function HostelBooking() {
 
   const { toast } = useToast();
   const { user } = useAuth();
-  const { profile } = useContext(LyticsContext);
 
   const [cmsRooms, setCmsRooms] = useState([]);
   const [hostel, setHostel] = useState(null);
   const [loadingHostel, setLoadingHostel] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
-  const [hasTrackedBookingStarted, setHasTrackedBookingStarted] = useState(false);
 
   const [formData, setFormData] = useState({
     checkIn: "",
@@ -81,12 +77,7 @@ export default function HostelBooking() {
       try {
         setLoadingHostel(true);
 
-        const entry = await fetchEntryById(
-          "hostel",
-          id,
-          import.meta.env.VITE_SDK,
-          null,
-        );
+        const entry = await fetchEntryById("hostel", id);
 
         if (!entry) {
           throw new Error("Hostel not found");
@@ -107,13 +98,7 @@ export default function HostelBooking() {
     };
 
     fetchHostel();
-
-    trackEvent("booking_page_viewed", {
-      hostel_id: id,
-      email: user?.email || null,
-      name: user?.name || null,
-    });
-  }, [id, user?.email, user?.name, toast]);
+  }, [id, toast]);
 
   useEffect(() => {
     if (!user) return;
@@ -121,10 +106,10 @@ export default function HostelBooking() {
       ...prev,
       name: user.name || prev.name,
       email: user.email || prev.email,
-      phone: user.phone || profile?.user?.phone || prev.phone || "",
-      gender: user?.gender || profile?.user?.gender || prev.gender || "",
+      phone: user.phone || prev.phone || "",
+      gender: user?.gender || prev.gender || "",
     }));
-  }, [user, profile]);
+  }, [user]);
 
   const selectedRoom = useMemo(
     () => cmsRooms.find((r) => r.room_key === selectedRoomFromQuery),
@@ -150,7 +135,10 @@ export default function HostelBooking() {
       return { days: 0, rentAmount: 0, securityDeposit: 0, total: 0 };
     }
 
-    const days = Math.max(0, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+    const days = Math.max(
+      0,
+      Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))
+    );
     const dailyRent = Math.round(Number(selectedRoom.base_price) || 0);
     const rentAmount = dailyRent * days;
     const securityDeposit = dailyRent;
@@ -224,32 +212,11 @@ export default function HostelBooking() {
       return false;
     }
 
-    trackEvent("checkout_attempted", {
-      hostel_id: id,
-      room_type: formData.roomSelection,
-      total_amount: formData.amount,
-      email: formData.email,
-      name: formData.name,
-    });
-
     return true;
   };
 
   const nextStep = () => {
     if (currentStep === 1 && validateDates()) {
-      if (!hasTrackedBookingStarted) {
-        trackEvent("booking_started", {
-          hostel_id: id,
-          hostel_name: hostel?.title || "Unknown",
-          room_type: selectedRoom?.room_name || "Unknown",
-          total_amount: formData.amount || 0,
-          check_in: formData.checkIn,
-          check_out: formData.checkOut,
-          email: formData.email,
-          name: formData.name,
-        });
-        setHasTrackedBookingStarted(true);
-      }
       setCurrentStep(2);
     }
   };
@@ -263,7 +230,7 @@ export default function HostelBooking() {
 
   if (loadingHostel) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-muted-soft text-text-muted">
+      <div className="flex min-h-screen items-center justify-center bg-paper text-ink-muted">
         Loading hostel…
       </div>
     );
@@ -271,15 +238,15 @@ export default function HostelBooking() {
 
   if (!hostel) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg-muted-soft px-6 text-center">
-        <p className="text-xl font-semibold text-text-dark">Hostel not found</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-paper px-6 text-center">
+        <p className="text-xl font-semibold text-ink">Hostel not found</p>
         <Button onClick={() => navigate("/hostels")}>Back to hostels</Button>
       </div>
     );
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+    <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
       <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
         <Header />
       </div>
@@ -290,14 +257,14 @@ export default function HostelBooking() {
           <header className="mb-10 flex flex-col gap-4 sm:mb-14">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-text-muted">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-ink-muted">
                   Booking
                 </p>
-                <h1 className="mt-1 text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark sm:text-[2.5rem]">
+                <h1 className="mt-1 text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-ink sm:text-[2.5rem]">
                   {hostel.title}
                 </h1>
               </div>
-              <p className="text-sm text-text-muted">
+              <p className="text-sm text-ink-muted">
                 Step {currentStep} of 2 —{" "}
                 {currentStep === 1 ? "Dates" : "Details & Payment"}
               </p>
@@ -308,7 +275,7 @@ export default function HostelBooking() {
                 <span
                   key={step}
                   className={`h-1.5 flex-1 rounded-full transition-colors ${
-                    currentStep >= step ? "bg-primary" : "bg-border-subtle"
+                    currentStep >= step ? "bg-primary" : "bg-hairline"
                   }`}
                 />
               ))}
@@ -319,9 +286,9 @@ export default function HostelBooking() {
             <div className="lg:col-span-2">
               <form onSubmit={(e) => e.preventDefault()}>
                 {currentStep === 1 && (
-                  <Card className="overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
-                    <CardHeader className="border-b border-border-subtle pb-4">
-                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-text-dark">
+                  <Card className="overflow-hidden rounded-3xl border border-hairline bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                    <CardHeader className="border-b border-hairline pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-ink">
                         <Calendar className="h-5 w-5 text-primary" />
                         Select your stay
                       </CardTitle>
@@ -382,9 +349,9 @@ export default function HostelBooking() {
                 )}
 
                 {currentStep === 2 && (
-                  <Card className="overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
-                    <CardHeader className="border-b border-border-subtle pb-4">
-                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-text-dark">
+                  <Card className="overflow-hidden rounded-3xl border border-hairline bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                    <CardHeader className="border-b border-hairline pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-ink">
                         <User className="h-5 w-5 text-primary" />
                         Guest details
                       </CardTitle>
@@ -465,10 +432,10 @@ export default function HostelBooking() {
                         </div>
                       </div>
 
-                      <div className="border-t border-border-subtle pt-6">
+                      <div className="border-t border-hairline pt-6">
                         <div className="mb-4 flex items-center gap-2">
                           <CreditCard className="h-5 w-5 text-primary" />
-                          <h3 className="text-base font-semibold text-text-dark">
+                          <h3 className="text-base font-semibold text-ink">
                             Payment
                           </h3>
                         </div>
@@ -478,7 +445,7 @@ export default function HostelBooking() {
                             type="button"
                             variant="outline"
                             onClick={prevStep}
-                            className="h-11 rounded-full border-border-strong"
+                            className="h-11 rounded-full border-hairline-strong"
                           >
                             <ChevronLeft className="mr-1 h-4 w-4" />
                             Back
@@ -500,9 +467,9 @@ export default function HostelBooking() {
             </div>
 
             <div className="lg:col-span-1">
-              <Card className="sticky top-24 overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
-                <CardHeader className="border-b border-border-subtle bg-primary/[0.04] pb-4">
-                  <CardTitle className="text-base font-semibold text-text-dark">
+              <Card className="sticky top-24 overflow-hidden rounded-3xl border border-hairline bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                <CardHeader className="border-b border-hairline bg-primary/[0.04] pb-4">
+                  <CardTitle className="text-base font-semibold text-ink">
                     Booking summary
                   </CardTitle>
                 </CardHeader>
@@ -510,45 +477,45 @@ export default function HostelBooking() {
                   {selectedRoom ? (
                     <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-text-muted">Room</span>
-                        <span className="font-medium text-text-dark">
+                        <span className="text-ink-muted">Room</span>
+                        <span className="font-medium text-ink">
                           {selectedRoom.room_name}
                         </span>
                       </div>
 
                       <div className="flex justify-between">
-                        <span className="text-text-muted">Nights</span>
-                        <span className="font-medium text-text-dark">
+                        <span className="text-ink-muted">Nights</span>
+                        <span className="font-medium text-ink">
                           {stay.days || "—"}
                         </span>
                       </div>
 
                       <div className="flex justify-between">
-                        <span className="text-text-muted">Daily rent</span>
-                        <span className="font-medium text-text-dark">
+                        <span className="text-ink-muted">Daily rent</span>
+                        <span className="font-medium text-ink">
                           ₹{stay.dailyRent || "—"}
                         </span>
                       </div>
 
                       {stay.days > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-text-muted">Rent total</span>
-                          <span className="font-medium text-text-dark">
+                          <span className="text-ink-muted">Rent total</span>
+                          <span className="font-medium text-ink">
                             ₹{stay.rentAmount}
                           </span>
                         </div>
                       )}
 
                       <div className="flex justify-between">
-                        <span className="text-text-muted">Security deposit</span>
-                        <span className="font-medium text-text-dark">
+                        <span className="text-ink-muted">Security deposit</span>
+                        <span className="font-medium text-ink">
                           ₹{stay.securityDeposit || "—"}
                         </span>
                       </div>
 
-                      <div className="mt-3 border-t border-border-subtle pt-3">
+                      <div className="mt-3 border-t border-hairline pt-3">
                         <div className="flex justify-between text-base font-semibold">
-                          <span className="text-text-dark">Total</span>
+                          <span className="text-ink">Total</span>
                           <span className="text-primary">
                             ₹{stay.total || "—"}
                           </span>
@@ -558,7 +525,7 @@ export default function HostelBooking() {
                   ) : (
                     <div className="flex flex-col items-center gap-3 py-6 text-center">
                       <BedDouble className="h-10 w-10 text-primary/40" />
-                      <p className="text-sm text-text-muted">
+                      <p className="text-sm text-ink-muted">
                         Select a room to see your summary
                       </p>
                     </div>
@@ -566,14 +533,14 @@ export default function HostelBooking() {
 
                   <Alert className="mt-4 rounded-2xl border-primary/20 bg-primary/[0.05]">
                     <AlertCircle className="h-4 w-4 text-primary" />
-                    <AlertDescription className="text-[0.78rem] leading-relaxed text-text-dark">
+                    <AlertDescription className="text-[0.78rem] leading-relaxed text-ink">
                       Security deposit is refundable at checkout after deducting
                       any damages.
                     </AlertDescription>
                   </Alert>
 
                   {formData.checkIn && formData.checkOut && (
-                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-text-dark p-4 text-white">
+                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-ink p-4 text-white">
                       <div className="text-center">
                         <p className="text-[0.62rem] uppercase tracking-[0.2em] text-white/60">
                           Check-in
