@@ -3,20 +3,20 @@
 @tailwind utilities;
 
 :root {
-  /* ── Primary palette ── */
-  --primary: 10 100% 62%;
-  --primary-hover: 8 82% 55%;
-  --primary-active: 6 72% 47%;
-  --primary-soft: 10 100% 62% / 0.12;
+  /* ── Primary palette (Coral) ── */
+  --primary: 12 74% 62%;
+  --primary-hover: 11 66% 54%;
+  --primary-active: 10 60% 46%;
+  --primary-soft: 12 74% 62% / 0.12;
   --primary-foreground: 0 0% 100%;
   --on-primary: 0 0% 100%;
 
   /* ── Accent ── */
-  --accent: 10 100% 96%;
-  --accent-foreground: 6 72% 40%;
-  --accent-hover: 8 82% 55%;
-  --accent-soft: 10 100% 62% / 0.14;
-  --accent-ink: 6 72% 40%;
+  --accent: 12 60% 96%;
+  --accent-foreground: 10 60% 38%;
+  --accent-hover: 11 66% 54%;
+  --accent-soft: 12 74% 62% / 0.14;
+  --accent-ink: 10 60% 38%;
 
   /* ── Ink (text) ── */
   --text-dark: 20 15% 10%;
@@ -37,7 +37,7 @@
   --muted: 30 20% 94%;
   --muted-foreground: 20 8% 42%;
 
-  --bg-muted: 10 100% 62% / 0.04;
+  --bg-muted: 12 74% 62% / 0.04;
   --bg-muted-soft: 30 40% 98%;
 
   /* ── Borders & lines ── */
@@ -52,11 +52,11 @@
 
   /* ── Overlays & effects ── */
   --overlay: 20 15% 10% / 0.55;
-  --ring: 10 100% 62% / 0.35;
+  --ring: 12 74% 62% / 0.35;
   --card-shadow-hover: 20 15% 10% / 0.18;
 
   /* ── Hero gradient ── */
-  --hero-grad-start: 10 100% 62% / 0.10;
+  --hero-grad-start: 12 74% 62% / 0.10;
   --hero-grad-end: 30 40% 98%;
 
   /* ── Charts ── */
@@ -84,9 +84,9 @@
   --muted: 20 12% 16%;
   --muted-foreground: 30 10% 65%;
 
-  --accent: 10 60% 20%;
-  --accent-foreground: 10 100% 80%;
-  --accent-ink: 10 100% 75%;
+  --accent: 12 55% 22%;
+  --accent-foreground: 12 85% 82%;
+  --accent-ink: 12 85% 78%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
@@ -100,7 +100,7 @@
   --text-muted: 30 10% 65%;
   --text-secondary: 30 12% 78%;
 
-  --bg-muted: 10 100% 62% / 0.06;
+  --bg-muted: 12 74% 62% / 0.06;
   --bg-muted-soft: 20 15% 8%;
 
   --chart-1: 220 70% 50%;
