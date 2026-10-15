@@ -25,38 +25,38 @@ const Contact = lazy(() => import("./pages/Contact"));
 function App() {
   const [adBlockDetected, setAdBlockDetected] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
+  // useEffect(() => {
+  //   let mounted = true;
 
-    async function loadTheme() {
-      try {
-        const entries = await fetchEntries(
-          "website_theme",
-          import.meta.env.VITE_SDK,
-          null
-        );
-        const entry = entries?.[0];
-        const base = entry?.primary_color?.hex;
+  //   async function loadTheme() {
+  //     try {
+  //       const entries = await fetchEntries(
+  //         "website_theme",
+  //         import.meta.env.VITE_SDK,
+  //         null
+  //       );
+  //       const entry = entries?.[0];
+  //       const base = entry?.primary_color?.hex;
 
-        if (!base) {
-          console.warn("Theme color not found");
-          return;
-        }
+  //       if (!base) {
+  //         console.warn("Theme color not found");
+  //         return;
+  //       }
 
-        if (mounted) {
-          applyTheme(base);
-        }
-      } catch (error) {
-        console.error("Failed to load theme:", error);
-      }
-    }
+  //       if (mounted) {
+  //         applyTheme(base);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load theme:", error);
+  //     }
+  //   }
 
-    loadTheme();
+  //   loadTheme();
 
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  //   return () => {
+  //     mounted = false;
+  //   };
+  // }, []);
 
   return (
     <Router>

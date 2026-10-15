@@ -16,69 +16,76 @@ const FocusCard = memo(function FocusCard({
       onTouchStart={() => setHovered(index)}
       onTouchEnd={() => setHovered(null)}
       className={cn(
-        "group relative isolate w-full rounded-3xl transition-all duration-500 ease-out cursor-pointer",
-        hovered !== null && hovered !== index && "scale-[0.98] md:scale-[0.97] opacity-75 md:opacity-70"
+        "group relative isolate w-full transition-all duration-500 ease-out",
+        hovered !== null && hovered !== index && "opacity-60"
       )}
     >
-      {/* Card Body with Elegant Soft Gradient & Inner Glow for Transparent SVGs */}
-      <div className="relative aspect-[4/3] sm:aspect-square w-full overflow-hidden rounded-3xl border border-white/80 bg-gradient-to-b from-white/80 to-white/30 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md flex items-center justify-center p-6 sm:p-8 transition-all duration-500 group-hover:border-[var(--primary)]/30 group-hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-        
-        {/* Subtle Backdrop Radial Glow for Transparent Assets */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--hero-grad-start)_0%,transparent_70%)] opacity-40 group-hover:opacity-80 transition-opacity duration-500 pointer-events-none" />
-
-        <img
-          src={card.src}
-          alt={card.title}
-          className="relative z-10 max-h-[100%] sm:max-h-[80%] max-w-[85%] w-auto h-auto object-contain transition-transform duration-500 ease-out group-hover:scale-110 drop-shadow-[0_10px_15px_rgba(0,0,0,0.08)]"
-          draggable="false"
-        />
-
-        {/* Desktop Hover Overlay with Frosted Glass Effect */}
+      <div
+        className={cn(
+          "relative flex h-full flex-col overflow-hidden rounded-3xl border border-border-subtle bg-white transition-all duration-500",
+          "shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]",
+          "group-hover:-translate-y-1 group-hover:border-primary/30 group-hover:shadow-[0_20px_50px_-20px_var(--card-shadow-hover)]"
+        )}
+      >
+        {/* ── Image stage ── */}
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 z-20 hidden md:flex flex-col items-center justify-center p-6 text-center transition-all duration-500 rounded-3xl overflow-hidden",
-            isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
+            "relative flex w-full items-center justify-center overflow-hidden",
+            "bg-gradient-to-br from-primary/[0.06] via-transparent to-primary/[0.03]",
+            "aspect-[4/3]"
           )}
         >
-          <div className="absolute inset-0 bg-gray-950/80 backdrop-blur-md transition-all duration-500" />
+          {/* Soft radial halo */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 opacity-60 transition-opacity duration-500 group-hover:opacity-100"
+            style={{
+              background:
+                "radial-gradient(circle at 50% 45%, hsl(var(--primary) / 0.10) 0%, transparent 65%)",
+            }}
+          />
+
+          {/* Eyebrow index */}
+          <span className="absolute left-5 top-5 z-10 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-primary/70">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+
+          <img
+            src={card.src}
+            alt={card.title}
+            draggable="false"
+            className={cn(
+              "relative z-10 max-h-[72%] max-w-[72%] object-contain",
+              "drop-shadow-[0_18px_28px_rgba(0,0,0,0.10)]",
+              "transition-transform duration-700 ease-out will-change-transform",
+              "group-hover:scale-[1.06]"
+            )}
+          />
+        </div>
+
+        {/* ── Text block ── */}
+        <div className="flex flex-1 flex-col px-6 pb-7 pt-6 sm:px-7 sm:pb-8 sm:pt-7">
+          <span
+            aria-hidden="true"
+            className="mb-4 block h-px w-10 bg-primary/60 transition-all duration-500 group-hover:w-16 group-hover:bg-primary"
+          />
+
           <h3
-            className="relative text-xl lg:text-2xl font-bold tracking-tight text-white mb-2"
+            className="line-clamp-2 text-lg font-semibold leading-[1.15] tracking-[-0.02em] text-text-dark transition-colors duration-300 group-hover:text-primary sm:text-xl"
             {...card.titleProps}
           >
             {card.title}
           </h3>
+
           {card.description ? (
             <p
-              className="relative max-w-xs text-sm text-gray-200 leading-relaxed font-normal"
+              className="mt-3 line-clamp-3 text-[0.875rem] font-light leading-[1.65] text-text-muted sm:text-[0.9rem]"
               {...card.descriptionProps}
             >
               {card.description}
             </p>
           ) : null}
         </div>
-      </div>
-
-      {/* Card Text Footer (Default State for Mobile & Clean Layout) */}
-      <div
-        className={cn(
-          "px-3 pt-4 sm:pt-5 text-center transition-all duration-500",
-          isHovered ? "md:opacity-0 md:-translate-y-2" : "opacity-100 translate-y-0"
-        )}
-      >
-        <h3
-          className="text-lg sm:text-2xl font-semibold leading-tight text-[var(--text-dark)] transition-colors duration-300 group-hover:text-[var(--primary)]"
-          {...card.titleProps}
-        >
-          {card.title}
-        </h3>
-        {card.description ? (
-          <p
-            className="mt-2 text-xs sm:text-sm text-gray-600 leading-relaxed md:hidden"
-            {...card.descriptionProps}
-          >
-            {card.description}
-          </p>
-        ) : null}
       </div>
     </article>
   );
@@ -88,8 +95,8 @@ export function FocusCards({ cards = [] }) {
   const [hovered, setHovered] = useState(null);
 
   return (
-    <div className="w-full max-w-7xl mx-auto py-4 sm:py-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 lg:gap-12">
+    <div className="mx-auto w-full max-w-7xl">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-7 lg:grid-cols-3 lg:gap-8">
         {cards.map((card, index) => (
           <FocusCard
             key={`${card.title}-${index}`}

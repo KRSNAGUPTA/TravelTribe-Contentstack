@@ -7,10 +7,10 @@ import {
   CarouselContent,
   CarouselItem,
 } from "@/components/ui/carousel";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Autoplay from "embla-carousel-autoplay";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -23,7 +23,6 @@ import Loading from "./Loading";
 import { onEntryChange } from "@/contentstack/contentstackSDK";
 import { fetchEntries, setDataForChromeExtension } from "@/contentstack/utils";
 import { AuthContext } from "@/context/AuthContext";
-import { useContext } from "react";
 import NewsletterUnsubscribe from "@/components/NewsletterUnsubscribe";
 import { FocusCards } from "@/components/ui/focus-cards";
 import HostelCard from "@/components/HostelCard";
@@ -49,18 +48,15 @@ export default function HomePage() {
         await fetchEntries(
           "landing_page",
           import.meta.env.VITE_SDK,
-          "page_sections.hostels_section.reference",
+          "page_sections.hostels_section.reference"
         )
       )[0];
-
-      // console.log("entry", entry);
 
       if (!entry) return;
 
       document.title = entry.title || "Travel Tribe";
       setLandingData(entry.page_sections);
 
-      // Set data for chrome extension with the fetched entry UID
       const data = {
         entryUid: entry?.uid,
         contenttype: "landing_page",
@@ -73,8 +69,8 @@ export default function HomePage() {
     onEntryChange(fetchData);
   }, []);
 
-  const hostelsPlugin = useRef(Autoplay({ delay: 2000 }));
-  const testimonialsPlugin = useRef(Autoplay({ delay: 2000 }));
+  const hostelsPlugin = useRef(Autoplay({ delay: 2500 }));
+  const testimonialsPlugin = useRef(Autoplay({ delay: 3000 }));
   const navigate = useNavigate();
 
   if (!landingData) {
@@ -83,15 +79,15 @@ export default function HomePage() {
 
   const heroSection = landingData.find((s) => s.hero_section)?.hero_section;
   const featuresSection = landingData.find(
-    (s) => s.features_section,
+    (s) => s.features_section
   )?.features_section;
   const hostelsSection = landingData.find(
-    (s) => s.hostels_section,
+    (s) => s.hostels_section
   )?.hostels_section;
   const featuredHostels = hostelsSection?.reference || [];
 
   const testimonialsSection = landingData.find(
-    (s) => s.testimonials_section,
+    (s) => s.testimonials_section
   )?.testimonials_section;
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
 
@@ -104,195 +100,178 @@ export default function HomePage() {
   }));
 
   return (
-    <div className="flex flex-col min-h-screen bg-white mx-auto">
+    <div className="relative flex w-full flex-col overflow-x-hidden bg-bg-muted-soft text-text-dark">
+      {/* Global layered background */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background: `
+            radial-gradient(60% 40% at 15% 0%, hsl(var(--primary) / 0.06) 0%, transparent 60%),
+            radial-gradient(50% 40% at 85% 100%, hsl(var(--primary) / 0.04) 0%, transparent 60%)
+          `,
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35]"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, hsl(var(--text-dark) / 0.025) 1px, transparent 1px),
+            linear-gradient(to bottom, hsl(var(--text-dark) / 0.025) 1px, transparent 1px)
+          `,
+          backgroundSize: "64px 64px",
+        }}
+      />
+
       <StickyBar />
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-        <Header />
-
-      </div>
-
       <Toaster />
 
-      {/* Hero Section */}
-      <section className="relative min-h-fit lg:min-h-screen w-full overflow-hidden bg-gradient-to-br from-[var(--hero-grad-start)] to-[var(--hero-grad-end)] px-6 sm:px-10 lg:px-16 pt-56 sm:pt-24 pb-12 md:py-28 flex flex-col justify-between">
+      <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+        <Header />
+      </div>
 
-        {/* Content Wrapper */}
-        <div className="relative z-10 w-full max-w-xl lg:max-w-2xl lg:pl-6 space-y-6">
-          <div className="space-y-4">
+      {/* Hero */}
+      <section className="relative isolate flex min-h-[100svh] w-full flex-col overflow-hidden bg-primary lg:h-[100svh]">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 opacity-[0.16]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, hsl(var(--on-primary)) 1.2px, transparent 0)",
+            backgroundSize: "22px 22px",
+          }}
+        />
+
+        <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col px-6 ml-1 pb-16 pt-24 sm:px-10 sm:pt-28 lg:px-12 lg:pt-32">
+          <div className="max-w-xl lg:max-w-[42%]">
             <h1
-              className="text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight pacifico-regular"
+              className="pacifico-regular text-[2.4rem] font-semibold leading-[1.02] tracking-[-0.03em] text-on-primary sm:text-[3.2rem] lg:text-[3.8rem] xl:text-[4.2rem]"
               {...heroSection?.$?.title}
             >
               {heroSection?.title}
             </h1>
 
             <h2
-              className="text-xl sm:text-3xl lg:text-4xl font-bold text-[var(--primary)]"
+              className="mt-4 max-w-xl text-[1.05rem] font-normal leading-[1.4] text-on-primary/90 sm:text-[1.25rem]"
               {...heroSection?.$?.subtitle}
             >
               {heroSection?.subtitle}
             </h2>
 
             <p
-              className="text-sm sm:text-base lg:text-lg text-[var(--secondary)] max-w-lg"
+              className="mt-4 max-w-md text-[0.9rem] font-light leading-[1.6] text-on-primary/75 sm:text-base lg:max-w-[18rem] xl:max-w-[20rem]"
               {...heroSection?.$?.subtext}
             >
               {heroSection?.subtext}
             </p>
-          </div>
 
-          {/* CTA Button */}
-          <div className="flex flex-col items-center sm:items-start gap-3">
-            <Button
-              onClick={async () => {
-                trackEvent("hero_cta_clicked", {
-                  cta_title: heroSection?.cta?.title || "Unknown CTA",
-                  email: user?.email || null,
-                  name: user?.name || null,
-                });
-                trackPersonalizeEvent("clickCTA");
+            <div className="mt-7 sm:mt-8">
+              <Button
+                onClick={async () => {
+                  trackEvent("hero_cta_clicked", {
+                    cta_title: heroSection?.cta?.title || "Unknown CTA",
+                    email: user?.email || null,
+                    name: user?.name || null,
+                  });
+                  trackPersonalizeEvent("clickCTA");
 
-                if (heroSection?.cta?.href) {
-                  navigate(heroSection.cta.href);
-                }
-              }}
-              className="group relative inline-flex w-full max-w-xs items-center justify-center overflow-hidden rounded-full border border-white/40 bg-[linear-gradient(135deg,var(--primary),var(--primary-hover))] px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base font-semibold text-[var(--on-primary)] shadow-[0_14px_35px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(0,0,0,0.28)] active:translate-y-0 active:scale-[0.99]"
-              {...heroSection?.cta?.$?.title}
-            >
-              <span
-                aria-hidden="true"
-                className="absolute inset-0 bg-[linear-gradient(120deg,transparent_20%,rgba(255,255,255,0.28)_50%,transparent_80%)] translate-x-[-130%] transition-transform duration-700 ease-out group-hover:translate-x-[130%]"
-              />
-              <span className="relative z-10 flex items-center">
+                  if (heroSection?.cta?.href) {
+                    navigate(heroSection.cta.href);
+                  }
+                }}
+                className="group inline-flex h-11 items-center gap-2 rounded-full bg-white px-6 text-[0.85rem] font-semibold text-primary shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/95 active:translate-y-0 sm:h-12 sm:px-7 sm:text-[0.88rem]"
+                {...heroSection?.cta?.$?.title}
+              >
                 {heroSection?.cta?.title}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-              </span>
-            </Button>
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Desktop / Large Screen Image */}
-        <div className="absolute bottom-0 right-0 hidden lg:block w-[45vw] xl:w-[50vw] max-w-3xl z-0 pointer-events-none">
-          <img
-            src={heroSection?.hero_image?.url}
-            alt="Travel Tribe Illustration"
-            className="w-full h-auto object-contain"
-            draggable="false"
-          />
-        </div>
+        {heroSection?.hero_image?.url && (
+          <div className="pointer-events-none relative z-[5] mt-auto flex w-full justify-center pb-6 sm:pb-12 lg:absolute lg:bottom-0 lg:right-0 lg:mt-0 lg:block lg:h-[75%] lg:w-[75%] lg:pb-0">
+            <img
+              src={heroSection.hero_image.url}
+              alt="Travel Tribe Illustration"
+              className="h-[52svh] w-auto max-w-full object-contain drop-shadow-2xl sm:h-[60svh] lg:h-full lg:w-full lg:object-right-bottom"
+              draggable="false"
+            />
+          </div>
+        )}
 
-        {/* Mobile / Tablet Image */}
-        <div className="mt-28 lg:hidden w-full flex justify-center z-0">
-          <img
-            src={heroSection?.hero_image?.url}
-            alt="Travel Tribe Illustration"
-            className="w-full max-w-md sm:max-w-lg h-auto object-contain"
-            draggable="false"
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 200"
+          preserveAspectRatio="none"
+          shapeRendering="geometricPrecision"
+          className="absolute -bottom-px left-0 z-10 h-12 w-full sm:h-16 lg:h-20"
+          style={{ color: "hsl(var(--bg-muted-soft))" }}
+        >
+          <path
+            fill="currentColor"
+            d="M0,150 C240,200 480,40 720,100 C960,160 1200,30 1440,120 L1440,200 L0,200 Z"
           />
-        </div>
+        </svg>
       </section>
 
-      {/* Features Section */}
-      <section className="py-16 sm:py-20 md:py-24 w-full">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 text-[var(--text-dark)] bubblegum-sans-regular"
-            {...featuresSection?.$?.title}
-          >
-            {featuresSection?.title}
-          </h2>
+      {/* Features */}
+      <section className="relative w-full px-6 py-20 sm:px-10 sm:py-24 lg:px-12 lg:py-28">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-10 flex flex-col gap-3 sm:mb-14">
+            <h2
+              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              {...featuresSection?.$?.title}
+            >
+              {featuresSection?.title}
+            </h2>
+          </div>
 
           <FocusCards cards={featureCards} />
         </div>
       </section>
 
-      {/* Featured Hostels Section */}
-      <section className="py-16 sm:py-20 md:py-24 w-full bg-[var(--hero-grad-start)] overflow-hidden">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 bubblegum-sans-regular text-gray-900"
-            {...hostelsSection?.$?.title}
-          >
-            {hostelsSection?.title}
-          </h2>
-
-          <div className="relative max-w-full mx-auto px-2 sm:px-6">
-            <Carousel
-              className="w-full cursor-grab active:cursor-grabbing"
-              opts={{ align: "start", loop: true }}
-              plugins={[hostelsPlugin.current]}
-              onMouseEnter={() => hostelsPlugin.current?.stop()}
-              onMouseLeave={() => hostelsPlugin.current?.play()}
+      {/* Hostels */}
+      <section className="relative w-full px-6 py-20 sm:px-10 sm:py-24 lg:px-12 lg:py-28">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-10 flex flex-col gap-3 sm:mb-14">
+            <h2
+              className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              {...hostelsSection?.$?.title}
             >
-              <CarouselContent className="-ml-2 md:-ml-4 py-4">
-                {featuredHostels.map((hostel) => (
-                  <CarouselItem
-                    className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3"
-                    key={hostel.uid}
-                  >
-                    <div className="h-full px-1">
-                      <HostelCard
-                        hostel={hostel}
-                        lytics_event="home_page"
-                        variant="compact"
-                      />
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-            </Carousel>
+              {hostelsSection?.title}
+            </h2>
           </div>
-        </div>
-      </section>
-
-      {/* Tesitimonials Section  */}
-      <section className="py-24 w-full flex items-center">
-        <div className="container mx-auto px-4">
-          <h2
-            className="text-4xl font-bold text-center mb-12 bubblegum-sans-regular"
-            {...testimonialsSection?.$?.title}
-          >
-            {testimonialsSection?.title}
-          </h2>
 
           <Carousel
-            className="max-w-6xl mx-auto"
-            opts={{ align: "start", loop: true }}
-            plugins={[testimonialsPlugin.current]}
-            onMouseEnter={() => testimonialsPlugin.current?.stop()}
-            onMouseLeave={() => testimonialsPlugin.current?.play()}
+            className="w-full cursor-grab active:cursor-grabbing"
+            opts={{
+              align: "start",
+              loop: true,
+              duration: 45,
+              dragFree: true,
+              containScroll: "trimSnaps",
+              skipSnaps: false,
+              slidesToScroll: 1,
+            }}
+            plugins={[hostelsPlugin.current]}
+            onMouseEnter={() => hostelsPlugin.current?.stop()}
+            onMouseLeave={() => hostelsPlugin.current?.play()}
           >
-            <CarouselContent className="md:basis-1/2 lg:basis-1/3 pl-4 flex py-8">
-              {testimonialsSection?.testimonials?.map((data, index) => (
+            <CarouselContent className="-ml-3 py-2 md:-ml-4">
+              {featuredHostels.map((hostel) => (
                 <CarouselItem
-                  key={index}
-                  className="md:basis-1/2 lg:basis-1/3 pl-4 hover:cursor-pointer hover:select-none"
+                  className="basis-full pl-3 sm:basis-1/2 md:pl-4 lg:basis-1/3"
+                  key={hostel.uid}
                 >
-                  <Card className="w-full h-full min-h-[420px] shadow-md hover:shadow-xl transition-all duration-500 transform hover:bg-[var(--hero-grad-start)]">
-                    <CardContent className="p-8 pt-14 flex flex-col items-center h-full">
-                      <Avatar className="w-20 h-20 ring-2 ring-[var(--hero-grad-start)]">
-                        <AvatarImage
-                          src={data?.user_avatar?.url}
-                          alt={data?.user_name}
-                        />
-                        <AvatarFallback className="bg-[var(--primary)] font-bold text-2xl">
-                          {data?.user_name?.[0] ?? "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <h3
-                        className="mt-6 text-xl font-semibold text-gray-900 border-b-2 "
-                        {...data?.$?.user_name}
-                      >
-                        {data?.user_name}
-                      </h3>
-                      <p
-                        className="mt-4 text-gray-600 text-center leading-relaxed"
-                        {...data?.$?.user_quote}
-                      >
-                        "{data?.user_quote}"
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <div className="h-full">
+                    <HostelCard
+                      hostel={hostel}
+                      lytics_event="home_page"
+                      variant="compact"
+                    />
+                  </div>
                 </CarouselItem>
               ))}
             </CarouselContent>
@@ -300,31 +279,87 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section className="py-16 sm:py-20 md:py-24 bg-[var(--hero-grad-start)]">
-        <div className="container mx-auto px-4 max-w-3xl">
-          <h2
-            className="text-3xl sm:text-4xl font-bold text-center mb-10 sm:mb-14 text-gray-900 bubblegum-sans-regular"
-            {...faqSection?.$?.title}
-          >
-            {faqSection?.title}
-          </h2>
+      {/* Testimonials */}
+      <section className="relative w-full px-6 py-20 sm:px-10 sm:py-24 lg:px-12 lg:py-28">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mb-10 flex flex-col gap-3 text-center sm:mb-14">
+            <h2
+              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              {...testimonialsSection?.$?.title}
+            >
+              {testimonialsSection?.title}
+            </h2>
+          </div>
 
-          <Accordion type="single" collapsible className="w-full space-y-4">
+          <div className="flex flex-wrap justify-center gap-6 sm:gap-7 lg:gap-8">
+            {testimonialsSection?.testimonials?.map((data, index) => (
+              <Card
+                key={index}
+                className="flex w-full flex-col rounded-3xl border border-border-subtle bg-white p-5 shadow-[0_10px_40px_-15px_var(--card-shadow-hover)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-15px_var(--card-shadow-hover)] sm:w-[calc(50%-0.875rem)] sm:p-6 lg:w-[calc(33.333%-1.334rem)]"
+              >
+                <CardContent className="flex h-full flex-col items-center p-0 pt-2 text-center sm:pt-4">
+                  <Avatar className="h-14 w-14 ring-4 ring-primary/10 sm:h-16 sm:w-16">
+                    <AvatarImage
+                      src={data?.user_avatar?.url}
+                      alt={data?.user_name}
+                    />
+                    <AvatarFallback className="bg-primary/10 text-base font-semibold text-primary sm:text-lg">
+                      {data?.user_name?.[0] ?? "U"}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <h3
+                    className="mt-4 text-[0.9rem] font-semibold tracking-[-0.01em] text-text-dark sm:mt-5 sm:text-[0.95rem]"
+                    {...data?.$?.user_name}
+                  >
+                    {data?.user_name}
+                  </h3>
+
+                  <div
+                    aria-hidden="true"
+                    className="mt-2 h-px w-8 bg-border-strong"
+                  />
+
+                  <p
+                    className="mt-3 flex-1 text-[0.85rem] font-light italic leading-[1.6] text-text-muted sm:mt-4 sm:text-[0.88rem] sm:leading-[1.65]"
+                    {...data?.$?.user_quote}
+                  >
+                    &ldquo;{data?.user_quote}&rdquo;
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="relative w-full px-6 pb-24 pt-4 sm:px-10 sm:pb-28 sm:pt-6 lg:px-12 lg:pb-32 lg:pt-8">
+        <div className="mx-auto w-full max-w-3xl">
+          <div className="mb-8 flex flex-col gap-3 text-center sm:mb-12">
+            <h2
+              className="mx-auto max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text-dark sm:text-[2.25rem]"
+              {...faqSection?.$?.title}
+            >
+              {faqSection?.title}
+            </h2>
+          </div>
+
+          <Accordion type="single" collapsible className="w-full space-y-3">
             {faqSection?.faqs?.map((item, index) => (
               <AccordionItem
                 key={index}
                 value={`item-${index + 1}`}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+                className="overflow-hidden rounded-2xl border border-border-subtle bg-white px-1 shadow-[0_2px_12px_-6px_var(--card-shadow-hover)]"
               >
                 <AccordionTrigger
-                  className="text-base sm:text-lg font-medium px-6 py-4 hover:text-[var(--primary)] text-left transition-colors duration-300"
+                  className="px-4 py-3.5 text-left text-[0.9rem] font-medium text-text-dark transition-colors hover:text-primary sm:px-5 sm:py-4 sm:text-base"
                   {...item?.$?.question}
                 >
                   {item.question}
                 </AccordionTrigger>
                 <AccordionContent
-                  className="text-gray-700 px-6 pb-5 font-normal text-sm sm:text-base leading-relaxed border-t border-gray-50 pt-3"
+                  className="border-t border-border-subtle px-4 pb-4 pt-3 text-[0.85rem] font-light leading-[1.65] text-text-muted sm:px-5 sm:text-[0.9rem] sm:leading-[1.7]"
                   {...item?.$?.answer}
                 >
                   {item.answer}

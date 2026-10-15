@@ -135,7 +135,7 @@ const Footer = () => {
   };
 
   return (
-    <footer className="relative mt-20 overflow-hidden bg-[#0f0d0c] text-white print:hidden">
+    <footer className="relative  overflow-hidden bg-[#0f0d0c] text-white print:hidden">
       <Toaster />
 
       <div
@@ -157,7 +157,7 @@ const Footer = () => {
           {/* Brand — 4 cols */}
           <div className="lg:col-span-4">
             <h2
-              className="pacifico-regular text-2xl font-semibold tracking-tight text-primary sm:text-3xl"
+              className="pacifico-regular text-2xl font-semibold tracking-tight  sm:text-3xl"
               {...footerData?.$?.title}
             >
               {footerData?.title}
