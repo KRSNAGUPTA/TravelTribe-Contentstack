@@ -1,36 +1,46 @@
-import React, { createContext, useState, useEffect, useContext } from "react";
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { setAccessToken } from "../api.js";
 import { trackEvent } from "@/Lytics/config";
 
 export const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    try {
-      const storedUser = localStorage.getItem("user");
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch {
-      return null;
+const readStoredUser = () => {
+  try {
+    const raw = localStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredUser = (userData) => {
+  try {
+    if (userData) {
+      localStorage.setItem("user", JSON.stringify(userData));
+    } else {
+      localStorage.removeItem("user");
     }
-  });
+  } catch {
+    // storage disabled / full — non-fatal, user still works in-memory
+  }
+};
 
-  const [isInitializing, setIsInitializing] = useState(() => {
-    return !!localStorage.getItem("user");
-  });
-
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => readStoredUser());
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const clearAuthState = () => {
+  const clearAuthState = useCallback(() => {
     setUser(null);
     setError(null);
     setAccessToken(null);
-    localStorage.removeItem("user");
-  };
+    writeStoredUser(null);
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     setIsAuthProcessing(true);
     try {
       await api.post("/api/user/logout");
@@ -41,9 +51,9 @@ export const AuthProvider = ({ children }) => {
       setIsAuthProcessing(false);
       navigate("/login");
     }
-  };
+  }, [clearAuthState, navigate]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     setIsAuthProcessing(true);
     setError(null);
     try {
@@ -57,7 +67,7 @@ export const AuthProvider = ({ children }) => {
 
       setAccessToken(accessToken);
       setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
+      writeStoredUser(userData);
 
       trackEvent("user_login", {
         email: userData.email,
@@ -65,15 +75,15 @@ export const AuthProvider = ({ children }) => {
       });
 
       return userData;
-    } catch (error) {
+    } catch (err) {
       clearAuthState();
-      throw error;
+      throw err;
     } finally {
       setIsAuthProcessing(false);
     }
-  };
+  }, [clearAuthState]);
 
-  const signupUser = async (userData) => {
+  const signupUser = useCallback(async (userData) => {
     setIsAuthProcessing(true);
     try {
       const response = await api.post("/api/user/signup", userData);
@@ -83,36 +93,34 @@ export const AuthProvider = ({ children }) => {
         phone: userData.phone,
       });
       return response.data;
-    } catch (error) {
-      console.error("Signup Error:", error.message);
-      throw error;
+    } catch (err) {
+      console.error("Signup Error:", err.message);
+      throw err;
     } finally {
       setIsAuthProcessing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     const initializeAuth = async () => {
-      if (!localStorage.getItem("user")) {
-        if (isMounted) setIsInitializing(false);
-        return;
-      }
-
       try {
+        // Always attempt silent refresh — cookie is the source of truth,
+        // not localStorage. This restores sessions across browsers/tabs
+        // where localStorage was cleared but the cookie is still valid.
         const res = await api.post("/api/user/refresh");
         setAccessToken(res.data.accessToken);
 
         const profileRes = await api.get("/api/user/profile");
-        const freshUser = profileRes.data.userData || profileRes.data;
+        const freshUser = profileRes.data?.userData || profileRes.data;
 
-        if (isMounted) {
+        if (isMounted && freshUser) {
           setUser(freshUser);
-          localStorage.setItem("user", JSON.stringify(freshUser));
+          writeStoredUser(freshUser);
         }
       } catch (e) {
-        console.error("Silent refresh failed on refresh:", e.message);
+        // No valid session — user is genuinely logged out.
         if (isMounted) {
           clearAuthState();
         }
@@ -123,14 +131,16 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    window.addEventListener("auth:logout", clearAuthState);
+    const handleLogoutEvent = () => clearAuthState();
+
+    window.addEventListener("auth:logout", handleLogoutEvent);
     initializeAuth();
 
     return () => {
       isMounted = false;
-      window.removeEventListener("auth:logout", clearAuthState);
+      window.removeEventListener("auth:logout", handleLogoutEvent);
     };
-  }, []);
+  }, [clearAuthState]);
 
   const contextValue = {
     user,

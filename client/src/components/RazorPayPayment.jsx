@@ -1,54 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import api from "@/api";
 import { Button } from "./ui/button";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from 'react-router-dom';
-import { trackEvent } from '@/Lytics/config';
+import { useNavigate } from "react-router-dom";
+import { trackEvent } from "@/Lytics/config";
 
-const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateForm }) => {
-  const navigate = useNavigate()
+const RazorPayPayment = ({
+  hostelId,
+  formData,
+  hostelName,
+  roomType,
+  validateForm,
+}) => {
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  const handleBooking = async (receiptId) => {
-    try {
-      const bookingData = {
-        ...formData,
-        hostelId,
-        receiptId
-      };
-      
-      const res = await api.post("/api/booking/", bookingData);
+  const handleBooking = async ({ receiptId, paymentId }) => {
+    const bookingData = {
+      ...formData,
+      hostelId,
+      receiptId,
+      paymentId,
+    };
 
-      trackEvent("booking_successful", {
-        hostel_id: hostelId,
-        total_amount: formData.amount,
-        hostel_name: hostelName,
-        room_type: roomType,
-        email: formData.email || null,
-        name: formData.name || null,
-      });
-      
-      toast({
-        title: "Booking successful",
-        description: "Check your profile for booking information"
-      });
-      
-      navigate("/profile");
-    } catch (error) {
-      console.log(error)
-      toast({
-        variant: "destructive",
-        title: "Booking failed",
-        description: "Your payment was successful but booking failed. Our team will contact you shortly."
-      });
-    }
+    const res = await api.post("/api/booking/", bookingData);
+
+    trackEvent("booking_successful", {
+      hostel_id: hostelId,
+      total_amount: formData.amount,
+      hostel_name: hostelName,
+      room_type: roomType,
+      email: formData.email || null,
+      name: formData.name || null,
+    });
+
+    toast({
+      title: "Booking successful",
+      description: "Check your profile for booking information",
+    });
+
+    navigate("/profile");
+    return res.data;
   };
 
   const handlePayment = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -66,12 +65,14 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
     });
 
     setIsProcessing(true);
+
     try {
       const orderResponse = await api.post("/api/payment/create-order", {
         amount: parseFloat(formData.amount),
         currency: "INR",
         hostelId: `${hostelId}`,
       });
+
       trackEvent("currency_selected", {
         _e: "currency_selected",
         currency: "INR",
@@ -79,7 +80,8 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
         name: formData.name || null,
       });
 
-      const cleanPhone = formData.phone?.replace(/\D/g, '').slice(-10) || "";
+      const cleanPhone = formData.phone?.replace(/\D/g, "").slice(-10) || "";
+
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: orderResponse.data.amount,
@@ -93,7 +95,7 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
           contact: cleanPhone,
         },
         theme: {
-          color: "var(--primary)",
+          color: "#FF6B3D",
         },
         modal: {
           ondismiss: () => {
@@ -108,31 +110,61 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
               response
             );
 
-            if (verifyResponse.data?.success) {
-              toast({
-                title: "Payment Successful!",
-                description: `Payment of ₹${orderResponse.data.amount / 100} was successful.`
-              });
-              trackEvent("payment_successful", {
-                _e: "payment_successful",
-                hostel_id: hostelId,
-                total_amount: formData.amount,
-                hostel_name: hostelName,
-                room_type: roomType,
-                email: formData.email || null,
-                name: formData.name || null,
-              });
-              await handleBooking(orderResponse.data.receipt);
-            } else {
-              throw new Error(verifyResponse.data?.message || "Verification failed");
+            if (!verifyResponse.data?.success) {
+              throw new Error(
+                verifyResponse.data?.message || "Payment verification failed"
+              );
             }
-          } catch (error) {
-            console.error("Payment verification failed:", error);
+
+            const { paymentId } = verifyResponse.data;
+
+            if (!paymentId) {
+              throw new Error(
+                "Server did not return a paymentId after verification"
+              );
+            }
+
             toast({
-              variant: "destructive",
-              title: "Payment Verification Failed",
-              description: "Please contact support if amount was deducted"
+              title: "Payment successful",
+              description: `₹${orderResponse.data.amount / 100} received`,
             });
+
+            trackEvent("payment_successful", {
+              _e: "payment_successful",
+              hostel_id: hostelId,
+              total_amount: formData.amount,
+              hostel_name: hostelName,
+              room_type: roomType,
+              email: formData.email || null,
+              name: formData.name || null,
+            });
+
+            await handleBooking({
+              receiptId: orderResponse.data.receipt,
+              paymentId,
+            });
+          } catch (error) {
+            console.error("Post-payment error:", error);
+
+            const message =
+              error?.response?.data?.message ||
+              error?.message ||
+              "Booking could not be completed";
+
+            if (error?.response?.status === 409) {
+              toast({
+                variant: "destructive",
+                title: "Booking conflict",
+                description: message,
+              });
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Booking failed after payment",
+                description:
+                  "Your payment was successful but booking failed. Our team will contact you shortly.",
+              });
+            }
           } finally {
             setIsProcessing(false);
           }
@@ -140,32 +172,35 @@ const RazorPayPayment = ({ hostelId, formData, hostelName, roomType, validateFor
       };
 
       const razorpayInstance = new window.Razorpay(options);
+
       razorpayInstance.on("payment.failed", function (response) {
         console.error("Razorpay payment failed:", response.error);
         setIsProcessing(false);
         toast({
           variant: "destructive",
-          title: "Payment Failed",
-          description: response.error?.description || "Payment failed or cancelled.",
+          title: "Payment failed",
+          description:
+            response.error?.description || "Payment failed or cancelled.",
         });
       });
+
       razorpayInstance.open();
     } catch (error) {
-      console.log(error)
+      console.error("Payment init error:", error);
       toast({
         variant: "destructive",
-        title: "⚠️ Payment Failed",
-        description: "Please try again or contact support"
+        title: "Payment failed",
+        description: "Please try again or contact support",
       });
       setIsProcessing(false);
     }
   };
 
   return (
-    <Button 
-      onClick={handlePayment} 
+    <Button
+      onClick={handlePayment}
       disabled={isProcessing}
-      className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+      className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-black rounded-full border"
     >
       {isProcessing ? (
         <>

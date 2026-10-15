@@ -9,8 +9,9 @@ export const setAccessToken = (token) => {
 export const getAccessToken = () => accessToken;
 
 const baseURL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+
 const api = axios.create({
-  baseURL: baseURL,
+  baseURL,
   withCredentials: true,
 });
 
@@ -38,19 +39,26 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+const shouldSkipRefresh = (url = "") =>
+  url.includes("/api/user/login") ||
+  url.includes("/api/user/signup") ||
+  url.includes("/api/user/refresh") ||
+  url.includes("/api/user/forgot-password") ||
+  url.includes("/api/user/verify-otp") ||
+  url.includes("/api/user/reset-password");
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error.response?.status;
 
     if (
-      error.response?.status === 401 &&
+      status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url.includes("/api/user/login") &&
-      !originalRequest.url.includes("/api/user/refresh")
+      !shouldSkipRefresh(originalRequest.url)
     ) {
       if (isRefreshing) {
-        // Queue concurrent requests while token is refreshing
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -65,16 +73,12 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // console.log("Refreshing token")
         const res = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/user/refresh`,
+          `${baseURL}/api/user/refresh`,
           {},
           { withCredentials: true }
         );
-        // const res = fetch(`${import.meta.env.VITE_API_URL}/api/user/refresh`,{
-        //   method:"POST",
-        //   credentials: "include"
-        // })
+
         const newAccessToken = res.data.accessToken;
         setAccessToken(newAccessToken);
 
@@ -82,9 +86,6 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-
-
-        console.log("Refresh Error", refreshError)
         processQueue(refreshError, null);
         setAccessToken(null);
         window.dispatchEvent(new Event("auth:logout"));

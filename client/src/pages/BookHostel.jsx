@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,34 +20,50 @@ import {
   AlertCircle,
   CreditCard,
   ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import RazorPayPayment from "@/components/RazorPayPayment";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import api from "@/api";
 import { useAuth } from "@/context/AuthContext";
-import cmsClient from "@/contentstack/contentstackClient";
+import { fetchEntryById } from "@/contentstack/utils";
 import { trackEvent } from "@/Lytics/config";
-import { useContext } from "react";
 import { LyticsContext } from "@/context/LyticsContext";
+
+const today = () => new Date().toISOString().split("T")[0];
+const addDays = (iso, n) => {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split("T")[0];
+};
+
+const formatShortDate = (iso) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      })
+    : "—";
 
 export default function HostelBooking() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const selectedRoomFromQuery = searchParams.get("room");
 
   const { toast } = useToast();
   const { user } = useAuth();
-  const { profile, isLoading, error } = useContext(LyticsContext);
-  const [cmsRooms, setCmsRooms] = useState([]);
-  const [availabilityRooms, setAvailabilityRooms] = useState([]);
-  const [hostel, setHostel] = useState(null);
+  const { profile } = useContext(LyticsContext);
 
+  const [cmsRooms, setCmsRooms] = useState([]);
+  const [hostel, setHostel] = useState(null);
+  const [loadingHostel, setLoadingHostel] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
+  const [hasTrackedBookingStarted, setHasTrackedBookingStarted] = useState(false);
 
   const [formData, setFormData] = useState({
     checkIn: "",
@@ -60,19 +76,47 @@ export default function HostelBooking() {
     amount: 0,
   });
 
-  const [bookingSummary, setBookingSummary] = useState({
-    roomType: "",
-    dailyRent: 0,
-    securityDeposit: 0,
-    days: 0,
-    totalAmount: 0,
-  });
-  const [hasTrackedBookingStarted, setHasTrackedBookingStarted] = useState(false);
+  useEffect(() => {
+    const fetchHostel = async () => {
+      try {
+        setLoadingHostel(true);
+
+        const entry = await fetchEntryById(
+          "hostel",
+          id,
+          import.meta.env.VITE_SDK,
+          null,
+        );
+
+        if (!entry) {
+          throw new Error("Hostel not found");
+        }
+
+        setHostel(entry);
+        setCmsRooms(entry.room_types || []);
+      } catch (err) {
+        console.error("[BookHostel] Failed to load hostel:", err);
+        toast({
+          title: "Failed to load hostel data",
+          description: err.message || "Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingHostel(false);
+      }
+    };
+
+    fetchHostel();
+
+    trackEvent("booking_page_viewed", {
+      hostel_id: id,
+      email: user?.email || null,
+      name: user?.name || null,
+    });
+  }, [id, user?.email, user?.name, toast]);
 
   useEffect(() => {
     if (!user) return;
-    // console.log("user", user);
-
     setFormData((prev) => ({
       ...prev,
       name: user.name || prev.name,
@@ -82,132 +126,56 @@ export default function HostelBooking() {
     }));
   }, [user, profile]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // const apiRes = await api.get(`/api/hostel/${id}`);
-        const cmsRes = await cmsClient.get(
-          `/content_types/hostel/entries/${id}`,
-        );
-
-        // setAvailabilityRooms(apiRes.data.room_types || []);
-        setCmsRooms(cmsRes.data.entry.room_types || []);
-        setHostel(cmsRes.data.entry);
-      } catch (err) {
-        toast({
-          title: "Failed to load hostel data",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchData();
-
-    trackEvent("booking_page_viewed", {
-      hostel_id: id,
-      email: user?.email || null,
-      name: user?.name || null,
-    });
-  }, [id, toast]);
-
-  // const mergedRooms = useMemo(() => {
-  //   const availabilityMap = availabilityRooms.reduce((acc, r) => {
-  //     acc[r.room_key] = r;
-  //     return acc;
-  //   }, {});
-
-  //   return cmsRooms.map((cmsRoom) => {
-  //     // const backendRoom = availabilityMap[cmsRoom.room_key];
-
-  //     return {
-  //       ...cmsRoom,
-  //       // total_beds: backendRoom?.total_beds ?? 0,
-  //       // available_beds: backendRoom?.available_beds ?? 0,
-  //       // is_available: (backendRoom?.available_beds ?? 0) > 0,
-  //     };
-  //   });
-  // }, [cmsRooms]);
+  const selectedRoom = useMemo(
+    () => cmsRooms.find((r) => r.room_key === selectedRoomFromQuery),
+    [cmsRooms, selectedRoomFromQuery]
+  );
 
   useEffect(() => {
-    // console.log("Selected room from query:", selectedRoomFromQuery);
-    if (!selectedRoomFromQuery) return;
-
-    const room = cmsRooms.find((r) => {
-      // console.log("r:   ", r); // Prints each room object in console
-      return r.room_key === selectedRoomFromQuery; // Returns true/false
-    });
-    // console.log("Selected room from query:", selectedRoomFromQuery, "Found room:", room);
-
-    if (!room || !room.total_beds) return;
-    setBookingSummary((prev) => ({
-      ...prev,
-      dailyRent: room.base_price,
-      securityDeposit: room.base_price,
-      roomType: room.room_name,
-    }));
-
+    if (!selectedRoom) return;
     setFormData((prev) => ({
       ...prev,
-      roomSelection: room.room_key,
-      amount: room.base_price,
+      roomSelection: selectedRoom.room_key,
     }));
-  }, [selectedRoomFromQuery, cmsRooms]);
+  }, [selectedRoom]);
 
-  useEffect(() => {
-    if (!formData.checkIn || !formData.checkOut || !formData.roomSelection)
-      return;
+  const stay = useMemo(() => {
+    if (!formData.checkIn || !formData.checkOut || !selectedRoom) {
+      return { days: 0, rentAmount: 0, securityDeposit: 0, total: 0 };
+    }
 
     const checkIn = new Date(formData.checkIn);
     const checkOut = new Date(formData.checkOut);
+    if (isNaN(checkIn) || isNaN(checkOut)) {
+      return { days: 0, rentAmount: 0, securityDeposit: 0, total: 0 };
+    }
 
-    if (isNaN(checkIn) || isNaN(checkOut)) return;
+    const days = Math.max(0, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+    const dailyRent = Math.round(Number(selectedRoom.base_price) || 0);
+    const rentAmount = dailyRent * days;
+    const securityDeposit = dailyRent;
+    const total = rentAmount + securityDeposit;
 
-    const diffDays = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    return { days, dailyRent, rentAmount, securityDeposit, total };
+  }, [formData.checkIn, formData.checkOut, selectedRoom]);
 
-    const room = cmsRooms.find((r) => r.room_key === formData.roomSelection);
-
-    if (!room) return;
-
-    const rentAmount = room.base_price * diffDays;
-    const securityDeposit = room.base_price;
-
-    setBookingSummary({
-      roomType: room.room_name,
-      dailyRent: room.base_price,
-      securityDeposit,
-      days: diffDays,
-      totalAmount: rentAmount,
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      amount: rentAmount + securityDeposit,
-    }));
-  }, [
-    formData.checkIn,
-    formData.checkOut,
-    formData.roomSelection,
-    cmsRooms,
-    // mergedRooms,
-  ]);
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, amount: stay.total }));
+  }, [stay.total]);
 
   const validateDates = () => {
-    // console.log("Worked")
     if (!formData.checkIn || !formData.checkOut) {
       toast({
-        title: "Invalid dates",
-        description: "Select Check-in and Check-out dates",
+        title: "Dates required",
+        description: "Select both check-in and check-out dates.",
         variant: "destructive",
       });
       return false;
     }
-    const checkIn = new Date(formData.checkIn);
-    const checkOut = new Date(formData.checkOut);
-
-    if (checkOut <= checkIn) {
+    if (new Date(formData.checkOut) <= new Date(formData.checkIn)) {
       toast({
         title: "Invalid dates",
-        description: "Checkout must be at least 1 day after check-in",
+        description: "Check-out must be at least 1 day after check-in.",
         variant: "destructive",
       });
       return false;
@@ -216,12 +184,7 @@ export default function HostelBooking() {
   };
 
   const validateForm = () => {
-    if (
-      !formData.name ||
-      !formData.email ||
-      !formData.phone ||
-      !formData.gender
-    ) {
+    if (!formData.name || !formData.email || !formData.phone || !formData.gender) {
       toast({
         title: "Incomplete details",
         description: "Please fill in all required fields to continue.",
@@ -229,9 +192,9 @@ export default function HostelBooking() {
       });
       return false;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    // const phoneRegex = /^[6-9]\d{9}$/; // indian number
-    const phoneRegex = /^\d{10}$/; // only 10 digit any number
+    const phoneRegex = /^\d{10}$/;
 
     if (!emailRegex.test(formData.email)) {
       toast({
@@ -252,13 +215,23 @@ export default function HostelBooking() {
     }
 
     if (!validateDates()) return false;
+    if (!selectedRoom) {
+      toast({
+        title: "Room not selected",
+        description: "Please pick a room before continuing.",
+        variant: "destructive",
+      });
+      return false;
+    }
 
-    trackEvent("user_profile_updated", {
+    trackEvent("checkout_attempted", {
+      hostel_id: id,
+      room_type: formData.roomSelection,
+      total_amount: formData.amount,
       email: formData.email,
       name: formData.name,
-      phone: formData.phone,
-      gender: formData.gender,
     });
+
     return true;
   };
 
@@ -268,7 +241,7 @@ export default function HostelBooking() {
         trackEvent("booking_started", {
           hostel_id: id,
           hostel_name: hostel?.title || "Unknown",
-          room_type: bookingSummary.roomType || "Unknown",
+          room_type: selectedRoom?.room_name || "Unknown",
           total_amount: formData.amount || 0,
           check_in: formData.checkIn,
           check_out: formData.checkOut,
@@ -281,74 +254,82 @@ export default function HostelBooking() {
     }
   };
 
-  const prevStep = () => {
-    setCurrentStep((s) => Math.max(1, s - 1));
-  };
+  const prevStep = () => setCurrentStep((s) => Math.max(1, s - 1));
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  if (loadingHostel) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-bg-muted-soft text-text-muted">
+        Loading hostel…
+      </div>
+    );
+  }
+
+  if (!hostel) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg-muted-soft px-6 text-center">
+        <p className="text-xl font-semibold text-text-dark">Hostel not found</p>
+        <Button onClick={() => navigate("/hostels")}>Back to hostels</Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+    <div className="relative flex min-h-screen w-full flex-col bg-bg-muted-soft text-text-dark">
+      <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
         <Header />
       </div>
       <Toaster />
 
-      <main className="flex-grow py-8 px-4">
-        <div className="max-w-5xl mx-auto">
-          <div className="mb-8">
-            <div className="flex justify-between items-center">
-              <h1 className="text-3xl font-bold text-gray-900">
-                Book Your Accommodation
-              </h1>
-              <div className="hidden md:flex items-center space-x-2">
-                <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 1 ? "bg-[var(--primary)]" : "bg-gray-200"
-                    }`}
-                ></div>
-                <div
-                  className={`h-2 w-12 rounded-full ${currentStep >= 2 ? "bg-[var(--primary)]" : "bg-gray-200"
-                    }`}
-                ></div>
+      <main className="flex-1 px-5 pb-32 pt-12 sm:px-8 sm:pt-16 lg:px-12 lg:pt-20">
+        <div className="mx-auto max-w-6xl">
+          <header className="mb-10 flex flex-col gap-4 sm:mb-14">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-text-muted">
+                  Booking
+                </p>
+                <h1 className="mt-1 text-[2rem] font-semibold leading-[1.05] tracking-[-0.03em] text-text-dark sm:text-[2.5rem]">
+                  {hostel.title}
+                </h1>
               </div>
+              <p className="text-sm text-text-muted">
+                Step {currentStep} of 2 —{" "}
+                {currentStep === 1 ? "Dates" : "Details & Payment"}
+              </p>
             </div>
-            <div className="text-gray-600 mt-2 flex items-center">
-              <span className="font-medium">Step {currentStep} of 2:</span>
-              <span className="ml-2">
-                {currentStep === 1
-                  ? "Select Dates"
-                  : "Personal Details & Payment"}
-              </span>
-            </div>
-          </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <form>
-                {/* Step 1: Date Selection */}
+            <div className="flex gap-2">
+              {[1, 2].map((step) => (
+                <span
+                  key={step}
+                  className={`h-1.5 flex-1 rounded-full transition-colors ${
+                    currentStep >= step ? "bg-primary" : "bg-border-subtle"
+                  }`}
+                />
+              ))}
+            </div>
+          </header>
+
+          <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+            <div className="lg:col-span-2">
+              <form onSubmit={(e) => e.preventDefault()}>
                 {currentStep === 1 && (
-                  <Card className="mb-6 border-purple-200 shadow-md">
-                    <CardHeader className="bg-[var(--hero-grad-start)] rounded-t-xl border-b border-purple-100">
-                      <CardTitle className="flex items-center gap-2 text-purple-900">
-                        <Calendar className="w-5 h-5 text-[var(--primary)]" />
-                        Select Your Stay Duration
+                  <Card className="overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                    <CardHeader className="border-b border-border-subtle pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-text-dark">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        Select your stay
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-6 p-6">
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="checkIn"
-                            className="text-gray-700 font-medium"
-                          >
-                            Check-in Date
-                          </Label>
+                    <CardContent className="space-y-6 p-6">
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="checkIn">Check-in</Label>
                           <div className="relative">
                             <Input
                               id="checkIn"
@@ -356,45 +337,33 @@ export default function HostelBooking() {
                               type="date"
                               value={formData.checkIn}
                               onChange={handleInputChange}
+                              min={today()}
+                              className="h-11 rounded-full pl-10"
                               required
-                              min={new Date().toISOString().split("T")[0]}
-                              className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
                             />
-                            <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
+                            <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                           </div>
                         </div>
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="checkOut"
-                            className="text-gray-700 font-medium"
-                          >
-                            Check-out Date
-                          </Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="checkOut">Check-out</Label>
                           <div className="relative">
-                            
-                         
-                          <Input
-                            id="checkOut"
-                            name="checkOut"
-                            type="date"
-                            value={formData.checkOut}
-                            onChange={handleInputChange}
-                            required
-                            min={
-                              formData.checkIn
-                                ? new Date(
-                                  new Date(formData.checkIn).setDate(
-                                    new Date(formData.checkIn).getDate() + 1,
-                                  ),
-                                )
-                                  .toISOString()
-                                  .split("T")[0]
-                                : new Date().toISOString().split("T")[0]
-                            }
-                            className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                          />
-                          <CalendarIcon className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
-                           </div>
+                            <Input
+                              id="checkOut"
+                              name="checkOut"
+                              type="date"
+                              value={formData.checkOut}
+                              onChange={handleInputChange}
+                              min={
+                                formData.checkIn
+                                  ? addDays(formData.checkIn, 1)
+                                  : today()
+                              }
+                              className="h-11 rounded-full pl-10"
+                              required
+                            />
+                            <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+                          </div>
                         </div>
                       </div>
 
@@ -402,53 +371,42 @@ export default function HostelBooking() {
                         <Button
                           type="button"
                           onClick={nextStep}
-                          className="bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white"
+                          className="group h-11 rounded-full bg-primary px-6 text-[0.85rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover"
                         >
-                          Continue to Room Selection{" "}
-                          <ChevronRight className="ml-2 h-4 w-4" />
+                          Continue
+                          <ChevronRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                         </Button>
                       </div>
                     </CardContent>
                   </Card>
                 )}
 
-                {/* Step 2: Personal Details */}
                 {currentStep === 2 && (
-                  <Card className="mb-6 border-purple-200 shadow-md">
-                    <CardHeader className="bg-purple-50 border-b rounded-t-xl border-purple-100">
-                      <CardTitle className="flex items-center gap-2 text-purple-900">
-                        <User className="w-5 h-5 text-purple-600" />
-                        Enter Your Details
+                  <Card className="overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                    <CardHeader className="border-b border-border-subtle pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg font-semibold text-text-dark">
+                        <User className="h-5 w-5 text-primary" />
+                        Guest details
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid gap-6 p-6">
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="name"
-                            className="text-gray-700 font-medium"
-                          >
-                            Full Name
-                          </Label>
+                    <CardContent className="space-y-6 p-6">
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Full name</Label>
                           <Input
                             id="name"
                             name="name"
                             value={formData.name}
                             onChange={handleInputChange}
+                            placeholder="Your full name"
+                            className="h-11 rounded-full"
                             required
-                            className="border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                            placeholder="Krishna Gupta"
                           />
                         </div>
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="gender"
-                            className="text-gray-700 font-medium"
-                          >
-                            Gender
-                          </Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="gender">Gender</Label>
                           <Select
-                            name="gender"
                             value={formData.gender}
                             onValueChange={(value) =>
                               handleInputChange({
@@ -456,10 +414,9 @@ export default function HostelBooking() {
                               })
                             }
                           >
-                            <SelectTrigger className="border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all">
+                            <SelectTrigger className="h-11 rounded-full">
                               <SelectValue placeholder="Select gender" />
                             </SelectTrigger>
-                            {/* {console.log(profile?.user?.gender)} */}
                             <SelectContent>
                               <SelectItem value="female">Female</SelectItem>
                               <SelectItem value="male">Male</SelectItem>
@@ -469,14 +426,9 @@ export default function HostelBooking() {
                         </div>
                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-6">
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="email"
-                            className="text-gray-700 font-medium"
-                          >
-                            Email Address
-                          </Label>
+                      <div className="grid gap-5 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
                           <div className="relative">
                             <Input
                               id="email"
@@ -484,61 +436,59 @@ export default function HostelBooking() {
                               type="email"
                               value={formData.email}
                               onChange={handleInputChange}
+                              placeholder="you@example.com"
+                              className="h-11 rounded-full pl-10"
                               required
-                              className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                              placeholder="krsna@traveltribe.com"
                             />
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
+                            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                           </div>
                         </div>
-                        <div className="space-y-3">
-                          <Label
-                            htmlFor="phone"
-                            className="text-gray-700 font-medium"
-                          >
-                            Phone Number
-                          </Label>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone">Phone</Label>
                           <div className="relative">
                             <Input
                               id="phone"
                               name="phone"
                               type="tel"
+                              inputMode="numeric"
                               value={formData.phone}
                               onChange={handleInputChange}
-                              required
-                              pattern="[0-9]{10}"
+                              placeholder="10-digit mobile"
                               maxLength={10}
-                              className="pl-10 border-gray-300 focus:border-purple-500 focus:ring focus:ring-purple-200 transition-all"
-                              placeholder="6XXXX XXXXX"
+                              pattern="\d{10}"
+                              className="h-11 rounded-full pl-10"
+                              required
                             />
-                            <Phone className="absolute left-3 top-3 h-4 w-4 text-purple-500" />
+                            <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                           </div>
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t border-gray-200">
-                        <div className="flex items-center mb-4">
-                          <CreditCard className="w-5 h-5 text-purple-600 mr-2" />
-                          <h3 className="text-lg font-medium text-gray-900">
-                            Payment Details
+                      <div className="border-t border-border-subtle pt-6">
+                        <div className="mb-4 flex items-center gap-2">
+                          <CreditCard className="h-5 w-5 text-primary" />
+                          <h3 className="text-base font-semibold text-text-dark">
+                            Payment
                           </h3>
                         </div>
 
-                        <div className="flex justify-between space-x-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <Button
                             type="button"
-                            onClick={prevStep}
                             variant="outline"
-                            className="border-purple-200 text-[var(--primary)] hover:bg-purple-50"
+                            onClick={prevStep}
+                            className="h-11 rounded-full border-border-strong"
                           >
-                            Back to Date Selection
+                            <ChevronLeft className="mr-1 h-4 w-4" />
+                            Back
                           </Button>
 
                           <RazorPayPayment
                             hostelId={id}
                             formData={formData}
                             hostelName={hostel?.title || "Unknown"}
-                            roomType={bookingSummary.roomType || "Unknown"}
+                            roomType={selectedRoom?.room_name || "Unknown"}
                             validateForm={validateForm}
                           />
                         </div>
@@ -549,115 +499,100 @@ export default function HostelBooking() {
               </form>
             </div>
 
-            {/* Booking Summary - Always visible */}
-            <div className="md:col-span-1">
-              <Card className="sticky top-24 border-purple-200 shadow-md overflow-hidden">
-                <CardHeader className="bg-black text-white py-4 px-5">
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    Booking Summary
+            <div className="lg:col-span-1">
+              <Card className="sticky top-24 overflow-hidden rounded-3xl border border-border-subtle bg-white shadow-[0_2px_20px_-8px_rgba(0,0,0,0.06)]">
+                <CardHeader className="border-b border-border-subtle bg-primary/[0.04] pb-4">
+                  <CardTitle className="text-base font-semibold text-text-dark">
+                    Booking summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-5 bg-gradient-to-b from-purple-50 to-white">
-                  {formData.roomSelection ? (
-                    <div className="space-y-3">
+                <CardContent className="p-5">
+                  {selectedRoom ? (
+                    <div className="space-y-3 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Room Type</span>
-                        <span className="font-medium text-black">
-                          {bookingSummary.roomType}
+                        <span className="text-text-muted">Room</span>
+                        <span className="font-medium text-text-dark">
+                          {selectedRoom.room_name}
                         </span>
                       </div>
 
-                      {formData.checkIn && formData.checkOut && (
+                      <div className="flex justify-between">
+                        <span className="text-text-muted">Nights</span>
+                        <span className="font-medium text-text-dark">
+                          {stay.days || "—"}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-text-muted">Daily rent</span>
+                        <span className="font-medium text-text-dark">
+                          ₹{stay.dailyRent || "—"}
+                        </span>
+                      </div>
+
+                      {stay.days > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Duration</span>
-                          <span className="font-medium text-black">
-                            {bookingSummary.days} Day
+                          <span className="text-text-muted">Rent total</span>
+                          <span className="font-medium text-text-dark">
+                            ₹{stay.rentAmount}
                           </span>
                         </div>
                       )}
 
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Daily Rent</span>
-                        <span className="font-medium text-black">
-                          ₹{bookingSummary.dailyRent}
+                        <span className="text-text-muted">Security deposit</span>
+                        <span className="font-medium text-text-dark">
+                          ₹{stay.securityDeposit || "—"}
                         </span>
                       </div>
 
-                      {bookingSummary.days > 0 && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Total Rent</span>
-                          <span className="font-medium text-black">
-                            ₹ {bookingSummary.totalAmount}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Security Deposit</span>
-                        <span className="font-medium text-black">
-                          ₹{bookingSummary.securityDeposit}
-                        </span>
-                      </div>
-
-                      <div className="pt-3 mt-3 border-t border-purple-200">
-                        <div className="flex justify-between font-bold">
-                          <span className="text-[var(--primary)] ">
-                            Total Amount
-                          </span>
-                          <span className="text-[var(--primary-active)] text-lg">
-                            ₹
-                            {bookingSummary?.totalAmount +
-                              bookingSummary?.securityDeposit}
+                      <div className="mt-3 border-t border-border-subtle pt-3">
+                        <div className="flex justify-between text-base font-semibold">
+                          <span className="text-text-dark">Total</span>
+                          <span className="text-primary">
+                            ₹{stay.total || "—"}
                           </span>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-6">
-                      <BedDouble className="w-12 h-12 text-purple-300 mx-auto mb-2" />
-                      <p className="text-gray-500">
-                        Select room and dates to see your booking summary
+                    <div className="flex flex-col items-center gap-3 py-6 text-center">
+                      <BedDouble className="h-10 w-10 text-primary/40" />
+                      <p className="text-sm text-text-muted">
+                        Select a room to see your summary
                       </p>
                     </div>
                   )}
 
-                  <Alert className="bg-purple-50 mt-3 mb-3 border-purple-200 shadow-lg">
-                    <AlertCircle className="h-4 w-4 text-[var(--primary)]" />
-                    <AlertDescription className="text-gray-800 text-sm">
+                  <Alert className="mt-4 rounded-2xl border-primary/20 bg-primary/[0.05]">
+                    <AlertCircle className="h-4 w-4 text-primary" />
+                    <AlertDescription className="text-[0.78rem] leading-relaxed text-text-dark">
                       Security deposit is refundable at checkout after deducting
                       any damages.
                     </AlertDescription>
                   </Alert>
 
-                  {formData.checkIn &&
-                    formData.checkOut &&
-                    formData.roomSelection && (
-                      <div className="bg-black text-white p-4 -mx-5 -mb-5 ">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-300">
-                            Check-in
-                          </span>
-                          <span className="text-sm text-gray-300">
-                            Check-out
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold">
-                            {new Date(formData.checkIn).toLocaleDateString(
-                              "en-US",
-                              { day: "numeric", month: "short" },
-                            )}
-                          </span>
-                          <span className="text-purple-300">→</span>
-                          <span className="font-bold">
-                            {new Date(formData.checkOut).toLocaleDateString(
-                              "en-US",
-                              { day: "numeric", month: "short" },
-                            )}
-                          </span>
-                        </div>
+                  {formData.checkIn && formData.checkOut && (
+                    <div className="mt-5 flex items-center justify-between rounded-2xl bg-text-dark p-4 text-white">
+                      <div className="text-center">
+                        <p className="text-[0.62rem] uppercase tracking-[0.2em] text-white/60">
+                          Check-in
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold">
+                          {formatShortDate(formData.checkIn)}
+                        </p>
                       </div>
-                    )}
+                      <span className="text-primary">→</span>
+                      <div className="text-center">
+                        <p className="text-[0.62rem] uppercase tracking-[0.2em] text-white/60">
+                          Check-out
+                        </p>
+                        <p className="mt-0.5 text-sm font-semibold">
+                          {formatShortDate(formData.checkOut)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
