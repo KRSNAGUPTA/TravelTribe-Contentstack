@@ -49,6 +49,7 @@ const ensureHostelInDb = async (hostelId) => {
       room_key: String(room.room_key).trim(),
       room_name: String(room.room_name || room.room_key).trim(),
       total_beds: total,
+      available_beds: total,
     };
   });
 

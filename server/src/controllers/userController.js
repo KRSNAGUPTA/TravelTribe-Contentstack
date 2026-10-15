@@ -504,7 +504,7 @@ export const forgotPassword = async (req, res) => {
       });
     }
 
-    const rawOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const rawOtp = crypto.randomInt(100000, 1000000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     user.resetPasswordOtp = hashOtp(rawOtp);

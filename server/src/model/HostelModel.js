@@ -2,14 +2,18 @@ import mongoose from "mongoose";
 
 const hostelSchema = new mongoose.Schema(
   {
-    hostelId: {// CMS Entry UID
+    hostelId: {
       type: String,
       required: true,
       unique: true,
     },
 
-    reviews: [    // User generated content
+    reviews: [    
       {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
         name: String,
         comment: String,
         rating: {
@@ -19,6 +23,7 @@ const hostelSchema = new mongoose.Schema(
           required: true,
         },
         img: String,
+        createdAt: { type: Date, default: Date.now },
       },
     ],
 
@@ -31,7 +36,7 @@ const hostelSchema = new mongoose.Schema(
         },
         room_name: {
           type: String,
-          required: true, // Display name - Can be as per Owner like Single - Private suite
+          required: true, 
         },
         total_beds: { // for only one time
           type: Number,

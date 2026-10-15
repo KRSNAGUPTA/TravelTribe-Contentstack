@@ -8,18 +8,30 @@ services:
       - "5001:5001"
     env_file:
       - ./server/.env
+    environment:
+      # Bookings use MongoDB transactions, which require a replica set.
+      MONGO_URI: mongodb://mongo:27017/traveltribe?replicaSet=rs0
     volumes:
       - .:/app
       - node_modules:/app/node_modules
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     command: npm run dev --workspace=server
 
   mongo:
     image: mongo:7
     container_name: travel-tribe-mongo
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "27017:27017"
+    healthcheck:
+      test: >
+        mongosh --quiet --eval "try { rs.status().ok } catch (e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}).ok }"
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 5s
     volumes:
       - mongo_data:/data/db
 
@@ -30,7 +42,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/?replicaSet=rs0
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: admin
     depends_on:

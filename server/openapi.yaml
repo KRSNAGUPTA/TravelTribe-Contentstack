@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TravelTribe API
-  version: 1.1.0
+  version: 1.2.0
   description: >
     Backend API for TravelTribe — a hostel booking platform.
     CMS content (hostel listings, images, descriptions) is served directly
@@ -391,6 +391,22 @@ paths:
   # AUTH
   # ═══════════════════════════════════════════════════════════════════════════
 
+  /api:
+    get:
+      tags: [Misc]
+      summary: API health / welcome
+      responses:
+        "200":
+          description: API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Welcome to TravelTribe
+
   /api/user/signup:
     post:
       tags: [Auth]
@@ -566,6 +582,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+
+  /api/user/logout:
+    post:
+      tags: [Auth]
+      summary: Log out and revoke the refresh token
+      description: >
+        Reads the HttpOnly `refreshToken` cookie, clears the stored
+        `refreshTokenHash` for that user (if the token is valid) and deletes
+        the cookie. Always returns 200, even if the cookie is missing or
+        invalid, so clients can safely call it to reset local state.
+      responses:
+        "200":
+          description: Logged out
+          headers:
+            Set-Cookie:
+              description: Expired refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
 
   /api/user/forgot-password:
     post:
@@ -1694,40 +1736,6 @@ paths:
                     type: string
         "400":
           description: Missing email or url
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/lytics/profile/email/{email}:
-    get:
-      tags: [Misc]
-      summary: Fetch a Lytics user profile by email
-      description: Currently unused by the frontend but kept as a passthrough.
-      parameters:
-        - in: path
-          name: email
-          required: true
-          schema:
-            type: string
-            format: email
-      responses:
-        "200":
-          description: Lytics entity
-          content:
-            application/json:
-              schema:
-                type: object
-        "400":
-          description: Email parameter missing
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: Profile not found
           content:
             application/json:
               schema:

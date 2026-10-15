@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   loginUser,
+  logoutUser,
   registerUser,
   deleteUser,
   makeAdmin,
@@ -34,6 +35,7 @@ router.post("/forgot-password", forgotPassword);
 router.post("/verify-otp", verifyOtp);
 router.post("/reset-password", resetPassword);
 router.post("/refresh", refreshToken);
+router.post("/logout", logoutUser);
 
 router.get("/all", protect, adminOnly, getAllUsers);
 router.get("/search", protect, adminOnly, searchUser);
