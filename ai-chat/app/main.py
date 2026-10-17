@@ -1,8 +1,20 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
 from pydantic import BaseModel
 from app.rag.chain import get_answer
 
 app = FastAPI(title="Travel Tribe Chat")
+
+CORS = settings.cors_origin
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[CORS],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 class ChatRequest(BaseModel):
     message: str

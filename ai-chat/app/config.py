@@ -20,5 +20,6 @@ class Settings(BaseSettings):
     express_api_url: str
 
     app_env: str = "dev"
+    cors_origin: str
 
 settings = Settings()
