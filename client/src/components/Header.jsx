@@ -49,7 +49,7 @@ const Header = () => {
   return (
     <div className="relative">
       <TooltipProvider>
-        <Dock direction="middle">
+        <Dock direction="middle" className="rounded-full">
           <DockIcon>
             <Tooltip>
               <TooltipTrigger asChild>

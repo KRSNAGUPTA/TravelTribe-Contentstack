@@ -211,13 +211,14 @@ export default function HomePage() {
       {/* Hostels */}
       <section className="relative w-full px-6 py-20 sm:px-10 sm:py-24 lg:px-12 lg:py-28">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-10 flex flex-col gap-3 sm:mb-14">
+          <div className="mb-10 flex flex-row items-center justify-between gap-3 sm:mb-14">
             <h2
               className="max-w-xl text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-ink sm:text-[2.25rem]"
               {...hostelsSection?.$?.title}
             >
               {hostelsSection?.title}
             </h2>
+            <a href="/hostel" className="border-b-2 text-primary">See all</a>
           </div>
 
           <Carousel
