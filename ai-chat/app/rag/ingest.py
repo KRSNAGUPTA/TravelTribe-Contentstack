@@ -10,6 +10,7 @@ _store = None
 _embedder = None
 
 def get_embedder():
+    global _embedder
     if _embedder is None:
         _embedder = NVIDIAEmbeddings(
             model="nvidia/nemotron-3-embed-1b",
@@ -18,6 +19,7 @@ def get_embedder():
     return _embedder
 
 def get_store():
+    global _store
     if _store is None:
         _store = PineconeVectorStore(index_name=settings.pinecone_index_name,embedding=get_embedder(), pinecone_api_key=settings.pinecone_api_key)
     return _store
@@ -84,7 +86,7 @@ def _hostel_to_docs(entry: dict)->list[Document]:
 
     return [
         Document(
-            page_content=chunk,
+            page_content=f"Hostel Name: {entry.get("title")}\n\n {chunk}",
             metadata = {"hostel_uid": entry.get("uid"), "hostel_name": entry.get("title"), "chunk_index": i, "hostel_type": entry.get("type", "")}
         )
         for i, chunk in enumerate(chunks)
@@ -112,15 +114,15 @@ def full_reindex(entries: list[dict])->int:
     total = 0
     for entry in entries:
         n = upsert_hostel(entry)
-        print(f" ${entry.get('uid')}: {n} chunks" )
-        total += 0
+        print(f"{entry.get('title')}: {n} chunks" )
+        total += n
 
     return total
-
-    
-
 
 
 if __name__ == "__main__":
     entries = fetch_all_hostels()
-    full_reindex(entries)
+    print(f"Total Hostels: {len(entries)}")
+    total_chunk = full_reindex(entries)
+    print(f"Total {total_chunk} chunk indexed")
+    
