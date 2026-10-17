@@ -41,6 +41,9 @@ const Stack = Contentstack.Stack({
 
 ContentstackLivePreview.init({
   enable: config.enable_live_preview,
+  editInVisualBuilderButton: {
+    enable: false
+  },
   cleanCslpOnProduction: true,
   ssr: false,
   stackSdk: Stack,
