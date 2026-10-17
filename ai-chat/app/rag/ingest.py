@@ -5,7 +5,6 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_nvidia_ai_endpoints import NVIDIAEmbeddings
 from app.config import settings
 
-
 _store = None
 _embedder = None
 
@@ -21,13 +20,19 @@ def get_embedder():
 def get_store():
     global _store
     if _store is None:
-        _store = PineconeVectorStore(index_name=settings.pinecone_index_name,embedding=get_embedder(), pinecone_api_key=settings.pinecone_api_key)
+        _store = PineconeVectorStore(
+            index_name=settings.pinecone_index_name,
+            embedding=get_embedder(),
+            pinecone_api_key=settings.pinecone_api_key
+        )
     return _store
-
 
 def _hostel_to_text(entry: dict) -> str:
     """Flatten ONE hostel entry into readable prose."""
     lines = [f"Hostel: {entry.get('title', 'Unnamed')}"]
+
+    if entry.get("url"):
+        lines.append(f"Website Link: {entry['url']}")
 
     if entry.get("type"):
         lines.append(f"Type: {entry['type']}")
@@ -78,22 +83,33 @@ def _hostel_to_text(entry: dict) -> str:
 
     return "\n".join(lines)
 
-
-def _hostel_to_docs(entry: dict)->list[Document]:
+def _hostel_to_docs(entry: dict) -> list[Document]:
     text = _hostel_to_text(entry)
     splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=80)
     chunks = splitter.split_text(text)
 
+    # Extract variables to keep the list comprehension clean
+    hostel_name = entry.get("title", "Unnamed")
+    hostel_uid = entry.get("uid")
+    hostel_type = entry.get("type", "")
+    
+    hostel_url = entry.get("url", "/")
+
     return [
         Document(
-            page_content=f"Hostel Name: {entry.get("title")}\n\n {chunk}",
-            metadata = {"hostel_uid": entry.get("uid"), "hostel_name": entry.get("title"), "chunk_index": i, "hostel_type": entry.get("type", "")}
+            page_content=f"Hostel Name: {hostel_name}\n\n{chunk}",
+            metadata={
+                "hostel_uid": hostel_uid,
+                "hostel_name": hostel_name,
+                "chunk_index": i,
+                "hostel_type": hostel_type,
+                "url": hostel_url,
+            }
         )
         for i, chunk in enumerate(chunks)
     ]
 
-
-def upsert_hostel(entry: dict)->int:
+def upsert_hostel(entry: dict) -> int:
     store = get_store()
     uid = entry.get("uid")
 
@@ -103,26 +119,24 @@ def upsert_hostel(entry: dict)->int:
         store.delete(filter={"hostel_uid": uid})
     except Exception as e:
         print(f"[Delete warn] {uid}: {e}")
+        
     docs = _hostel_to_docs(entry)
 
     if docs:
         store.add_documents(docs)
     return len(docs)
 
-
-def full_reindex(entries: list[dict])->int:
+def full_reindex(entries: list[dict]) -> int:
     total = 0
     for entry in entries:
         n = upsert_hostel(entry)
-        print(f"{entry.get('title')}: {n} chunks" )
+        print(f"{entry.get('title')}: {n} chunks")
         total += n
 
     return total
-
 
 if __name__ == "__main__":
     entries = fetch_all_hostels()
     print(f"Total Hostels: {len(entries)}")
     total_chunk = full_reindex(entries)
     print(f"Total {total_chunk} chunk indexed")
-    

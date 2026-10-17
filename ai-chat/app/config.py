@@ -21,5 +21,6 @@ class Settings(BaseSettings):
 
     app_env: str = "dev"
     cors_origin: str
+    redis_url: str
 
 settings = Settings()

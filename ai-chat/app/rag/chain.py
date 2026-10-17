@@ -1,46 +1,61 @@
 from langchain_groq import ChatGroq
-from langchain_core.documents import Document
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_community.chat_message_histories import RedisChatMessageHistory
+
+from operator import itemgetter
 from app.rag.ingest import get_store
 from app.config import settings
 
 _llm = None
 _retriever = None
 _prompt = None
-_chain = None
+_chain_with_history = None
 
-SYSTEM_PROMPT = """You are TravelTribe's hostel assistant. Answer questions \
-about hostels using ONLY the context below. If the answer is not in the context, \
-say so honestly and suggest the user contact support.
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    return RedisChatMessageHistory(
+        session_id=session_id,
+        url=settings.redis_url,
+        ttl=15*60  
+    )
+
+SYSTEM_PROMPT = """You are TravelTribe's hostel assistant.
+
+Guidelines:
+1. If the user just says hello or makes casual conversation, reply politely and ask how you can help them find a hostel. Do NOT list specific hostels unless asked.
+2. If the user asks a question about hostels (prices, facilities, rules, locations), answer using ONLY the context below.
+3. If the user asks for a link or the hostel's page, provide the link from the context formatted as a Markdown link.
+   For example: [View Hostel Page](/hostel/bltfbcfd1b95e7c827a)
+4. If the answer is not in the context, say so honestly and suggest they contact support.
 
 Context:
 {context}"""
 
-def get_prompt()->list:
+def get_prompt():
     global _prompt
     if _prompt is None:
         _prompt = ChatPromptTemplate.from_messages([
             ("system", SYSTEM_PROMPT),
-            ("human",  "{question}")
+            MessagesPlaceholder(variable_name="history"), 
+            ("human", "{question}")
         ])
-
     return _prompt
 
 def get_llm():
     global _llm
     if _llm is None:
         _llm = ChatGroq(
-            model= settings.groq_model,
+            model=settings.groq_model,
             api_key=settings.groq_api_key,
-            temperature=0
+            temperature=0.2
         )
     return _llm
 
-def _format_docs(docs)->str:
+def _format_docs(docs) -> str:
     return "\n\n---\n\n".join(d.page_content for d in docs)
-
 
 def get_retriever():
     global _retriever
@@ -48,60 +63,35 @@ def get_retriever():
         _retriever = get_store().as_retriever(search_kwargs={"k": 4})
     return _retriever
 
+def _extract_question(x):
+    if isinstance(x, dict):
+        return x.get("question", "")
+    return x
+
 def get_chain():
-    global _chain
-    if _chain is None:
-        _chain = (
+    global _chain_with_history
+    if _chain_with_history is None:
+        core_chain = (
             {
-                "context": get_retriever() | _format_docs,
-                "question": RunnablePassthrough()
-            } | get_prompt() | get_llm() | StrOutputParser()
+                "context": _extract_question | get_retriever() | _format_docs,
+                "question": RunnablePassthrough(),
+                "history": itemgetter("history")
+            } 
+            | get_prompt() 
+            | get_llm() 
+            | StrOutputParser()
         )
+        
+        _chain_with_history = RunnableWithMessageHistory(
+            core_chain,
+            get_session_history,
+            input_messages_key="question",
+            history_messages_key="history",
+        )
+    return _chain_with_history
 
-    return _chain
-def get_answer(question: str):
-    ans = get_chain().invoke(question)
-    return ans
-
-if __name__ == "__main__":
-    questions = [
-        "Tell me about Zostel Bangalore",
-        "Which hostels are near NMIMS?",
-        "What's the cheapest hostel with food included?",
-        "Does Hoshtel99 allow couples?",
-    ]
-    for q in questions:
-        print(f"Q: {q}")
-        print(f"A: {get_answer(q)}\n")
-    # prompt = get_prompt()
-    # messages = prompt.invoke({
-    #     "context": "Hostel: Crescenzo\nFacilities: wifi, ac",
-    #     "question": "Does Crescenzo have wifi?",
-    # })
-    # for m in messages.to_messages():
-    #     print(f"[{m.type}]")
-    #     print(m.content)
-    #     print()
-
-
-    # llm = get_llm()
-    # res = llm.invoke("Say Hello only")
-    # print(f"LLM RES: {res.content}")
-    # docs = [
-    #     Document("Hello, this is krishna"),
-    #     Document("I'm buillding AI RAG pipeline")
-            
-    #         ]
-    # print(_format_docs(docs))
-
-    # question= "Does Crescenzo have wifi? Whats room price?"
-    # retriver = get_retriever()
-    # docs = retriver.invoke(question)
-    # print(f"Got {len(docs)} docs")
-    # for i, d in enumerate(docs):
-    #     print(f"Chunk {i}: Content {d.page_content}")
-    
-
-
-
-
+def get_answer(question: str, session_id: str = "default_session") -> str:
+    return get_chain().invoke(
+        {"question": question},
+        config={"configurable": {"session_id": session_id}}
+    )
