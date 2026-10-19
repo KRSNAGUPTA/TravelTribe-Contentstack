@@ -23,4 +23,6 @@ class Settings(BaseSettings):
     cors_origin: str
     redis_url: str
 
+    ai_backend_url: str
+
 settings = Settings()
