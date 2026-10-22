@@ -47,8 +47,6 @@ app.use(
     allowedHeaders: [
       "Content-Type",
       "Authorization",
-      "X-Requested-With",
-      "ah-http-key",
     ],
   })
 );
