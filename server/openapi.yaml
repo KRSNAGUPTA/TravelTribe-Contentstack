@@ -1,29 +1,32 @@
 openapi: 3.1.0
 info:
   title: TravelTribe API
-  version: 1.2.0
-  description: >
-    Backend API for TravelTribe — a hostel booking platform.
-    CMS content (hostel listings, images, descriptions) is served directly
-    from Contentstack by the frontend. This API handles auth, availability,
-    bookings, payments, and reviews.
+  version: 2.1.0
+  description: |
+    Backend API for TravelTribe — a hostel booking platform with a hold-first reservation model.
 
-    ## Hostel initialization model
-    Hostel documents in MongoDB are initialized lazily — the first time a
-    booking or availability check touches a CMS hostel entry, `ensureHostelInDb`
-    creates a matching document with room_types and inventory seeded from CMS.
-    Contentstack webhook integration is not used.
+    ## Booking flow (hold-first, 5 steps)
 
-    ## Payment flow (4 steps)
-    1. `POST /api/payment/create-order` — get a Razorpay order id
-    2. Open the Razorpay checkout modal in the browser
-    3. `POST /api/payment/verify-payment` — server verifies the HMAC signature
-       and issues a short-lived `paymentId` (Mongo ObjectId)
-    4. `POST /api/booking` — required to pass the `paymentId` from step 3
+    1. `GET /api/booking/availability` — fetch the per-night calendar for a hostel + room type.
+    2. `POST /api/booking/hold` — creates a `pending` booking that holds inventory for 15 minutes. Server computes price from hostel's `price_per_night × nights`. Client sends guest details and `idempotencyKey`.
+    3. `POST /api/payment/create-order` — creates a Razorpay order using the server-computed amount. Client sends only `bookingId` + `idempotencyKey`.
+    4. User completes Razorpay checkout in browser.
+    5. `POST /api/payment/verify-payment` — verifies HMAC signature, re-checks availability and price, atomically confirms booking, returns confirmed booking. If hold expired or availability gone, initiates refund and returns 409 with `refundInitiated: true`.
 
-    Bookings are rejected unless the referenced payment is `verified`, not
-    yet `used`, belongs to the same user, matches the hostel, and matches
-    the amount. A payment can only fund one booking.
+    ## Hostel initialization
+
+    Hostel documents are lazily created in MongoDB on first access. Contentstack uses `base_price` (rupees); server converts to `price_per_night` (paise).
+
+    ## Inventory model
+
+    - `room_types[].total_beds` is physical capacity (immutable).
+    - Availability is derived from active bookings (`status ∈ {pending, confirmed}`) overlapping each night.
+    - Check-in day is occupied; check-out day is NOT occupied (same-day turnover allowed).
+
+    ## Background jobs
+
+    - `expireHolds` (every 1 min) — pending → expired + email.
+    - `expirePayments` (every 5 min) — created orders past TTL → expired.
 
 servers:
   - url: https://your-api-domain.com
@@ -33,19 +36,13 @@ servers:
 
 tags:
   - name: Auth
-    description: Registration, login, Google OAuth, token refresh, password reset
   - name: Users
-    description: User profile and admin user management
   - name: Hostels
-    description: Hostel listing (proxied from Contentstack CMS) and availability calendar
+  - name: Availability
   - name: Bookings
-    description: Create and manage bookings (requires a verified payment)
   - name: Payments
-    description: Razorpay order creation and server-side signature verification
   - name: Reviews
-    description: Hostel reviews (requires a confirmed booking)
   - name: Misc
-    description: Support, newsletter subscribe
 
 components:
   securitySchemes:
@@ -53,360 +50,224 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        Short-lived access token (15 min). Obtain from `/api/user/login`
-        or `/api/user/refresh`. Refresh tokens are delivered as HttpOnly
-        cookies scoped to `/api/user/refresh`.
+      description: Short-lived access token (15 min). Refresh tokens are HttpOnly cookies scoped to `/api/user/refresh`.
 
   schemas:
-
     UserPublic:
       type: object
       properties:
-        id:
-          type: string
-          example: "664e1f2a3b4c5d6e7f8a9b0c"
-        name:
-          type: string
-          example: "Arjun Sharma"
-        email:
-          type: string
-          format: email
-        role:
-          type: string
-          enum: [user, admin]
-        phone:
-          type: string
+        id: { type: string, example: "664e1f2a3b4c5d6e7f8a9b0c" }
+        name: { type: string, example: "Arjun Sharma" }
+        email: { type: string, format: email }
+        role: { type: string, enum: [user, admin] }
+        phone: { type: string }
 
     AuthResponse:
       type: object
       properties:
-        message:
-          type: string
-        accessToken:
-          type: string
-          description: JWT access token, valid for 15 minutes.
-        user:
-          $ref: "#/components/schemas/UserPublic"
+        message: { type: string }
+        accessToken: { type: string, description: JWT access token, valid 15 minutes }
+        user: { $ref: "#/components/schemas/UserPublic" }
 
     RoomMeta:
       type: object
       properties:
-        room_key:
-          type: string
-          example: "DORM"
-        room_name:
-          type: string
-          example: "Mixed Dorm"
-        totalBeds:
-          type: integer
-          example: 10
+        room_key: { type: string, example: "single" }
+        room_name: { type: string, example: "Single" }
+        totalBeds: { type: integer, example: 4 }
+        price_per_night: { type: integer, description: Price in paise, example: 200000 }
+
+    RoomAvailability:
+      type: object
+      properties:
+        totalBeds: { type: integer }
+        booked: { type: integer }
+        available: { type: integer }
 
     DayAvailability:
       type: object
       properties:
-        date:
-          type: string
-          format: date
-          example: "2025-12-01"
+        date: { type: string, format: date, example: "2025-12-01" }
         rooms:
           type: object
-          additionalProperties:
-            type: object
-            properties:
-              totalBeds:
-                type: integer
-              booked:
-                type: integer
-              available:
-                type: integer
+          additionalProperties: { $ref: "#/components/schemas/RoomAvailability" }
 
     AvailabilityResponse:
       type: object
       properties:
-        hostelId:
-          type: string
-        checkIn:
-          type: string
-          format: date
-        checkOut:
-          type: string
-          format: date
-        nights:
-          type: integer
+        hostelId: { type: string }
+        checkIn: { type: string, format: date }
+        checkOut: { type: string, format: date }
+        nights: { type: integer }
         rooms:
           type: array
-          items:
-            $ref: "#/components/schemas/RoomMeta"
+          items: { $ref: "#/components/schemas/RoomMeta" }
         calendar:
           type: array
-          items:
-            $ref: "#/components/schemas/DayAvailability"
+          items: { $ref: "#/components/schemas/DayAvailability" }
+
+    Guest:
+      type: object
+      required: [name, email, phone, gender]
+      properties:
+        name: { type: string, maxLength: 100 }
+        email: { type: string, format: email }
+        phone: { type: string, maxLength: 20 }
+        gender: { type: string, enum: [male, female, other] }
 
     Booking:
       type: object
       properties:
-        _id:
-          type: string
-        user:
-          type: string
-        hostelId:
-          type: string
-          description: Contentstack entry UID
-        checkInDate:
-          type: string
-          format: date-time
-        checkOutDate:
-          type: string
-          format: date-time
-        roomSelection:
-          type: string
-          example: "DORM"
-        amount:
-          type: number
-          example: 1500
-        receiptId:
-          type: string
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        gender:
-          type: string
-          enum: [male, female, other]
-        status:
-          type: string
-          enum: [pending, confirmed, cancelled]
-        payment:
-          type: string
-          nullable: true
-          description: Mongo ObjectId of the verified Payment that funded this booking
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
+        _id: { type: string }
+        user: { type: string }
+        hostelId: { type: string, description: Contentstack entry UID }
+        checkInDate: { type: string, format: date-time, description: UTC midnight }
+        checkOutDate: { type: string, format: date-time, description: UTC midnight; not an occupied night }
+        nights: { type: integer }
+        roomSelection: { type: string, example: "single" }
+        price_per_night_snapshot: { type: integer, description: Price in paise }
+        amount: { type: integer, description: Total in paise }
+        currency: { type: string, example: "INR" }
+        guest: { $ref: "#/components/schemas/Guest" }
+        status: { type: string, enum: [pending, confirmed, cancelled, expired] }
+        holdExpiresAt: { type: string, format: date-time }
+        confirmedAt: { type: string, format: date-time, nullable: true }
+        cancelledAt: { type: string, format: date-time, nullable: true }
+        expiredAt: { type: string, format: date-time, nullable: true }
+        cancellationReason: { type: string, nullable: true }
+        payment: { type: string, nullable: true }
+        statusHistory:
+          type: array
+          items:
+            type: object
+            properties:
+              from: { type: string, nullable: true }
+              to: { type: string }
+              at: { type: string, format: date-time }
+              by: { type: string, nullable: true }
+              reason: { type: string, nullable: true }
+        idempotencyKey: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
 
-    CreateBookingRequest:
+    HoldBookingRequest:
       type: object
-      required:
-        - checkIn
-        - checkOut
-        - hostelId
-        - roomSelection
-        - name
-        - email
-        - phone
-        - gender
-        - amount
-        - receiptId
-        - paymentId
+      required: [hostelId, roomSelection, checkIn, checkOut, guest, idempotencyKey]
       properties:
+        hostelId: { type: string, example: "blt1234abcd5678ef90" }
+        roomSelection: { type: string, example: "single", description: Must match CMS `room_key` case-sensitively }
         checkIn:
           type: string
           format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
           example: "2025-12-01"
         checkOut:
           type: string
           format: date
+          pattern: '^\d{4}-\d{2}-\d{2}$'
           example: "2025-12-04"
-        hostelId:
-          type: string
-          example: "blt1234abcd5678ef90"
-        roomSelection:
-          type: string
-          example: "DORM"
-        name:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        gender:
-          type: string
-          enum: [male, female, other]
-        amount:
-          type: number
-          description: Total booking amount in INR
-        receiptId:
-          type: string
-          description: Client-generated unique receipt (also the Razorpay order receipt)
-        paymentId:
-          type: string
-          description: >
-            Mongo ObjectId returned by `/api/payment/verify-payment` as `paymentId`.
-            Must belong to the authenticated user, be `verified`, not yet `used`,
-            and match both the hostel and the amount.
+        guest: { $ref: "#/components/schemas/Guest" }
+        idempotencyKey: { type: string, example: "6f3a2b1c-...-..." }
+
+    HoldBookingResponse:
+      type: object
+      properties:
+        booking: { $ref: "#/components/schemas/Booking" }
+        holdExpiresAt: { type: string, format: date-time }
+        amount: { type: integer, description: Amount in paise }
 
     CreateOrderRequest:
       type: object
-      required: [amount, hostelId]
+      required: [bookingId, idempotencyKey]
       properties:
-        amount:
-          type: number
-          description: Amount in INR (server converts to paise)
-          example: 1500
-        currency:
-          type: string
-          default: INR
-        hostelId:
-          type: string
+        bookingId: { type: string }
+        idempotencyKey: { type: string }
 
     CreateOrderResponse:
       type: object
-      description: Raw Razorpay order object
       properties:
-        id:
-          type: string
-          example: "order_PJXxxxxxxxxxxx"
-        amount:
-          type: integer
-          description: Amount in paise
-        currency:
-          type: string
-          example: "INR"
-        receipt:
-          type: string
-        status:
-          type: string
-          example: "created"
+        orderId: { type: string, example: "order_PJXxxxxxxxxxxx" }
+        amount: { type: integer, description: Amount in paise }
+        currency: { type: string, example: "INR" }
+        keyId: { type: string }
 
     VerifyPaymentRequest:
       type: object
       required: [razorpay_order_id, razorpay_payment_id, razorpay_signature]
       properties:
-        razorpay_order_id:
-          type: string
-        razorpay_payment_id:
-          type: string
-        razorpay_signature:
-          type: string
+        razorpay_order_id: { type: string }
+        razorpay_payment_id: { type: string }
+        razorpay_signature: { type: string }
 
     VerifyPaymentResponse:
       type: object
       properties:
-        success:
-          type: boolean
-        message:
-          type: string
-        paymentId:
-          type: string
-          description: >
-            Mongo ObjectId of the Payment record. **Pass this to
-            `POST /api/booking` as `paymentId`.** This is not the Razorpay
-            payment id — it is the internal reference that ties the booking
-            to the verified payment.
-        orderId:
-          type: string
-          description: Razorpay order id
-        paymentIdRazorpay:
-          type: string
-          description: Razorpay payment id
-        amount:
-          type: integer
-        currency:
-          type: string
+        message: { type: string }
+        booking: { $ref: "#/components/schemas/Booking" }
+
+    VerifyPaymentRefundResponse:
+      type: object
+      properties:
+        message: { type: string }
+        refundInitiated: { type: boolean, example: true }
 
     Review:
       type: object
       properties:
-        _id:
-          type: string
-        user:
-          type: string
-        name:
-          type: string
-        img:
-          type: string
-          nullable: true
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
+        _id: { type: string }
+        user: { type: string }
+        booking: { type: string }
+        name: { type: string }
+        img: { type: string, nullable: true }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+        createdAt: { type: string, format: date-time }
 
     AddReviewRequest:
       type: object
       required: [rating, comment]
       properties:
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-          minLength: 5
-          maxLength: 1000
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string, minLength: 5, maxLength: 1000 }
 
     Error:
       type: object
       properties:
-        message:
-          type: string
+        message: { type: string }
 
   responses:
     Unauthorized:
       description: Missing or invalid access token
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Error" }
     Forbidden:
       description: Authenticated but insufficient role
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Error" }
     NotFound:
       description: Resource not found
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Error" }
     Conflict:
       description: Duplicate or state conflict
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limited or too many attempts
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     ServerError:
       description: Internal server error
       content:
         application/json:
-          schema:
-            $ref: "#/components/schemas/Error"
+          schema: { $ref: "#/components/schemas/Error" }
 
 paths:
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # AUTH
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  /api:
-    get:
-      tags: [Misc]
-      summary: API health / welcome
-      responses:
-        "200":
-          description: API is up
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: Welcome to TravelTribe
-
   /api/user/signup:
     post:
       tags: [Auth]
@@ -419,16 +280,10 @@ paths:
               type: object
               required: [name, email, password]
               properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  minLength: 6
-                phone:
-                  type: string
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+                phone: { type: string }
       responses:
         "201":
           description: User registered
@@ -437,35 +292,25 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
                   user:
                     type: object
                     properties:
-                      id:
-                        type: string
-                      name:
-                        type: string
-                      email:
-                        type: string
+                      id: { type: string }
+                      name: { type: string }
+                      email: { type: string }
         "400":
           description: Details missing or password too short
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
+              schema: { $ref: "#/components/schemas/Error" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/user/login:
     post:
       tags: [Auth]
       summary: Log in with email and password
-      description: >
-        Returns a 15-minute access token in the body and sets a 30-day
-        HttpOnly refresh cookie scoped to `/api/user/refresh`.
       requestBody:
         required: true
         content:
@@ -474,31 +319,20 @@ paths:
               type: object
               required: [email, password]
               properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
+                email: { type: string, format: email }
+                password: { type: string }
       responses:
         "200":
           description: Login successful
-          headers:
-            Set-Cookie:
-              description: HttpOnly refresh token cookie
-              schema:
-                type: string
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
+              schema: { $ref: "#/components/schemas/AuthResponse" }
         "400":
           description: Invalid credentials
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/user/google/callback:
     post:
@@ -512,107 +346,60 @@ paths:
               type: object
               required: [token]
               properties:
-                token:
-                  type: string
-                  description: Google ID token
+                token: { type: string, description: Google ID token }
       responses:
         "200":
           description: Google login successful
-          headers:
-            Set-Cookie:
-              schema:
-                type: string
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AuthResponse"
+              schema: { $ref: "#/components/schemas/AuthResponse" }
         "400":
           description: No token provided
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/user/refresh:
     post:
       tags: [Auth]
       summary: Rotate refresh token and issue a new access token
-      description: >
-        Reads the HttpOnly refreshToken cookie. Verifies the token signature,
-        checks `isRefresh === true`, then compares the SHA-256 hash of the
-        incoming token against `user.refreshTokenHash`.
-
-        On success: issues a new 15-minute access token AND rotates the
-        refresh token (new cookie set, old one invalidated).
-
-        **Reuse detection:** if the incoming token hash does not match the
-        stored hash, the user's `refreshTokenHash` is cleared and the cookie
-        is deleted — meaning a previously-used (potentially stolen) token
-        triggers a forced logout for both the legitimate user and the attacker.
       responses:
         "200":
-          description: New access token issued and refresh token rotated
-          headers:
-            Set-Cookie:
-              description: New HttpOnly refresh token cookie
-              schema:
-                type: string
+          description: New access token issued
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                  accessToken:
-                    type: string
-        "401":
-          description: Refresh cookie missing
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+                  message: { type: string }
+                  accessToken: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: >
-            Invalid or expired refresh token, wrong token type,
-            or reuse detected (all clear the cookie)
+          description: Invalid, expired, or reused refresh token
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/user/logout:
     post:
       tags: [Auth]
       summary: Log out and revoke the refresh token
-      description: >
-        Reads the HttpOnly `refreshToken` cookie, clears the stored
-        `refreshTokenHash` for that user (if the token is valid) and deletes
-        the cookie. Always returns 200, even if the cookie is missing or
-        invalid, so clients can safely call it to reset local state.
       responses:
         "200":
-          description: Logged out
-          headers:
-            Set-Cookie:
-              description: Expired refresh token cookie
-              schema:
-                type: string
+          description: Logged out (always 200)
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                    example: Logged out successfully
+                  message: { type: string }
 
   /api/user/forgot-password:
     post:
       tags: [Auth]
       summary: Request a 6-digit OTP for password reset
+      description: Anti-enumeration — always 200 with the same message regardless of whether the email is registered.
       requestBody:
         required: true
         content:
@@ -621,12 +408,10 @@ paths:
               type: object
               required: [email]
               properties:
-                email:
-                  type: string
-                  format: email
+                email: { type: string, format: email }
       responses:
         "200":
-          description: OTP sent (10-minute expiry)
+          description: Generic success (sent or suppressed)
           content:
             application/json:
               schema:
@@ -634,25 +419,20 @@ paths:
                 properties:
                   message:
                     type: string
+                    example: "If an account exists, an OTP has been sent."
         "400":
-          description: Missing email or Google account
+          description: Missing email
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: No account found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/user/verify-otp:
     post:
       tags: [Auth]
       summary: Verify the OTP before resetting password
+      description: Enforces a 5-attempt limit per OTP. After 5 wrong attempts, the OTP is invalidated.
       requestBody:
         required: true
         content:
@@ -661,11 +441,8 @@ paths:
               type: object
               required: [email, otp]
               properties:
-                email:
-                  type: string
-                  format: email
-                otp:
-                  type: string
+                email: { type: string, format: email }
+                otp: { type: string }
       responses:
         "200":
           description: OTP verified
@@ -674,24 +451,20 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
         "400":
           description: Invalid or expired OTP
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/user/reset-password:
     post:
       tags: [Auth]
       summary: Reset password using a verified OTP
-      description: >
-        On success, `refreshTokenHash` is cleared — all outstanding refresh
-        tokens for this user are invalidated.
+      description: On success, the OTP is consumed and all outstanding refresh tokens for the user are invalidated.
       requestBody:
         required: true
         content:
@@ -700,14 +473,9 @@ paths:
               type: object
               required: [email, otp, newPassword]
               properties:
-                email:
-                  type: string
-                  format: email
-                otp:
-                  type: string
-                newPassword:
-                  type: string
-                  minLength: 6
+                email: { type: string, format: email }
+                otp: { type: string }
+                newPassword: { type: string, minLength: 6 }
       responses:
         "200":
           description: Password reset successful
@@ -716,27 +484,20 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
         "400":
           description: Invalid OTP or password too short
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # USERS
-  # ═══════════════════════════════════════════════════════════════════════════
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/user/profile:
     get:
       tags: [Users]
       summary: Get the authenticated user's profile
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       responses:
         "200":
           description: Profile returned
@@ -745,35 +506,25 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                  userData:
-                    $ref: "#/components/schemas/UserPublic"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                  message: { type: string }
+                  userData: { $ref: "#/components/schemas/UserPublic" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/user/update:
     patch:
       tags: [Users]
       summary: Update the authenticated user's profile
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       requestBody:
         content:
           application/json:
             schema:
               type: object
               properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                phone:
-                  type: string
-                password:
-                  type: string
-                  minLength: 6
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string }
+                password: { type: string, minLength: 6 }
       responses:
         "200":
           description: Updated
@@ -782,29 +533,24 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
         "400":
           description: Password too short
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "409":
           description: Email already in use
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/user/all:
     get:
       tags: [Users]
       summary: Get all users (admin only)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       responses:
         "200":
           description: List of users
@@ -812,29 +558,22 @@ paths:
             application/json:
               schema:
                 type: array
-                items:
-                  $ref: "#/components/schemas/UserPublic"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
+                items: { $ref: "#/components/schemas/UserPublic" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/user/search:
     get:
       tags: [Users]
       summary: Search users (admin only)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: query
           name: query
-          schema:
-            type: string
+          schema: { type: string }
         - in: query
           name: role
-          schema:
-            type: string
-            enum: [user, admin]
+          schema: { type: string, enum: [user, admin] }
       responses:
         "200":
           description: Matching users
@@ -843,63 +582,46 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
                   users:
                     type: array
-                    items:
-                      $ref: "#/components/schemas/UserPublic"
-        "404":
-          description: No users found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
+                    items: { $ref: "#/components/schemas/UserPublic" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
 
   /api/user/{id}:
     get:
       tags: [Users]
       summary: Get a user by ID (authenticated)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: User found
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/UserPublic"
+              schema: { $ref: "#/components/schemas/UserPublic" }
         "400":
           description: Invalid ID format
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [Users]
       summary: Delete a user (admin only)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: Deleted
@@ -908,27 +630,21 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/user/make-admin/{id}:
     patch:
       tags: [Users]
       summary: Promote a user to admin (admin only)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: User promoted
@@ -937,27 +653,21 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/user/remove-admin/{id}:
     patch:
       tags: [Users]
       summary: Demote an admin to user (admin only)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: Admin demoted
@@ -966,54 +676,35 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # HOSTELS
-  # ═══════════════════════════════════════════════════════════════════════════
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/hostel:
     get:
       tags: [Hostels]
       summary: List hostels from Contentstack with filters and pagination
+      description: Proxies Contentstack entries. CMS uses `base_price` (rupees); Mongo stores `price_per_night` (paise).
       parameters:
         - in: query
           name: page
-          schema:
-            type: integer
-            default: 1
+          schema: { type: integer, default: 1 }
         - in: query
           name: limit
-          schema:
-            type: integer
-            default: 6
+          schema: { type: integer, default: 6 }
         - in: query
           name: q
-          schema:
-            type: string
-          description: Search in title and address
+          schema: { type: string }
         - in: query
           name: college
-          schema:
-            type: string
-          description: Nearby college (use "all" to skip)
+          schema: { type: string }
         - in: query
           name: location
-          schema:
-            type: string
-          description: City or area (use "all" to skip)
+          schema: { type: string }
         - in: query
           name: price
-          schema:
-            type: string
-          description: Max price in INR (use "none" to skip)
+          schema: { type: string }
       responses:
         "200":
           description: Paginated hostel list
@@ -1024,138 +715,67 @@ paths:
                 properties:
                   data:
                     type: array
-                    items:
-                      type: object
+                    items: { type: object }
                   pagination:
                     type: object
                     properties:
-                      total:
-                        type: integer
-                      page:
-                        type: integer
-                      limit:
-                        type: integer
-                      totalPages:
-                        type: integer
-                      hasNextPage:
-                        type: boolean
-                      hasPrevPage:
-                        type: boolean
+                      total: { type: integer }
+                      page: { type: integer }
+                      limit: { type: integer }
+                      totalPages: { type: integer }
+                      hasNextPage: { type: boolean }
+                      hasPrevPage: { type: boolean }
         "502":
-          description: Contentstack CMS unreachable
+          description: Contentstack unreachable
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /api/hostel/availability:
-    get:
-      tags: [Hostels]
-      summary: Per-night availability calendar
-      description: >
-        Returns a date-by-date breakdown of booked vs available beds.
-        If the hostel has not been initialized in MongoDB, this endpoint
-        creates it from CMS on the fly (lazy init).
-      parameters:
-        - in: query
-          name: hostelId
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: checkIn
-          required: true
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: checkOut
-          required: true
-          schema:
-            type: string
-            format: date
-        - in: query
-          name: roomSelection
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Availability calendar
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AvailabilityResponse"
-        "400":
-          description: Missing params, invalid dates, or range > 90 nights
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: Hostel not found in CMS
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/hostel/{id}:
     get:
       tags: [Hostels]
-      summary: Get the MongoDB record for a hostel (reviews + room inventory)
-      description: >
-        Returns the Mongo document. If the hostel hasn't been initialized yet,
-        returns a shell object with empty `reviews` and `room_types`.
-        CMS content (name, images, description) is fetched separately by the
-        frontend directly from Contentstack.
+      summary: Get the MongoDB record for a hostel
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
-          description: Hostel DB record (or empty shell)
+          description: Hostel DB record
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  hostelId:
-                    type: string
+                  hostelId: { type: string }
                   reviews:
                     type: array
-                    items:
-                      $ref: "#/components/schemas/Review"
+                    items: { $ref: "#/components/schemas/Review" }
                   room_types:
                     type: array
                     items:
                       type: object
                       properties:
-                        room_key:
-                          type: string
-                        room_name:
-                          type: string
-                        total_beds:
-                          type: integer
-                        available_beds:
-                          type: integer
-        "500":
-          $ref: "#/components/responses/ServerError"
+                        room_key: { type: string }
+                        room_name: { type: string }
+                        total_beds: { type: integer }
+                        price_per_night: { type: integer, description: Price in paise }
+        "404":
+          description: Hostel not found in CMS
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/ServerError" }
     delete:
       tags: [Hostels]
       summary: Delete a hostel DB record (admin only)
-      description: >
-        Rejected with 409 if the hostel has any pending or confirmed bookings.
-        Returns 404 if the hostel was never initialized in MongoDB.
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: Hostel deleted
@@ -1164,28 +784,340 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          description: Not initialized in Mongo
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409":
           description: Active bookings exist
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # REVIEWS
-  # ═══════════════════════════════════════════════════════════════════════════
+  /api/booking/availability:
+    get:
+      tags: [Availability]
+      summary: Per-night availability calendar
+      parameters:
+        - in: query
+          name: hostelId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: checkIn
+          required: true
+          schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - in: query
+          name: checkOut
+          required: true
+          schema: { type: string, format: date, pattern: '^\d{4}-\d{2}-\d{2}$' }
+        - in: query
+          name: roomSelection
+          schema: { type: string }
+      responses:
+        "200":
+          description: Availability calendar
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AvailabilityResponse" }
+        "400":
+          description: Missing params, invalid dates, or range > 90 nights
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Hostel not found in CMS
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/booking/hold:
+    post:
+      tags: [Bookings]
+      summary: Create a pending booking that holds inventory for 15 minutes
+      description: |
+        Server-authoritative: client does not send amount, price, or receipt.
+        Idempotent: same (user, idempotencyKey) returns the existing booking (200).
+        Inventory: pending bookings count against availability.
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/HoldBookingRequest" }
+      responses:
+        "201":
+          description: Hold created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldBookingResponse" }
+        "200":
+          description: Existing hold returned (idempotent retry)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HoldBookingResponse" }
+        "400":
+          description: Missing fields, invalid dates, past check-in, or stay outside 1–90 nights
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: Room type not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: No availability, idempotency key collision, or booking write conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/booking:
+    get:
+      tags: [Bookings]
+      summary: Get all bookings, paginated (admin only)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, maximum: 100 }
+      responses:
+        "200":
+          description: Paginated bookings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookings:
+                    type: array
+                    items: { $ref: "#/components/schemas/Booking" }
+                  pagination:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      page: { type: integer }
+                      limit: { type: integer }
+                      totalPages: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/booking/my-bookings:
+    get:
+      tags: [Bookings]
+      summary: Get the authenticated user's bookings
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200":
+          description: User's bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Booking" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/booking/{id}:
+    get:
+      tags: [Bookings]
+      summary: Get a booking by ID (owner or admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Booking found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/booking/{id}/cancel:
+    put:
+      tags: [Bookings]
+      summary: Cancel a booking (owner or admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string, maxLength: 500 }
+      responses:
+        "200":
+          description: Booking cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  booking: { $ref: "#/components/schemas/Booking" }
+        "400":
+          description: Already cancelled or expired
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/booking/{id}/receipt:
+    get:
+      tags: [Bookings]
+      summary: Generate a receipt for a confirmed booking (owner or admin)
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Receipt data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receipt:
+                    type: object
+                    properties:
+                      bookingId: { type: string }
+                      receiptId: { type: string }
+                      user: { type: string }
+                      email: { type: string }
+                      phone: { type: string }
+                      checkIn: { type: string, format: date-time }
+                      checkOut: { type: string, format: date-time }
+                      nights: { type: integer }
+                      roomSelection: { type: string }
+                      price_per_night: { type: integer }
+                      totalAmount: { type: integer }
+                      currency: { type: string }
+                      status: { type: string }
+                      confirmedAt: { type: string, format: date-time }
+        "400":
+          description: Booking not confirmed yet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/payment/create-order:
+    post:
+      tags: [Payments]
+      summary: Create a Razorpay order for a held booking
+      description: Server reads amount from held booking (never from client). Same (user, idempotencyKey) returns the existing order.
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrderRequest" }
+      responses:
+        "200":
+          description: Razorpay order created (or returned for retry)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CreateOrderResponse" }
+        "400":
+          description: Missing fields, booking not pending, hold expired, or booking not owned by user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Booking belongs to a different user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Idempotency key exists in a non-created state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: Razorpay not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "502":
+          description: Razorpay upstream error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/payment/verify-payment:
+    post:
+      tags: [Payments]
+      summary: Verify Razorpay signature, confirm the booking, or refund
+      description: |
+        Uses timing-safe HMAC-SHA256 comparison. On success, atomically:
+        1. Consumes the Payment (verified → consumed)
+        2. Confirms the Booking (pending → confirmed)
+        3. Links them via Booking.payment and Payment.booking
+
+        Refund path: if the held booking expired, price changed, or availability disappeared,
+        the Payment is marked `refunded`, a Razorpay refund is initiated, and the endpoint
+        returns 409 with `refundInitiated: true`.
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyPaymentRequest" }
+      responses:
+        "200":
+          description: Payment verified and booking confirmed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerifyPaymentResponse" }
+        "400":
+          description: Missing fields, invalid signature, or expired order
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Payment belongs to a different user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Payment or held booking not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Payment verified but refunded — hold expired, price changed, or availability gone
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerifyPaymentRefundResponse" }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/hostel/{id}/reviews:
     get:
@@ -1195,8 +1127,7 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: Reviews with average rating
@@ -1207,29 +1138,23 @@ paths:
                 properties:
                   reviews:
                     type: array
-                    items:
-                      $ref: "#/components/schemas/Review"
-                  avgRating:
-                    type: number
-                  count:
-                    type: integer
+                    items: { $ref: "#/components/schemas/Review" }
+                  avgRating: { type: number }
+                  count: { type: integer }
     post:
       tags: [Reviews]
       summary: Add a review (requires a confirmed booking at this hostel)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/AddReviewRequest"
+            schema: { $ref: "#/components/schemas/AddReviewRequest" }
       responses:
         "201":
           description: Review added
@@ -1238,48 +1163,39 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                  review:
-                    $ref: "#/components/schemas/Review"
+                  message: { type: string }
+                  review: { $ref: "#/components/schemas/Review" }
         "400":
           description: Invalid rating or comment
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+              schema: { $ref: "#/components/schemas/Error" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
           description: No confirmed booking
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: Already reviewed
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/hostel/{id}/reviews/{reviewId}:
     delete:
       tags: [Reviews]
       summary: Delete a review (author or admin)
-      security:
-        - BearerAuth: []
+      security: [{ BearerAuth: [] }]
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - in: path
           name: reviewId
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         "200":
           description: Review deleted
@@ -1288,388 +1204,70 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+                  message: { type: string }
+        "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
           description: Not author or admin
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          $ref: "#/components/responses/NotFound"
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
-  # ═══════════════════════════════════════════════════════════════════════════
-  # PAYMENTS
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  /api/payment/create-order:
-    post:
-      tags: [Payments]
-      summary: Create a Razorpay order (step 1 of payment flow)
-      description: >
-        Creates a Razorpay order AND a matching Payment document in MongoDB
-        with `status: "created"`. The `paymentId` returned by
-        `/api/payment/verify-payment` is what gates the booking.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateOrderRequest"
+  /api:
+    get:
+      tags: [Misc]
+      summary: API welcome / health
       responses:
         "200":
-          description: Razorpay order created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CreateOrderResponse"
-        "400":
-          description: Missing or invalid amount / hostelId
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          description: Razorpay not configured or upstream error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-
-  /api/payment/verify-payment:
-    post:
-      tags: [Payments]
-      summary: Verify Razorpay signature and issue a server-side paymentId (step 3)
-      description: >
-        Uses timing-safe HMAC-SHA256 comparison. On success, flips the
-        Payment record to `status: "verified"` and returns its Mongo
-        `paymentId`. **Store this `paymentId` and pass it to
-        `POST /api/booking`.** It is single-use.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/VerifyPaymentRequest"
-      responses:
-        "200":
-          description: Signature verified
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/VerifyPaymentResponse"
-        "400":
-          description: Missing fields or invalid signature
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          description: Payment does not belong to the authenticated user
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: No payment order found for this razorpay_order_id
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # BOOKINGS
-  # ═══════════════════════════════════════════════════════════════════════════
-
-  /api/booking:
-    post:
-      tags: [Bookings]
-      summary: Create a confirmed booking (step 4 of the payment flow)
-      description: >
-        **Requires a verified, unused payment.** Runs inside a MongoDB
-        transaction with `snapshot` read concern and `majority` write
-        concern, so concurrent requests for the same room cannot
-        overbook.
-
-        Validations against the Payment record:
-        - Belongs to the authenticated user
-        - `status === "verified"`
-        - `used === false`
-        - Matches `hostelId`
-        - `amount / 100` matches the booking amount
-
-        On success: creates the Booking, marks the Payment `used: true`,
-        links it to the booking, and returns the booking plus the updated
-        availability calendar.
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateBookingRequest"
-      responses:
-        "201":
-          description: Booking confirmed
+          description: API is up
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  booking:
-                    $ref: "#/components/schemas/Booking"
-                  calendar:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/DayAvailability"
-        "400":
-          description: >
-            Validation error, past check-in, unverified payment,
-            amount mismatch, wrong hostel, or no availability
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          description: Payment belongs to a different user
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "404":
-          description: Payment or hostel not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "409":
-          description: >
-            Duplicate receiptId, payment already used, or booking
-            conflict (concurrent write)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
+                  message: { type: string }
+
+  /health/live:
     get:
-      tags: [Bookings]
-      summary: Get all bookings (admin only)
-      security:
-        - BearerAuth: []
+      tags: [Misc]
+      summary: Liveness probe
       responses:
         "200":
-          description: All bookings
+          description: Process is running
           content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Booking"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
+            text/plain:
+              schema: { type: string, example: "ok" }
 
-  /api/booking/my-bookings:
+  /health/ready:
     get:
-      tags: [Bookings]
-      summary: Get the authenticated user's bookings
-      security:
-        - BearerAuth: []
+      tags: [Misc]
+      summary: Readiness probe
       responses:
         "200":
-          description: User's bookings
+          description: All dependencies ready
           content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Booking"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
+            text/plain:
+              schema: { type: string, example: "ok" }
+        "503":
+          description: MongoDB not ready
+          content:
+            text/plain:
+              schema: { type: string, example: "db not ready" }
 
-  /api/booking/{id}:
+  /metrics:
     get:
-      tags: [Bookings]
-      summary: Get a booking by ID (owner or admin)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+      tags: [Misc]
+      summary: Prometheus metrics (token-protected)
       responses:
         "200":
-          description: Booking found
+          description: Prometheus exposition format
           content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Booking"
+            text/plain:
+              schema: { type: string }
         "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
+          description: Missing or invalid metrics token
         "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/booking/{id}/cancel:
-    put:
-      tags: [Bookings]
-      summary: Cancel a booking (owner or admin)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Booking cancelled
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  booking:
-                    $ref: "#/components/schemas/Booking"
-        "400":
-          description: Already cancelled
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/booking/{id}/confirm:
-    put:
-      tags: [Bookings]
-      summary: Manually confirm a pending booking (admin only)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Booking confirmed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  booking:
-                    $ref: "#/components/schemas/Booking"
-        "400":
-          description: Cannot confirm a cancelled booking
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/booking/{id}/receipt:
-    get:
-      tags: [Bookings]
-      summary: Generate a receipt for a confirmed booking (owner or admin)
-      security:
-        - BearerAuth: []
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Receipt data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  receipt:
-                    type: object
-                    properties:
-                      bookingId:
-                        type: string
-                      receiptId:
-                        type: string
-                      user:
-                        type: string
-                      email:
-                        type: string
-                      phone:
-                        type: string
-                      checkIn:
-                        type: string
-                        format: date-time
-                      checkOut:
-                        type: string
-                        format: date-time
-                      roomSelection:
-                        type: string
-                      totalAmount:
-                        type: number
-                      transactionId:
-                        type: string
-                      status:
-                        type: string
-        "400":
-          description: Booking not confirmed yet
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  # ═══════════════════════════════════════════════════════════════════════════
-  # MISC
-  # ═══════════════════════════════════════════════════════════════════════════
+          description: Metrics endpoint disabled (METRICS_TOKEN unset)
 
   /api/support:
     post:
@@ -1683,17 +1281,11 @@ paths:
               type: object
               required: [name, email, topic, message]
               properties:
-                name:
-                  type: string
-                email:
-                  type: string
-                  format: email
-                topic:
-                  type: string
-                message:
-                  type: string
-                url:
-                  type: string
+                name: { type: string }
+                email: { type: string, format: email }
+                topic: { type: string }
+                message: { type: string }
+                url: { type: string }
       responses:
         "200":
           description: Sent (or suppressed if webhook not configured)
@@ -1702,10 +1294,8 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-        "500":
-          $ref: "#/components/responses/ServerError"
+                  message: { type: string }
+        "500": { $ref: "#/components/responses/ServerError" }
 
   /api/subscribe:
     post:
@@ -1719,11 +1309,8 @@ paths:
               type: object
               required: [email, url]
               properties:
-                email:
-                  type: string
-                  format: email
-                url:
-                  type: string
+                email: { type: string, format: email }
+                url: { type: string }
       responses:
         "200":
           description: Subscribed
@@ -1732,13 +1319,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
+                  message: { type: string }
         "400":
           description: Missing email or url
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "500":
-          $ref: "#/components/responses/ServerError"
+              schema: { $ref: "#/components/schemas/Error" }
+        "500": { $ref: "#/components/responses/ServerError" }

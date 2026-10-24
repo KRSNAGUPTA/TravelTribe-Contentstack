@@ -177,8 +177,11 @@ export const verifyPayment = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
-      req.body || {};
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    } = req.body || {};
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       await session.endSession();
@@ -192,7 +195,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Verify HMAC signature
     const key_secret = config.getKeySecret();
     if (!key_secret) {
       await session.endSession();
@@ -211,7 +213,7 @@ export const verifyPayment = async (req, res) => {
       expectedSign.length === razorpay_signature.length &&
       crypto.timingSafeEqual(
         Buffer.from(expectedSign, "utf-8"),
-        Buffer.from(razorpay_signature, "utf-8"),
+        Buffer.from(razorpay_signature, "utf-8")
       );
 
     if (!isAuthentic) {
@@ -219,7 +221,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
     }
 
-    // Load Payment + Booking
     const payment = await Payment.findOne({ razorpay_order_id });
     if (!payment) {
       await session.endSession();
@@ -232,7 +233,7 @@ export const verifyPayment = async (req, res) => {
         .json({ message: "This payment does not belong to you" });
     }
 
-    // Idempotency: if already consumed, return success
+    // Idempotent: already consumed → return booking
     if (payment.status === PAYMENT_STATUS.CONSUMED) {
       const booking = await Booking.findById(payment.booking);
       await session.endSession();
@@ -242,10 +243,9 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Only accept `created` or `verified` (retry after partial failure)
     if (
       ![PAYMENT_STATUS.CREATED, PAYMENT_STATUS.VERIFIED].includes(
-        payment.status,
+        payment.status
       )
     ) {
       await session.endSession();
@@ -268,9 +268,25 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ message: "Held booking not found" });
     }
 
+    // Payment must match held booking's room type
+    if (payment.roomSelection !== booking.roomSelection) {
+      await session.endSession();
+      logger.error(
+        {
+          paymentId: payment._id,
+          bookingId: booking._id,
+          paymentRoom: payment.roomSelection,
+          bookingRoom: booking.roomSelection,
+        },
+        "Payment roomSelection mismatch"
+      );
+      return res
+        .status(400)
+        .json({ message: "Payment was not created for this room type" });
+    }
+
     // Booking must be pending, else refund
     if (booking.status !== BOOKING_STATUS.PENDING) {
-      // Booking expired while user was paying. Refund and report.
       payment.status = PAYMENT_STATUS.REFUNDED;
       payment.razorpay_payment_id = razorpay_payment_id;
       payment.razorpay_signature = razorpay_signature;
@@ -283,14 +299,14 @@ export const verifyPayment = async (req, res) => {
 
       logger.warn(
         { bookingId: booking._id, paymentId: payment._id },
-        "Booking expired during payment — refund initiated",
+        "Booking expired during payment — refund initiated"
       );
 
-      // Fire-and-forget Razorpay refund (best-effort; admin can retry)
       initiateRazorpayRefund(payment).catch((err) =>
-        logger.error({ err, paymentId: payment._id }, "Refund API failed"),
+        logger.error({ err, paymentId: payment._id }, "Refund API failed")
       );
 
+      paymentRefundsTotal.inc({ reason: "hold_expired" });
       await enqueueRefund(payment, booking);
 
       return res.status(409).json({
@@ -300,7 +316,6 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Re-check availability
     const hostel = await Hostel.findOne({ hostelId: booking.hostelId });
     if (!hostel) {
       await session.endSession();
@@ -308,14 +323,13 @@ export const verifyPayment = async (req, res) => {
     }
 
     const room = hostel.room_types.find(
-      (r) => r.room_key === booking.roomSelection,
+      (r) => r.room_key === booking.roomSelection
     );
     if (!room) {
       await session.endSession();
       return res.status(400).json({ message: "Room type no longer exists" });
     }
 
-    // Price check: the price the user paid must still match current
     const currentExpected = room.price_per_night * booking.nights;
     if (booking.amount !== currentExpected) {
       payment.status = PAYMENT_STATUS.REFUNDED;
@@ -329,9 +343,11 @@ export const verifyPayment = async (req, res) => {
       await session.endSession();
 
       initiateRazorpayRefund(payment).catch((err) =>
-        logger.error({ err, paymentId: payment._id }, "Refund API failed"),
+        logger.error({ err, paymentId: payment._id }, "Refund API failed")
       );
 
+      paymentPriceMismatchTotal.inc();
+      paymentRefundsTotal.inc({ reason: "price_changed" });
       await enqueueRefund(payment, booking);
 
       return res.status(409).json({
@@ -341,23 +357,21 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Atomic confirm
     session.startTransaction({
       readConcern: { level: "snapshot" },
       writeConcern: { w: "majority" },
     });
 
-    // Re-check availability inside txn
     const calendar = await buildCalendar(
       hostel,
       booking.roomSelection,
       booking.checkInDate,
       booking.checkOutDate,
-      session,
+      session
     );
     const minAvailable = minAvailableForStay(
       calendar.calendar,
-      booking.roomSelection,
+      booking.roomSelection
     );
 
     if (minAvailable < 1) {
@@ -374,9 +388,10 @@ export const verifyPayment = async (req, res) => {
       await payment.save();
 
       initiateRazorpayRefund(payment).catch((err) =>
-        logger.error({ err, paymentId: payment._id }, "Refund API failed"),
+        logger.error({ err, paymentId: payment._id }, "Refund API failed")
       );
 
+      paymentRefundsTotal.inc({ reason: "no_availability" });
       await enqueueRefund(payment, booking);
 
       return res.status(409).json({
@@ -386,7 +401,6 @@ export const verifyPayment = async (req, res) => {
       });
     }
 
-    // Consume the payment
     const consumedPayment = await Payment.findOneAndUpdate(
       {
         _id: payment._id,
@@ -402,7 +416,7 @@ export const verifyPayment = async (req, res) => {
           consumedAt: new Date(),
         },
       },
-      { returnDocument: "after", session },
+      { returnDocument: "after", session }
     );
 
     if (!consumedPayment) {
@@ -413,7 +427,6 @@ export const verifyPayment = async (req, res) => {
         .json({ message: "Payment was already consumed by another request" });
     }
 
-    // Confirm the booking
     const confirmedBooking = await Booking.findOneAndUpdate(
       { _id: booking._id, status: BOOKING_STATUS.PENDING },
       {
@@ -432,16 +445,15 @@ export const verifyPayment = async (req, res) => {
           },
         },
       },
-      { returnDocument: "after", session },
+      { returnDocument: "after", session }
     );
 
     if (!confirmedBooking) {
       await session.abortTransaction();
       await session.endSession();
-      // Payment consumed but booking update failed — refund and alert
       logger.error(
         { paymentId: payment._id, bookingId: booking._id },
-        "Payment consumed but booking confirm failed — refunding",
+        "Payment consumed but booking confirm failed — refunding"
       );
       await Payment.updateOne(
         { _id: payment._id },
@@ -452,13 +464,13 @@ export const verifyPayment = async (req, res) => {
             refundAmount: payment.amount,
             failureReason: "booking_confirm_race",
           },
-        },
+        }
       );
       initiateRazorpayRefund(payment).catch(() => {});
 
-      // Re-fetch because updateOne doesn't mutate the in-memory doc
       const refundedPayment = await Payment.findById(payment._id);
       if (refundedPayment) {
+        paymentRefundsTotal.inc({ reason: "booking_race" });
         await enqueueRefund(refundedPayment, booking);
       }
 
@@ -471,12 +483,19 @@ export const verifyPayment = async (req, res) => {
     await session.commitTransaction();
     await session.endSession();
 
-    // Post-commit side effects
-    // Booking is committed; email is best-effort via Redis queue.
-    await enqueueBookingConfirmed(confirmedBooking);
+    paymentVerifiedTotal.inc();
+
+    try {
+      await enqueueBookingConfirmed(confirmedBooking);
+    } catch (err) {
+      logger.error(
+        { err: err.message, bookingId: confirmedBooking._id },
+        "booking confirmed but email enqueue failed"
+      );
+    }
 
     setImmediate(() =>
-      sendNotification("booking", confirmedBooking).catch(() => {}),
+      sendNotification("booking", confirmedBooking).catch(() => {})
     );
 
     return res.status(200).json({

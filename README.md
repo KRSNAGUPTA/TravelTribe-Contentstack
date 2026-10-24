@@ -1,231 +1,326 @@
-# Travel Tribe
+# TravelTribe API
 
-A hostel booking platform for students — find, compare, and reserve verified
-hostels near Mumbai colleges.
+Backend for TravelTribe, a hostel booking platform built around a **hold-first reservation model**. A user reserves a bed for 15 minutes, pays through Razorpay, and the booking is confirmed only after the server verifies the payment and re-checks availability and price.
 
-- **Live:** https://travel-tribe-cs.vercel.app
-- **API:** https://traveltribe-contentstack.onrender.com
-- **API reference:** [`server/openapi.yaml`](server/openapi.yaml) (OpenAPI 3.1)
+API version: `2.1.0` · Spec: [`openapi.yaml`](./openapi.yaml) (OpenAPI 3.1)
 
-Monorepo (npm workspaces): `client/` (React + Vite) and `server/` (Express + MongoDB).
+## Contents
 
----
-
-## Features
-
-- **CMS-driven content** — hero, features, testimonials, FAQs, footer and hostel listings authored in Contentstack, with Live Preview
-- **Search & filter** — Algolia autocomplete on the client; college / location / price filters on the API
-- **Real-time availability** — per-night, per-room-type bed calendar computed from active bookings
-- **Secure payments** — Razorpay order creation, HMAC signature verification, one payment funds exactly one booking
-- **Transactional bookings** — MongoDB transactions prevent overbooking
-- **Reviews** — only users with a confirmed booking can review; one review per user per hostel
-- **Auth** — JWT access token (15 min) + rotating HttpOnly refresh cookie (30 days) with reuse detection, Google OAuth, OTP password reset
-- **Notifications** — booking confirmation emails (Gmail SMTP) and Discord webhook alerts
-- **Receipts** — downloadable PDF generated client-side
+- [Architecture](#architecture)
+- [Booking lifecycle](#booking-lifecycle)
+- [Booking flow](#booking-flow)
+- [Inventory model](#inventory-model)
+- [Money handling](#money-handling)
+- [Authentication](#authentication)
+- [Background jobs](#background-jobs)
+- [Endpoints](#endpoints)
+- [Error handling](#error-handling)
+- [Observability and health](#observability-and-health)
+- [Environments](#environments)
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    Client["Web / mobile client"]
+
+    subgraph API["TravelTribe API"]
+        Auth["Auth & Users<br/>/api/user/*"]
+        Hostels["Hostels<br/>/api/hostel/*"]
+        Booking["Booking & Availability<br/>/api/booking/*"]
+        Payment["Payments<br/>/api/payment/*"]
+        Reviews["Reviews<br/>/api/hostel/{id}/reviews"]
+        Misc["Support, subscribe, health, metrics"]
+        Jobs["Background jobs<br/>expireHolds · expirePayments"]
+    end
+
+    Mongo[("MongoDB<br/>users, hostels, bookings, payments, refresh tokens, OTPs")]
+    CMS["Contentstack CMS<br/>hostel catalogue & room types"]
+    Razorpay["Razorpay<br/>orders, payments, refunds"]
+    Google["Google OAuth<br/>ID token verification"]
+    Mail["Email provider<br/>OTPs, hold-expiry notices"]
+    Discord["Discord webhook<br/>support & newsletter"]
+    Prom["Prometheus scraper"]
+
+    Client -->|"JWT access token<br/>refresh cookie (/api/user/refresh)"| API
+    Auth --> Mongo
+    Auth --> Google
+    Auth --> Mail
+    Hostels -->|"read catalogue<br/>(base_price in ₹)"| CMS
+    Hostels --> Mongo
+    Booking --> Mongo
+    Booking --> CMS
+    Payment --> Razorpay
+    Payment --> Mongo
+    Reviews --> Mongo
+    Misc --> Discord
+    Jobs --> Mongo
+    Jobs --> Mail
+    Prom -->|"/metrics (METRICS_TOKEN)"| Misc
 ```
-React (Vercel) ──► Contentstack Delivery API   (hostel/page content)
-      │
-      └────────► Express API (Render) ──► MongoDB   users, bookings, payments, inventory, reviews
-                       │
-                       ├──► Contentstack (hostel list proxy + lazy inventory seeding)
-                       ├──► Razorpay      (orders + signature verification)
-                       ├──► Gmail SMTP    (OTP + booking emails)
-                       └──► Discord webhook (login/booking/support/subscribe alerts)
-```
 
-Hostel documents in MongoDB are created lazily: the first availability check or
-booking for a CMS hostel seeds `room_types` and bed totals from the CMS entry
-(`total_beds`, default 10).
+### Component responsibilities
 
-### Payment → booking flow
-
-1. `POST /api/payment/create-order` – Razorpay order + `Payment` record (`created`)
-2. Razorpay Checkout opens in the browser
-3. `POST /api/payment/verify-payment` – signature verified, returns internal `paymentId`
-4. `POST /api/booking` with that `paymentId` – accepted only if the payment is
-   verified, unused, owned by the caller, for the same hostel, and the amount matches
-
-## Tech stack
-
-| Layer | Choice |
+| Component | Responsibility |
 |---|---|
-| Client | React 18, Vite, Tailwind CSS, shadcn/ui |
-| CMS / Search | Contentstack (EU), Algolia |
-| API | Node 20+ (22 recommended), Express 4, Mongoose 9 |
-| Database | MongoDB (replica set required for transactions) |
-| Payments | Razorpay |
-| Auth | JWT + refresh cookie, Google OAuth |
-| Security | helmet, CORS allow-list, express-rate-limit |
-| Deploy | Vercel (client) + Render (API) |
+| Auth & Users | Signup, login, Google sign-in, rotating refresh tokens, OTP password reset, admin role management. |
+| Hostels | Proxies Contentstack for listings. Lazily creates the MongoDB hostel record on first access. |
+| Booking & Availability | Computes per-night availability, creates holds, and serves a user's bookings and receipts. |
+| Payments | Creates Razorpay orders from server-computed amounts, verifies signatures, confirms bookings, and issues refunds. |
+| Reviews | Lets users with a confirmed booking review a hostel. One review per booking. |
+| Background jobs | Expire stale holds and unpaid payment orders. |
 
----
+### Source of truth
 
-## Getting started
+- **Contentstack** owns hostel content and prices as entered by editors (`base_price`, in rupees).
+- **MongoDB** owns everything transactional: bookings, inventory state, payments, users, and reviews.
+- **Razorpay** owns payment state and money movement. The server stores the link between its orders and our bookings.
 
-### Prerequisites
+## Booking lifecycle
 
-- Node.js 20.19+ (the Docker image uses Node 22)
-- MongoDB **running as a replica set** (or Atlas). Bookings use transactions,
-  which fail on a standalone `mongod`.
-- Accounts/keys for Contentstack, Razorpay (test mode is fine), Google OAuth,
-  Algolia; a Gmail app password and Discord webhook are optional
+A booking moves through four states. Only `pending` and `confirmed` hold inventory.
 
-### 1. Install
-
-```bash
-npm install            # installs both workspaces from the repo root
+```mermaid
+stateDiagram-v2
+    [*] --> pending: POST /api/booking/hold
+    pending --> confirmed: payment verified<br/>POST /api/payment/verify-payment
+    pending --> expired: hold timer passes (15 min)<br/>expireHolds job
+    pending --> cancelled: user or admin cancels
+    confirmed --> cancelled: user or admin cancels
+    expired --> [*]
+    cancelled --> [*]
+    confirmed --> [*]
 ```
 
-### 2. Configure
+Every transition is appended to `statusHistory` with the previous state, new state, timestamp, actor, and reason.
 
-```bash
-cp server/sampleEnv server/.env
-cp client/sampleEnv client/.env
+## Booking flow
+
+Booking takes five steps. The server sets the price, and the client never sends an amount.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant C as Client
+    participant API as TravelTribe API
+    participant DB as MongoDB
+    participant RP as Razorpay
+
+    U->>C: Pick hostel, room type, dates
+    C->>API: GET /api/booking/availability
+    API->>DB: Count pending + confirmed beds per night
+    API-->>C: Per-night calendar
+
+    C->>API: POST /api/booking/hold (guest, idempotencyKey)
+    API->>DB: Atomically reserve beds, status = pending, holdExpiresAt = +15 min
+    API-->>C: booking, holdExpiresAt, amount (paise)
+
+    C->>API: POST /api/payment/create-order (bookingId, idempotencyKey)
+    API->>DB: Load booking, check hold still active
+    API->>RP: Create order (amount from booking)
+    RP-->>API: orderId
+    API-->>C: orderId, amount, currency, keyId
+
+    C->>RP: Razorpay Checkout (browser)
+    RP-->>C: razorpay_order_id, payment_id, signature
+
+    C->>API: POST /api/payment/verify-payment
+    API->>API: HMAC-SHA256 check (timing-safe)
+    API->>DB: Re-check availability and price
+    alt Hold valid, beds free, price unchanged
+        API->>DB: Transaction: payment consumed, booking confirmed, links set
+        API-->>C: 200 booking (confirmed)
+    else Hold expired, price changed, or beds gone
+        API->>RP: Initiate refund
+        API->>DB: payment = refunded
+        API-->>C: 409 refundInitiated: true
+    end
 ```
 
-Fill in the values (see tables below). **Never commit `.env` files.**
+### Why the server re-checks at verify time
 
-### 3. Run
+A hold lasts 15 minutes, and checkout can take longer. Before confirming, verify-payment checks that the hold has not expired, that beds are still free, and that the price has not changed. If any check fails, the user is refunded rather than charged for a booking they cannot get.
 
-```bash
-npm run dev            # client (http://localhost:5173) + server (http://localhost:5001)
-# or individually
-npm run client
-npm run server
+## Inventory model
+
+- `room_types[].total_beds` is the physical capacity of a room type. It does not change.
+- Availability for a night is `total_beds − (bookings in status pending or confirmed that cover that night)`.
+- A stay covers the nights from `checkIn` up to, but not including, `checkOut`. Check-in day is occupied. Check-out day is free, so one guest can check out and another can check in on the same day.
+- Stays must be between **1 and 90 nights**, and `checkIn` cannot be in the past.
+
+```mermaid
+gantt
+    title Example: 4-bed room, bed nights for one booking (Dec 1 to Dec 4)
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+    section Occupied
+    Guest stay (3 nights, check-out Dec 4 not occupied) :active, 2025-12-01, 3d
 ```
 
-### Docker (API + Mongo replica set)
+## Money handling
 
-```bash
-docker compose up --build
-```
+- All amounts are stored and returned in **paise** (integers). ₹2,000 is `200000`.
+- Contentstack stores `base_price` in **rupees**. The server converts it to `price_per_night` in paise when it creates or reads a hostel record.
+- `amount = price_per_night_snapshot × nights`. The price is copied onto the booking at hold time, so later CMS edits do not change existing bookings. Verification still compares the current price and fails the booking if it has changed.
+- Clients never send `amount`, `price`, or `receipt`.
 
-Starts the API on `:5001`, MongoDB 7 as a single-node replica set `rs0` on
-`:27017`, and mongo-express on `:8081`. `MONGO_URI` is overridden inside
-compose to `mongodb://mongo:27017/traveltribe?replicaSet=rs0`. The client is
-not containerised — run `npm run client` on the host.
+## Authentication
 
-> mongo-express uses `admin/admin` basic auth. Local development only.
+- **Access token:** a JWT (`Authorization: Bearer <token>`) valid for 15 minutes.
+- **Refresh token:** an HttpOnly cookie scoped to `/api/user/refresh`. It rotates on every use. Reusing a token that has already been rotated returns `403`.
+- **Logout** revokes the refresh token and always returns `200`.
+- **Password reset:** a 6-digit OTP is emailed. It allows 5 verification attempts, then becomes invalid. A successful reset invalidates every outstanding refresh token for that user.
+- **Anti-enumeration:** `forgot-password` returns the same response whether or not the email exists.
+- **Roles:** `user` and `admin`. Admin-only routes are user management, the full booking list, and hostel record deletion.
 
----
+Authentication methods:
 
-## Environment variables
+| Method | Endpoint |
+|---|---|
+| Email and password | `POST /api/user/login` |
+| Google ID token | `POST /api/user/google/callback` |
 
-### Server (`server/.env`)
+## Background jobs
 
-| Variable | Required | Description |
+| Job | Schedule | Action |
 |---|---|---|
-| `NODE_ENV` | no | `production` switches to `MONGO_URI_PROD` and stricter rate limit (100 req/15 min vs 500) |
-| `PORT` | no | Default `5001` |
-| `MONGO_URI` | dev | e.g. `mongodb://localhost:27017/traveltribe?replicaSet=rs0` |
-| `MONGO_URI_PROD` | prod | Atlas SRV URI |
-| `JWT_SECRET` | yes | Long random string (64+ hex chars) |
-| `CORS_ORIGIN` | yes | Client origin, e.g. `http://localhost:5173` (localhost:5173/3000 always allowed) |
-| `GOOGLE_CLIENT_ID` | yes | Same ID as the client |
-| `CS_API_KEY`, `CS_ACCESS_TOKEN` | yes | Contentstack stack API key + delivery token |
-| `CS_BASE_URL` | no | Default `https://eu-cdn.contentstack.com/v3` |
-| `CS_BRANCH` | no | Default `main` |
-| `CS_DEV_ENV` | no | Contentstack environment, default `dev` |
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | yes | Razorpay keys |
-| `EMAIL_USER`, `APP_PASSWORD` | yes* | Gmail address + app password (OTP and booking emails) |
-| `DISCORD_BOT_WEBHOOK` | no | Webhook for notifications; support/subscribe endpoints return a config message without it |
+| `expireHolds` | every 1 minute | Moves `pending` bookings past `holdExpiresAt` to `expired` and emails the user. |
+| `expirePayments` | every 5 minutes | Moves Razorpay orders past their TTL to `expired`. |
 
-\* Password reset and confirmation emails fail without these.
+Both jobs must be safe to run more than once, since multiple instances may run the same schedule.
 
-### Client (`client/.env`)
+## Endpoints
 
-Every variable must start with `VITE_`. Restart the dev server after edits.
+All paths are under the base URL. Protected endpoints require a Bearer token unless noted.
 
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | Backend base URL (e.g. `http://localhost:5001`) |
-| `VITE_GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `VITE_RAZORPAY_KEY_ID` | Razorpay **key id** (public) |
-| `VITE_CS_API_KEY`, `VITE_CS_ACCESS_TOKEN`, `VITE_CS_PREVIEW_TOKEN` | Contentstack keys |
-| `VITE_CS_BRANCH`, `VITE_CS_LOCALE`, `VITE_CS_DEV_ENV` | Defaults: `main`, `en-us`, `dev` |
-| `VITE_CS_REGION` | Must match the stack region (`us`, `eu`, `au`, `azure-na`, `azure-eu`, `gcp-na`, `gcp-eu`) — a mismatch returns `412` |
-| `VITE_CS_ENABLE_LIVE_PREVIEW` | `true` in dev, `false` in production |
-| `VITE_CS_DEV_APP_HOST` | Optional, e.g. `eu-app.contentstack.com` |
-| `VITE_ALGOLIA_APP_ID`, `VITE_ALGOLIA_SEARCH_KEY`, `VITE_ALGOLIA_INDEX_NAME` | Algolia (search-only key) |
+### Auth (`/api/user`)
 
----
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/signup` | Register a user |
+| POST | `/login` | Email and password login |
+| POST | `/google/callback` | Google sign-in or first-time registration |
+| POST | `/refresh` | Rotate refresh token, issue access token |
+| POST | `/logout` | Revoke refresh token |
+| POST | `/forgot-password` | Send a reset OTP |
+| POST | `/verify-otp` | Check an OTP (5-attempt limit) |
+| POST | `/reset-password` | Set a new password with a verified OTP |
 
-## API overview
+### Users (`/api/user`)
 
-Full contract: [`server/openapi.yaml`](server/openapi.yaml). Protected routes need
-`Authorization: Bearer <accessToken>`.
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/profile` | user | Current user's profile |
+| PATCH | `/update` | user | Update name, email, phone, or password |
+| GET | `/all` | admin | List all users |
+| GET | `/search` | admin | Search by `query` and `role` |
+| GET | `/{id}` | user | Get a user by ID |
+| DELETE | `/{id}` | admin | Delete a user |
+| PATCH | `/make-admin/{id}` | admin | Promote to admin |
+| PATCH | `/remove-admin/{id}` | admin | Demote to user |
 
-| Area | Endpoints |
-|---|---|
-| Auth | `POST /api/user/signup`, `/login`, `/google/callback`, `/refresh`, `/logout`, `/forgot-password`, `/verify-otp`, `/reset-password` |
-| Users | `GET /api/user/profile`, `PATCH /api/user/update`, `GET /api/user/:id`; admin: `GET /all`, `/search`, `PATCH /make-admin/:id`, `/remove-admin/:id`, `DELETE /:id` |
-| Hostels | `GET /api/hostel` (filters: `q`, `college`, `location`, `price`, `page`, `limit`), `GET /availability`, `GET /:id`, admin `DELETE /:id` |
-| Reviews | `GET/POST /api/hostel/:id/reviews`, `DELETE /api/hostel/:id/reviews/:reviewId` |
-| Payments | `POST /api/payment/create-order`, `/verify-payment` |
-| Bookings | `POST /api/booking`, `GET /my-bookings`, `GET /:id`, `PUT /:id/cancel`, `GET /:id/receipt`; admin `GET /`, `PUT /:id/confirm` |
-| Misc | `POST /api/support`, `POST /api/subscribe`, `GET /api` |
+### Hostels (`/api/hostel`)
 
-Rate limits: 100 req/15 min per IP on `/api` in production; 10 req/15 min on
-login, signup, forgot-password, verify-otp and reset-password.
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/` | public | List from Contentstack, with `q`, `college`, `location`, `price`, `page`, `limit` |
+| GET | `/{id}` | public | MongoDB record: room types, prices in paise, reviews |
+| DELETE | `/{id}` | admin | Delete the record. Returns `409` if active bookings exist. |
+| GET | `/{id}/reviews` | public | Reviews, average rating, count |
+| POST | `/{id}/reviews` | user | Review a hostel (requires a confirmed booking) |
+| DELETE | `/{id}/reviews/{reviewId}` | author or admin | Delete a review |
 
-View the spec interactively:
+### Booking (`/api/booking`)
 
-```bash
-npx @redocly/cli preview-docs server/openapi.yaml
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/availability` | public | Per-night calendar for a hostel and room type (max 90 nights) |
+| POST | `/hold` | user | Create a 15-minute hold. Idempotent on `idempotencyKey`. |
+| GET | `/` | admin | All bookings, paginated (`limit` max 100) |
+| GET | `/my-bookings` | user | The caller's bookings |
+| GET | `/{id}` | owner or admin | One booking |
+| PUT | `/{id}/cancel` | owner or admin | Cancel with an optional reason |
+| GET | `/{id}/receipt` | owner or admin | Receipt for a confirmed booking |
+
+### Payments (`/api/payment`)
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/create-order` | user | Create a Razorpay order for a held booking. Idempotent. |
+| POST | `/verify-payment` | user | Verify signature, then confirm the booking or refund |
+
+### Misc
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/api` | public | Welcome and basic health message |
+| GET | `/health/live` | public | Liveness probe |
+| GET | `/health/ready` | public | Readiness probe (checks MongoDB) |
+| GET | `/metrics` | metrics token | Prometheus metrics |
+| POST | `/api/support` | public | Forward a support request to Discord |
+| POST | `/api/subscribe` | public | Newsletter signup, forwarded to Discord |
+
+## Error handling
+
+Errors use one shape:
+
+```json
+{ "message": "Human-readable description" }
 ```
 
-## Project structure
-
-```
-.
-├── client/                    React + Vite app
-│   └── src/
-│       ├── api.js             axios instance + silent token refresh
-│       ├── contentstack/      SDK init + entry helpers
-│       ├── context/           AuthContext
-│       ├── components/        Header, Footer, HostelCard, RazorPayPayment, ui/
-│       ├── pages/             Home, Hostels, HostelDetails, BookHostel, Profile, Login, ...
-│       └── services/          Algolia search
-├── server/
-│   ├── openapi.yaml
-│   └── src/
-│       ├── index.js           app setup, CORS, rate limits, routes
-│       ├── config/            db, razorpay
-│       ├── controllers/       user, hostel, review, booking, payment
-│       ├── model/             User, Hostel, Booking, Payment
-│       ├── middlewares/       protect, adminOnly
-│       ├── routes/
-│       ├── services/          emailService (Gmail SMTP)
-│       ├── discordBot/        webhook notifications
-│       └── contentstackClient.js
-├── Dockerfile
-└── docker-compose.yml
-```
-
-## Scripts
-
-| Command | What it does |
+| Status | Meaning in this API |
 |---|---|
-| `npm run dev` | Client + server together |
-| `npm run client` / `npm run server` | One workspace |
-| `npm run build --workspace=client` | Production client build |
-| `npm run lint --workspace=client` | ESLint |
-| `npm start --workspace=server` | Run the API without nodemon |
+| 400 | Bad input, invalid dates, stay outside 1–90 nights, or an expired hold or order |
+| 401 | Missing or invalid access token |
+| 403 | Authenticated, but not the owner or an admin. Also a reused refresh token. |
+| 404 | Resource not found, or hostel not in CMS |
+| 409 | No availability, idempotency key collision, state conflict, or a payment refunded after verification |
+| 429 | Rate limited, or too many OTP attempts |
+| 500 | Internal error, or Razorpay not configured |
+| 502 | Upstream failure (Contentstack or Razorpay) |
+| 503 | Readiness check failed |
 
-## Deployment
+### Idempotency
 
-- **Client (Vercel):** root `client/`, build `npm run build`, output `dist`. Set all `VITE_*` vars. `vercel.json` handles SPA rewrites.
-- **API (Render):** build `npm install`, start `npm start --workspace=server`. Set `NODE_ENV=production`, `MONGO_URI_PROD`, and the rest of the server vars. Set `CORS_ORIGIN` to the Vercel URL.
+`POST /api/booking/hold` and `POST /api/payment/create-order` take an `idempotencyKey`. A retry with the same user and key returns the original result, with `200` instead of `201` for a hold. Reusing a key in an incompatible state returns `409`.
 
-## Notes & known limits
+## Observability and health
 
-- Render's free tier cold-starts in 20–60 s; the sticky banner warns users.
-- `GET /api/hostel` fetches entries from the Contentstack Delivery API and
-  filters/paginates in memory. Contentstack returns at most 100 entries per
-  request by default, so add API-side pagination if the catalog outgrows that.
-- Cancelling a booking does not trigger a Razorpay refund; refunds are manual.
-- Ad blockers can break Live Preview; allow-list your dev origin.
-- No automated tests yet (`npm test` is a placeholder).
+- **Liveness** (`/health/live`) confirms the process is up. It does not check dependencies.
+- **Readiness** (`/health/ready`) returns `503` when MongoDB is unavailable. Any uptime monitor or platform health check you use can point at it.
+- **Metrics** (`/metrics`) use Prometheus format. Set `METRICS_TOKEN` to enable the endpoint. If it is unset, the endpoint returns `404`.
+
+```mermaid
+flowchart LR
+    Monitor["Uptime monitor / platform health check"] -->|"/health/live, /health/ready"| API["API instance"]
+    Prom["Prometheus"] -->|"/metrics + token"| API
+    API --> DB[("MongoDB")]
+```
+
+## Environments
+
+| Name | Base URL |
+|---|---|
+| Production | `https://your-api-domain.com` |
+| Local | `http://localhost:5001` |
+
+Required configuration (names to confirm against your `.env`):
+
+| Setting | Used by |
+|---|---|
+| MongoDB connection string | All persistence |
+| Contentstack credentials | Hostels, availability |
+| Razorpay key ID and secret | Payments |
+| Razorpay webhook or signing secret | Payment verification |
+| Google OAuth client ID | Google sign-in |
+| Email provider credentials | OTPs, hold-expiry emails |
+| JWT signing secret | Access tokens |
+| Discord webhook URL | Support, subscribe |
+| `METRICS_TOKEN` | Metrics endpoint |
+
+## Notes for maintainers
+
+- The spec uses `nullable: true`, which is an OpenAPI 3.0 keyword. In 3.1 use `type: [string, "null"]` instead. Affected fields include `Booking.confirmedAt`, `cancelledAt`, `expiredAt`, `cancellationReason`, `payment`, and the `RoomMeta` and `Review.img` fields.
+- The `/api/user/update` request body has no `required` flag, so it is unclear whether an empty body is allowed. Confirm the intended behavior and document it.
+- Payment verification can return `409` even though the payment succeeded, because the refund is what is being reported. Clients should handle `refundInitiated: true` as a normal outcome, not a crash.

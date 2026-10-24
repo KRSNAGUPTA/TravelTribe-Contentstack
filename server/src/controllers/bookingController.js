@@ -24,6 +24,7 @@ import {
 import { toUTCDate, eachNight } from "../utils/date.js";
 import cmsClient from "../contentstackClient.js";
 import logger from "../utils/logger.js";
+import { bookingHoldsTotal } from "../utils/metrics.js";
 
 const HOLD_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_NIGHTS = 90;
@@ -152,13 +153,7 @@ export const holdBooking = async (req, res) => {
       idempotencyKey,
     } = req.body || {};
 
-    if (
-      !hostelId ||
-      !roomSelection ||
-      !checkIn ||
-      !checkOut ||
-      !idempotencyKey
-    ) {
+    if (!hostelId || !roomSelection || !checkIn || !checkOut || !idempotencyKey) {
       await session.endSession();
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -185,7 +180,7 @@ export const holdBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Idempotency: return existing hold
+    // Idempotency: return existing hold if same key
     const existing = await Booking.findOne({
       user: req.user._id,
       idempotencyKey: String(idempotencyKey).trim(),
@@ -199,7 +194,6 @@ export const holdBooking = async (req, res) => {
       });
     }
 
-    // Parse dates (throws on bad format / non-UTC-midnight)
     let start, end;
     try {
       start = toUTCDate(checkIn);
@@ -223,36 +217,27 @@ export const holdBooking = async (req, res) => {
         .json({ message: `Stay must be between 1 and ${MAX_NIGHTS} nights` });
     }
 
-    // Load hostel + server-side price
     const hostel = await ensureHostelInDb(String(hostelId).trim());
+    const roomKey = String(roomSelection).trim();
     const { amount, price_per_night } = computePrice(
       hostel,
-      String(roomSelection).trim(),
+      roomKey,
       start,
-      end,
+      end
     );
 
-    // Transaction: check availability + create hold
     session.startTransaction({
       readConcern: { level: "snapshot" },
       writeConcern: { w: "majority" },
     });
 
-    const payload = await buildCalendar(
-      hostel,
-      String(roomSelection).trim(),
-      start,
-      end,
-      session,
-    );
-    const minAvailable = minAvailableForStay(
-      payload.calendar,
-      String(roomSelection).trim(),
-    );
+    const payload = await buildCalendar(hostel, roomKey, start, end, session);
+    const minAvailable = minAvailableForStay(payload.calendar, roomKey);
 
     if (minAvailable < 1) {
       await session.abortTransaction();
       await session.endSession();
+      bookingHoldsTotal.inc({ result: "no_availability" });
       return res.status(409).json({
         message: "No availability for the selected room and dates",
         calendar: payload.calendar,
@@ -266,7 +251,7 @@ export const holdBooking = async (req, res) => {
         {
           user: req.user._id,
           hostelId: String(hostelId).trim(),
-          roomSelection: String(roomSelection).trim(),
+          roomSelection: roomKey,
           checkInDate: start,
           checkOutDate: end,
           nights,
@@ -293,11 +278,13 @@ export const holdBooking = async (req, res) => {
           idempotencyKey: String(idempotencyKey).trim(),
         },
       ],
-      { session },
+      { session }
     );
 
     await session.commitTransaction();
     await session.endSession();
+
+    bookingHoldsTotal.inc({ result: "success" });
 
     return res.status(201).json({
       booking: newBooking,
@@ -309,15 +296,34 @@ export const holdBooking = async (req, res) => {
     await session.endSession();
 
     if (error?.code === 11000) {
-      // Idempotency key conflict (rare — handled above, but race possible)
+      // Race: two concurrent requests with same idempotencyKey.
+      // One won, the other hit the unique index. Return the existing one.
+      try {
+        const existing = await Booking.findOne({
+          user: req.user._id,
+          idempotencyKey: String(req.body?.idempotencyKey || "").trim(),
+        });
+        if (existing) {
+          return res.status(200).json({
+            booking: existing,
+            holdExpiresAt: existing.holdExpiresAt,
+            amount: existing.amount,
+          });
+        }
+      } catch {
+        // fall through to 409
+      }
+      bookingHoldsTotal.inc({ result: "conflict" });
       return res.status(409).json({ message: "Duplicate idempotency key" });
     }
     if (error?.codeName === "WriteConflict" || error?.code === 112) {
+      bookingHoldsTotal.inc({ result: "conflict" });
       return res
         .status(409)
         .json({ message: "Booking conflict, please retry" });
     }
     logger.error({ err: error }, "holdBooking failed");
+    bookingHoldsTotal.inc({ result: "error" });
     return res
       .status(error.status || 500)
       .json({ message: error.status ? error.message : "Internal error" });
