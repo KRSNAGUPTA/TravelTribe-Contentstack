@@ -1,62 +1,73 @@
-import Booking from "../model/BookingModel.js";
-import Hostel from "../model/HostelModel.js";
-import Payment from "../model/PaymentModel.js";
+/**
+ * Booking controller — hold-first flow.
+ *
+ * Responsibilities:
+ *   - holdBooking    : create a `pending` booking that reserves inventory
+ *   - getAvailability: read-only calendar for the frontend
+ *   - cancelBooking  : user-initiated cancellation
+ *   - getUserBookings, getAllBookings, getBookingById, generateReceipt
+ *
+ * NOT responsible for:
+ *   - Confirming bookings (that's paymentController.verifyPayment)
+ *   - Expiring holds (that's jobs/expireHolds.js)
+ *   - Computing availability (that's services/availability.js)
+ */
+
 import mongoose from "mongoose";
+import Booking, { BOOKING_STATUS } from "../models/BookingModel.js";
+import Hostel from "../models/HostelModel.js";
+import {
+  buildCalendar,
+  minAvailableForStay,
+  computePrice,
+} from "../services/availability.js";
+import { toUTCDate, eachNight } from "../utils/date.js";
 import cmsClient from "../contentstackClient.js";
-import { sendNotification } from "../discordBot/NotificationBot.js";
-import { sendBookingConfirmationEmail } from "../services/emailService.js";
+import logger from "../utils/logger.js";
 
-const ACTIVE_STATUSES = ["pending", "confirmed"];
+const HOLD_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_NIGHTS = 90;
 
-const toUTCDate = (input) => {
-  const d = new Date(input);
-  if (isNaN(d.getTime())) return null;
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-};
-
-const eachNight = (checkIn, checkOut) => {
-  const nights = [];
-  const cur = toUTCDate(checkIn);
-  const end = toUTCDate(checkOut);
-  if (!cur || !end || cur >= end) return nights;
-  while (cur < end) {
-    nights.push(new Date(cur));
-    cur.setUTCDate(cur.getUTCDate() + 1);
-  }
-  return nights;
-};
-
-const formatDateKey = (date) => date.toISOString().slice(0, 10);
-
+// for syncing with cms
 const ensureHostelInDb = async (hostelId) => {
   let hostel = await Hostel.findOne({ hostelId });
   if (hostel) return hostel;
 
   const env = process.env.CS_DEV_ENV || process.env.CS_ENVIRONMENT || "dev";
   const cmsRes = await cmsClient.get(
-    `/content_types/hostel/entries/${hostelId}?environment=${env}`
+    `/content_types/hostel/entries/${hostelId}?environment=${env}`,
   );
   const entry = cmsRes.data?.entry;
   if (!entry) {
-    const err = new Error("Hostel not found in CMS");
-    err.status = 404;
-    throw err;
+    throw Object.assign(new Error("Hostel not found in CMS"), { status: 404 });
   }
 
   const roomTypes = (entry.room_types || []).map((room) => {
-    const total = Number(room.total_beds) > 0 ? Number(room.total_beds) : 10;
+    const rupees = Number(room.base_price);
+
+    if (!Number.isFinite(rupees) || rupees <= 0) {
+      throw Object.assign(
+        new Error(
+          `Room "${room.room_key}" is missing a valid base_price (in rupees) in CMS`,
+        ),
+        { status: 400 },
+      );
+    }
+
+    const paise = Math.round(rupees * 100);
+
     return {
       room_key: String(room.room_key).trim(),
       room_name: String(room.room_name || room.room_key).trim(),
-      total_beds: total,
-      available_beds: total,
+      total_beds: Number(room.total_beds) > 0 ? Number(room.total_beds) : 1,
+      price_per_night: paise,
     };
   });
 
   if (roomTypes.length === 0) {
-    const err = new Error("Hostel has no room types in CMS");
-    err.status = 400;
-    throw err;
+    throw Object.assign(new Error("Hostel has no room types in CMS"), {
+      status: 400,
+    });
   }
 
   try {
@@ -72,189 +83,101 @@ const ensureHostelInDb = async (hostelId) => {
     }
     throw e;
   }
-
   return hostel;
 };
 
-const buildCalendar = async (
-  hostel,
-  checkIn,
-  checkOut,
-  roomFilter = null,
-  session = null
-) => {
-  const nights = eachNight(checkIn, checkOut);
-  const rangeStart = nights[0];
-  const rangeEnd = toUTCDate(checkOut);
-
-  let roomTypes = hostel.room_types;
-  if (roomFilter) {
-    roomTypes = roomTypes.filter((r) => r.room_key === roomFilter);
-    if (roomTypes.length === 0) {
-      const err = new Error(`Room type "${roomFilter}" not found`);
-      err.status = 400;
-      throw err;
-    }
-  }
-
-  const roomKeys = roomTypes.map((r) => r.room_key);
-  const totals = {};
-  roomTypes.forEach((r) => {
-    totals[r.room_key] = r.total_beds;
-  });
-
-  const booked = {};
-  nights.forEach((n) => {
-    const key = formatDateKey(n);
-    booked[key] = {};
-    roomKeys.forEach((rk) => {
-      booked[key][rk] = 0;
-    });
-  });
-
-  if (nights.length > 0) {
-    let query = Booking.find({
-      hostelId: hostel.hostelId,
-      roomSelection: { $in: roomKeys },
-      status: { $in: ACTIVE_STATUSES },
-      checkInDate: { $lt: rangeEnd },
-      checkOutDate: { $gt: rangeStart },
-    }).select("checkInDate checkOutDate roomSelection");
-
-    if (session) {
-      query = query.session(session);
-    }
-
-    const overlapping = await query;
-
-    for (const b of overlapping) {
-      const rk = b.roomSelection;
-      if (!roomKeys.includes(rk)) continue;
-      for (const n of eachNight(b.checkInDate, b.checkOutDate)) {
-        const key = formatDateKey(n);
-        if (booked[key] && rk in booked[key]) {
-          booked[key][rk] += 1;
-        }
-      }
-    }
-  }
-
-  const calendar = nights.map((n) => {
-    const date = formatDateKey(n);
-    const rooms = {};
-    for (const rk of roomKeys) {
-      const totalBeds = totals[rk];
-      const count = booked[date][rk] || 0;
-      rooms[rk] = {
-        totalBeds,
-        booked: count,
-        available: Math.max(0, totalBeds - count),
-      };
-    }
-    return { date, rooms };
-  });
-
-  const roomsMeta = roomTypes.map((r) => ({
-    room_key: r.room_key,
-    room_name: r.room_name,
-    totalBeds: r.total_beds,
-  }));
-
-  return {
-    hostelId: hostel.hostelId,
-    checkIn: formatDateKey(toUTCDate(checkIn)),
-    checkOut: formatDateKey(toUTCDate(checkOut)),
-    nights: nights.length,
-    rooms: roomsMeta,
-    calendar,
-  };
-};
-
-const minAvailableForStay = (calendar, roomKey) => {
-  if (!calendar.length) return 0;
-  return Math.min(
-    ...calendar.map((day) => day.rooms[roomKey]?.available ?? 0)
-  );
-};
-
+// GET /api/booking/availability
 export const getAvailability = async (req, res) => {
   try {
-    const hostelId = req.query.hostelId || req.params.hostelId;
-    const roomSelection = req.query.roomSelection || req.query.room_key || null;
-    const checkIn = req.query.checkIn || req.query.from;
-    const checkOut = req.query.checkOut || req.query.to;
+    const hostelId = req.query.hostelId;
+    const roomKey = req.query.roomSelection || req.query.room_key || null;
+    const checkIn = req.query.checkIn;
+    const checkOut = req.query.checkOut;
 
     if (!hostelId || !checkIn || !checkOut) {
-      return res.status(400).json({
-        message: "hostelId, checkIn and checkOut are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "hostelId, checkIn and checkOut are required" });
     }
 
-    const start = toUTCDate(checkIn);
-    const end = toUTCDate(checkOut);
-    if (!start || !end || start >= end) {
-      return res.status(400).json({
-        message: "checkOut must be after checkIn (valid dates required)",
-      });
+    let start, end;
+    try {
+      start = toUTCDate(checkIn);
+      end = toUTCDate(checkOut);
+    } catch (e) {
+      return res.status(400).json({ message: e.message });
     }
 
-    const maxNights = 90;
-    const nights = eachNight(start, end);
-    if (nights.length > maxNights) {
-      return res.status(400).json({
-        message: `Date range too large. Max ${maxNights} nights.`,
-      });
+    const nights = eachNight(start, end).length;
+    if (nights < 1) {
+      return res
+        .status(400)
+        .json({ message: "checkOut must be after checkIn" });
+    }
+    if (nights > MAX_NIGHTS) {
+      return res
+        .status(400)
+        .json({ message: `Date range too large. Max ${MAX_NIGHTS} nights.` });
     }
 
     const hostel = await ensureHostelInDb(String(hostelId).trim());
-    const payload = await buildCalendar(
-      hostel,
-      start,
-      end,
-      roomSelection ? String(roomSelection).trim() : null
-    );
+    const payload = await buildCalendar(hostel, roomKey, start, end);
 
     return res.status(200).json(payload);
   } catch (error) {
-    console.error("getAvailability error:", error.message);
-    return res.status(error.status || 500).json({ message: error.message });
+    logger.error({ err: error }, "getAvailability failed");
+    return res
+      .status(error.status || 500)
+      .json({ message: error.status ? error.message : "Internal error" });
   }
 };
 
-export const createBooking = async (req, res) => {
+//  POST /api/booking/hold
+/**
+ * Create a `pending` booking that reserves inventory for 15 minutes.
+ * Body: { hostelId, roomSelection, checkIn, checkOut,
+ *         guest: { name, email, phone, gender }, idempotencyKey }
+ * Response: { booking, holdExpiresAt, amount }
+ */
+export const holdBooking = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
     const {
-      checkIn,
-      checkOut,
       hostelId,
       roomSelection,
-      name,
-      email,
-      phone,
-      gender,
-      amount,
-      receiptId,
-      paymentId,
+      checkIn,
+      checkOut,
+      guest,
+      idempotencyKey,
     } = req.body || {};
 
     if (
-      !checkIn ||
-      !checkOut ||
       !hostelId ||
       !roomSelection ||
-      amount === undefined ||
-      amount === null ||
-      !name ||
-      !email ||
-      !phone ||
-      !gender ||
-      !receiptId ||
-      !paymentId
+      !checkIn ||
+      !checkOut ||
+      !idempotencyKey
     ) {
       await session.endSession();
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (
+      !guest ||
+      !guest.name ||
+      !guest.email ||
+      !guest.phone ||
+      !guest.gender
+    ) {
+      await session.endSession();
+      return res.status(400).json({ message: "Guest details are required" });
+    }
+
+    const normalizedGender = String(guest.gender).toLowerCase().trim();
+    if (!["male", "female", "other"].includes(normalizedGender)) {
+      await session.endSession();
+      return res.status(400).json({ message: "Invalid gender value" });
     }
 
     if (!req.user) {
@@ -262,224 +185,222 @@ export const createBooking = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(paymentId)) {
+    // Idempotency: return existing hold
+    const existing = await Booking.findOne({
+      user: req.user._id,
+      idempotencyKey: String(idempotencyKey).trim(),
+    });
+    if (existing) {
       await session.endSession();
-      return res.status(400).json({ message: "Invalid paymentId format" });
-    }
-
-    const normalizedGender = String(gender).toLowerCase().trim();
-    if (!["male", "female", "other"].includes(normalizedGender)) {
-      await session.endSession();
-      return res.status(400).json({
-        message: "Invalid gender value. Allowed values are male, female, or other.",
+      return res.status(200).json({
+        booking: existing,
+        holdExpiresAt: existing.holdExpiresAt,
+        amount: existing.amount,
       });
     }
 
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
+    // Parse dates (throws on bad format / non-UTC-midnight)
+    let start, end;
+    try {
+      start = toUTCDate(checkIn);
+      end = toUTCDate(checkOut);
+    } catch (e) {
       await session.endSession();
-      return res.status(400).json({ message: "Invalid booking amount." });
+      return res.status(400).json({ message: e.message });
     }
 
-    const start = toUTCDate(checkIn);
-    const end = toUTCDate(checkOut);
-    if (!start || !end || start >= end) {
-      await session.endSession();
-      return res.status(400).json({
-        message: "checkOut must be after checkIn (valid dates required)",
-      });
-    }
-
-    const today = toUTCDate(new Date());
+    const today = toUTCDate(new Date().toISOString().slice(0, 10));
     if (start < today) {
       await session.endSession();
       return res.status(400).json({ message: "checkIn cannot be in the past" });
     }
 
-    await ensureHostelInDb(String(hostelId).trim());
+    const nights = eachNight(start, end).length;
+    if (nights < 1 || nights > MAX_NIGHTS) {
+      await session.endSession();
+      return res
+        .status(400)
+        .json({ message: `Stay must be between 1 and ${MAX_NIGHTS} nights` });
+    }
 
+    // Load hostel + server-side price
+    const hostel = await ensureHostelInDb(String(hostelId).trim());
+    const { amount, price_per_night } = computePrice(
+      hostel,
+      String(roomSelection).trim(),
+      start,
+      end,
+    );
+
+    // Transaction: check availability + create hold
     session.startTransaction({
       readConcern: { level: "snapshot" },
       writeConcern: { w: "majority" },
     });
 
-    const payment = await Payment.findById(paymentId).session(session);
-
-    if (!payment) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(404).json({ message: "Payment not found" });
-    }
-
-    if (payment.user.toString() !== req.user._id.toString()) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(403).json({
-        message: "This payment does not belong to you",
-      });
-    }
-
-    if (payment.status !== "verified") {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(400).json({
-        message: "Payment has not been verified",
-      });
-    }
-
-    if (payment.used) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(409).json({
-        message: "This payment has already been used for another booking",
-      });
-    }
-
-    if (payment.hostelId !== String(hostelId).trim()) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(400).json({
-        message: "Payment was not created for this hostel",
-      });
-    }
-
-    const paymentAmountRupees = payment.amount / 100;
-    if (Math.round(paymentAmountRupees) !== Math.round(numericAmount)) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(400).json({
-        message: `Payment amount (₹${paymentAmountRupees}) does not match booking amount (₹${numericAmount})`,
-      });
-    }
-
-    const freshHostel = await Hostel.findOne({
-      hostelId: String(hostelId).trim(),
-    }).session(session);
-
-    if (!freshHostel) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(404).json({ message: "Hostel not found" });
-    }
-
-    const roomKey = String(roomSelection).trim();
-
-    const payload = await buildCalendar(freshHostel, start, end, roomKey, session);
-    const minAvailable = minAvailableForStay(payload.calendar, roomKey);
+    const payload = await buildCalendar(
+      hostel,
+      String(roomSelection).trim(),
+      start,
+      end,
+      session,
+    );
+    const minAvailable = minAvailableForStay(
+      payload.calendar,
+      String(roomSelection).trim(),
+    );
 
     if (minAvailable < 1) {
       await session.abortTransaction();
       await session.endSession();
-      return res.status(400).json({
+      return res.status(409).json({
         message: "No availability for the selected room and dates",
         calendar: payload.calendar,
       });
     }
 
-    const existingReceipt = await Booking.findOne({
-      receiptId: String(receiptId).trim(),
-    }).session(session);
+    const holdExpiresAt = new Date(Date.now() + HOLD_TTL_MS);
 
-    if (existingReceipt) {
-      await session.abortTransaction();
-      await session.endSession();
-      return res.status(409).json({
-        message: "Booking with this receiptId already exists",
-        booking: existingReceipt,
-      });
-    }
-
-    const newBooking = new Booking({
-      user: req.user._id,
-      checkInDate: start,
-      checkOutDate: end,
-      roomSelection: roomKey,
-      hostelId: String(hostelId).trim(),
-      amount: numericAmount,
-      name: String(name).trim(),
-      email: String(email).toLowerCase().trim(),
-      phone: String(phone).trim(),
-      gender: normalizedGender,
-      receiptId: String(receiptId).trim(),
-      payment: payment._id,
-      status: "confirmed",
-    });
-
-    await newBooking.save({ session });
-
-    payment.used = true;
-    payment.booking = newBooking._id;
-    await payment.save({ session });
+    const [newBooking] = await Booking.create(
+      [
+        {
+          user: req.user._id,
+          hostelId: String(hostelId).trim(),
+          roomSelection: String(roomSelection).trim(),
+          checkInDate: start,
+          checkOutDate: end,
+          nights,
+          price_per_night_snapshot: price_per_night,
+          amount,
+          currency: "INR",
+          guest: {
+            name: String(guest.name).trim(),
+            email: String(guest.email).toLowerCase().trim(),
+            phone: String(guest.phone).trim(),
+            gender: normalizedGender,
+          },
+          status: BOOKING_STATUS.PENDING,
+          holdExpiresAt,
+          statusHistory: [
+            {
+              from: null,
+              to: BOOKING_STATUS.PENDING,
+              at: new Date(),
+              by: req.user._id,
+              reason: "hold_created",
+            },
+          ],
+          idempotencyKey: String(idempotencyKey).trim(),
+        },
+      ],
+      { session },
+    );
 
     await session.commitTransaction();
     await session.endSession();
 
-    sendBookingConfirmationEmail(newBooking).catch((err) =>
-      console.error("Booking email failed:", err.message)
-    );
-
-    setImmediate(() => {
-      sendNotification("booking", newBooking).catch((err) =>
-        console.error("Discord notify failed:", err.message)
-      );
-    });
-
-    const after = await buildCalendar(freshHostel, start, end, roomKey);
-
     return res.status(201).json({
       booking: newBooking,
-      calendar: after.calendar,
+      holdExpiresAt: newBooking.holdExpiresAt,
+      amount: newBooking.amount,
     });
   } catch (error) {
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
+    if (session.inTransaction()) await session.abortTransaction();
     await session.endSession();
 
     if (error?.code === 11000) {
-      return res.status(409).json({ message: "Duplicate receiptId" });
+      // Idempotency key conflict (rare — handled above, but race possible)
+      return res.status(409).json({ message: "Duplicate idempotency key" });
     }
-
     if (error?.codeName === "WriteConflict" || error?.code === 112) {
-      return res.status(409).json({
-        message: "Booking conflict detected. Please try again.",
-      });
+      return res
+        .status(409)
+        .json({ message: "Booking conflict, please retry" });
+    }
+    logger.error({ err: error }, "holdBooking failed");
+    return res
+      .status(error.status || 500)
+      .json({ message: error.status ? error.message : "Internal error" });
+  }
+};
+
+//PUT /api/booking/:id/cancel
+export const cancelBooking = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+    if (
+      booking.user.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Not authorized" });
     }
 
-    console.error("Error creating booking:", error);
-    return res.status(error.status || 500).json({ message: error.message });
-  }
-};
+    if (booking.status === BOOKING_STATUS.CANCELLED) {
+      return res.status(400).json({ message: "Booking is already cancelled" });
+    }
+    if (booking.status === BOOKING_STATUS.EXPIRED) {
+      return res.status(400).json({ message: "Booking has already expired" });
+    }
 
-export const getAllBookings = async (req, res) => {
-  try {
-    const bookings = await Booking.find().sort({ createdAt: -1 });
-    return res.status(200).json(bookings);
+    booking.transitionTo(BOOKING_STATUS.CANCELLED, {
+      by: req.user._id,
+      reason: req.body?.reason || "user_cancelled",
+    });
+    await booking.save();
+
+    return res.status(200).json({ message: "Booking cancelled", booking });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error({ err: error }, "cancelBooking failed");
+    return res
+      .status(error.status || 500)
+      .json({ message: error.status ? error.message : "Internal error" });
   }
 };
 
+// Read endpoints
 export const getUserBookings = async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
     const bookings = await Booking.find({ user: req.user._id }).sort({
       createdAt: -1,
     });
     return res.status(200).json(bookings);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error({ err: error }, "getUserBookings failed");
+    return res.status(500).json({ message: "Internal error" });
+  }
+};
+
+export const getAllBookings = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit, 10) || 20),
+    );
+    const [bookings, total] = await Promise.all([
+      Booking.find()
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Booking.countDocuments(),
+    ]);
+    return res.status(200).json({
+      bookings,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    logger.error({ err: error }, "getAllBookings failed");
+    return res.status(500).json({ message: "Internal error" });
   }
 };
 
 export const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
     if (
       booking.user.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
@@ -488,84 +409,46 @@ export const getBookingById = async (req, res) => {
     }
     return res.status(200).json(booking);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const cancelBooking = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-    if (
-      booking.user.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-    if (booking.status === "cancelled") {
-      return res.status(400).json({ message: "Booking is already cancelled" });
-    }
-    booking.status = "cancelled";
-    await booking.save();
-    return res.status(200).json({ message: "Booking cancelled", booking });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-export const confirmBooking = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-    if (booking.status === "cancelled") {
-      return res.status(400).json({
-        message: "Cannot confirm a cancelled booking",
-      });
-    }
-    booking.status = "confirmed";
-    await booking.save();
-    return res.status(200).json({ message: "Booking confirmed", booking });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error({ err: error }, "getBookingById failed");
+    return res.status(500).json({ message: "Internal error" });
   }
 };
 
 export const generateReceipt = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+
     if (
       booking.user.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({ message: "Not authorized" });
     }
-    if (booking.status !== "confirmed") {
+    if (booking.status !== BOOKING_STATUS.CONFIRMED) {
       return res.status(400).json({ message: "Booking is not confirmed yet" });
     }
+
     return res.status(200).json({
-      message: "Receipt Generated Successfully",
       receipt: {
         bookingId: booking._id,
-        receiptId: booking.receiptId,
-        user: booking.name,
-        email: booking.email,
-        phone: booking.phone,
+        receiptId: booking._id.toString().slice(-8).toUpperCase(),
+        user: booking.guest.name,
+        email: booking.guest.email,
+        phone: booking.guest.phone,
         checkIn: booking.checkInDate,
         checkOut: booking.checkOutDate,
+        nights: booking.nights,
         roomSelection: booking.roomSelection,
+        price_per_night: booking.price_per_night_snapshot,
         totalAmount: booking.amount,
-        transactionId: booking.receiptId,
+        currency: booking.currency,
         status: booking.status,
+        confirmedAt: booking.confirmedAt,
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    logger.error({ err: error }, "generateReceipt failed");
+    return res.status(500).json({ message: "Internal error" });
   }
 };

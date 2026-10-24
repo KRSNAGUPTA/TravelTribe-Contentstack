@@ -10,11 +10,10 @@ import {
   deleteReview,
 } from "../controllers/reviewController.js";
 import { protect, adminOnly } from "../middlewares/authMiddleware.js";
-import { getAvailability } from "../controllers/bookingController.js";
+
 const router = express.Router();
 
 router.get("/", getAllHostels);
-router.get("/availability", getAvailability);
 router.get("/:id", getHostelById);
 router.delete("/:id", protect, adminOnly, deleteHostel);
 
@@ -24,4 +23,3 @@ router.post("/:id/reviews", protect, addReview);
 router.delete("/:id/reviews/:reviewId", protect, deleteReview);
 
 export default router;
-

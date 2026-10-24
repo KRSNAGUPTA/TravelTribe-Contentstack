@@ -3,12 +3,13 @@ dotenv.config();
 
 import crypto from "crypto";
 import mongoose from "mongoose";
-import User from "../model/UserModel.js";
-import bcrypt from "bcryptjs";
+import User from "../models/UserModel.js";
 import jwt from "jsonwebtoken";
 import { sendNotification } from "../discordBot/NotificationBot.js";
 import { OAuth2Client } from "google-auth-library";
-import { sendOtpEmail } from "../services/emailService.js";
+import { enqueueOtp } from "../queues/emailQueue.js";
+import logger from "../utils/logger.js";
+import bcrypt from "bcryptjs";
 
 const client = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -17,13 +18,11 @@ const REFRESH_TOKEN_TTL = "30d";
 
 const generateToken = (id, role, isRefresh, expireIn) => {
   try {
-    return jwt.sign(
-      { id, role, isRefresh },
-      process.env.JWT_SECRET,
-      { expiresIn: expireIn }
-    );
+    return jwt.sign({ id, role, isRefresh }, process.env.JWT_SECRET, {
+      expiresIn: expireIn,
+    });
   } catch (error) {
-    console.error("Failed to generate JWT Token:", error);
+    logger.error({ err: error.message }, "failed to generate JWT token");
     throw error;
   }
 };
@@ -37,9 +36,9 @@ const generateRefreshToken = (id, role) =>
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
-const hashOtp = (otp) => {
-  return crypto.createHash("sha256").update(otp.trim()).digest("hex");
-};
+const hashOtp = (otp) => bcrypt.hash(String(otp).trim(), 10);
+
+const verifyOtpHash = (otp, hash) => bcrypt.compare(String(otp).trim(), hash);
 
 const setRefreshCookie = (res, token) => {
   res.cookie("refreshToken", token, {
@@ -89,7 +88,9 @@ export const refreshToken = async (req, res) => {
 
     if (decoded.isRefresh !== true) {
       clearRefreshCookie(res);
-      return res.status(403).json({ message: "Unauthorized: Invalid token type" });
+      return res
+        .status(403)
+        .json({ message: "Unauthorized: Invalid token type" });
     }
 
     const user = await User.findById(decoded.id);
@@ -106,7 +107,8 @@ export const refreshToken = async (req, res) => {
       await user.save();
       clearRefreshCookie(res);
       return res.status(403).json({
-        message: "Refresh token has been revoked or already used. Please log in again.",
+        message:
+          "Refresh token has been revoked or already used. Please log in again.",
       });
     }
 
@@ -118,7 +120,7 @@ export const refreshToken = async (req, res) => {
       accessToken,
     });
   } catch (error) {
-    console.error("Failed to refresh token:", error.message);
+    logger.error({ err: error.message }, "failed to refresh token");
     clearRefreshCookie(res);
     return res
       .status(403)
@@ -162,7 +164,7 @@ export const handleGoogleLogin = async (req, res) => {
     if (isNewUser) {
       setImmediate(() => {
         sendNotification("register", user).catch((err) =>
-          console.error("Discord notify failed:", err.message)
+          logger.error({ err: err.message }, "discord notify failed"),
         );
       });
     }
@@ -178,8 +180,10 @@ export const handleGoogleLogin = async (req, res) => {
       message: "Google login successful!",
     });
   } catch (error) {
-    console.error("Error in Google Login:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    logger.error({ err: error.message }, "google login failed");
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -213,7 +217,7 @@ export const registerUser = async (req, res) => {
 
     setImmediate(() => {
       sendNotification("register", newUser).catch((err) =>
-        console.error("Discord notify failed:", err.message)
+        logger.error({ err: err.message }, "discord notify failed"),
       );
     });
 
@@ -226,7 +230,10 @@ export const registerUser = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    logger.error({ err: error.message }, "register user failed");
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -234,7 +241,9 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -254,7 +263,7 @@ export const loginUser = async (req, res) => {
 
     setImmediate(() => {
       sendNotification("login", user).catch((err) =>
-        console.error("Discord notify failed:", err.message)
+        logger.error({ err: err.message }, "discord notify failed"),
       );
     });
 
@@ -270,6 +279,7 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
+    logger.error({ err: error.message }, "login user failed");
     return res
       .status(500)
       .json({ message: "Internal Server error", error: error.message });
@@ -326,7 +336,10 @@ export const searchUser = async (req, res) => {
 
     return res.status(200).json({ message: "Users found", users });
   } catch (error) {
-    return res.status(500).json({ message: "Server error", error: error.message });
+    logger.error({ err: error.message }, "search user failed");
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 
@@ -335,6 +348,7 @@ export const getAllUsers = async (req, res) => {
     const users = await User.find({}).select("-password -refreshTokenHash");
     return res.status(200).json(users);
   } catch (error) {
+    logger.error({ err: error.message }, "get all users failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -346,12 +360,13 @@ export const getUserById = async (req, res) => {
     }
 
     const user = await User.findById(req.params.id).select(
-      "-password -refreshTokenHash"
+      "-password -refreshTokenHash",
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
     return res.status(200).json(user);
   } catch (error) {
+    logger.error({ err: error.message }, "get user by id failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -378,6 +393,7 @@ export const makeAdmin = async (req, res) => {
       },
     });
   } catch (error) {
+    logger.error({ err: error.message }, "make admin failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -404,6 +420,7 @@ export const removeAdmin = async (req, res) => {
       },
     });
   } catch (error) {
+    logger.error({ err: error.message }, "remove admin failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -416,10 +433,12 @@ export const deleteUser = async (req, res) => {
     }
 
     const deletedUser = await User.findByIdAndDelete(id);
-    if (!deletedUser) return res.status(404).json({ message: "User not found" });
+    if (!deletedUser)
+      return res.status(404).json({ message: "User not found" });
 
     return res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
+    logger.error({ err: error.message }, "delete user failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -430,10 +449,11 @@ export const getProfile = async (req, res) => {
     if (!user?._id) return res.status(401).json({ message: "Unauthorized" });
 
     const userData = await User.findById(user._id).select(
-      "-password -refreshTokenHash"
+      "-password -refreshTokenHash",
     );
     return res.status(200).json({ message: "Fetched Profile", userData });
   } catch (error) {
+    logger.error({ err: error.message }, "get profile failed");
     return res.status(500).json({ message: error.message });
   }
 };
@@ -481,11 +501,10 @@ export const updateUser = async (req, res) => {
 
     return res.status(200).json({ message: "User data updated successfully" });
   } catch (error) {
-    console.error("Update user error:", error);
+    logger.error({ err: error.message }, "update user failed");
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -493,37 +512,46 @@ export const forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "Email is required" });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (!user) {
-      return res.status(404).json({ message: "No account found with this email" });
-    }
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
-    if (user.isGoogleUser) {
-      return res.status(400).json({
-        message: "This account uses Google Sign-In. Please sign in with Google.",
+    if (!user || user.isGoogleUser) {
+      await new Promise((r) => setTimeout(r, 200));
+      return res.status(200).json({
+        message: "If an account exists, an OTP has been sent.",
       });
     }
 
     const rawOtp = crypto.randomInt(100000, 1000000).toString();
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
-    user.resetPasswordOtp = hashOtp(rawOtp);
+    user.resetPasswordOtp = await hashOtp(rawOtp);
     user.resetPasswordOtpExpires = otpExpires;
+    user.resetPasswordOtpAttempts = 0;
     await user.save();
 
-    await sendOtpEmail(user.email, rawOtp);
+    const job = await enqueueOtp(user.email, rawOtp);
+
+    if (!job) {
+      logger.error(
+        { email: user.email },
+        "OTP enqueue failed — user will not receive OTP",
+      );
+      return res.status(500).json({
+        message: "Failed to send OTP. Please try again in a moment.",
+      });
+    }
 
     return res.status(200).json({
-      message: "6-digit OTP has been sent to your email address",
+      message: "If an account exists, an OTP has been sent.",
     });
   } catch (error) {
-    console.error("Forgot password error:", error);
+    logger.error({ err: error.message }, "forgot password failed");
     return res
       .status(500)
       .json({ message: "Failed to send OTP. Please try again." });
   }
 };
-
 export const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -536,20 +564,36 @@ export const verifyOtp = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const hashedInputOtp = hashOtp(otp);
+    // Attempt limit — 5 wrong guesses kills the OTP
+    if ((user.resetPasswordOtpAttempts || 0) >= 5) {
+      user.resetPasswordOtp = undefined;
+      user.resetPasswordOtpExpires = undefined;
+      user.resetPasswordOtpAttempts = 0;
+      await user.save();
+      return res.status(429).json({
+        message: "Too many attempts. Please request a new OTP.",
+      });
+    }
 
     if (
       !user.resetPasswordOtp ||
-      user.resetPasswordOtp !== hashedInputOtp ||
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
+    const valid = await verifyOtpHash(otp, user.resetPasswordOtp);
+
+    if (!valid) {
+      user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
     return res.status(200).json({ message: "OTP verified successfully" });
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    logger.error({ err: error.message }, "verify OTP failed");
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -571,21 +615,44 @@ export const resetPassword = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    const hashedInputOtp = hashOtp(otp);
-
     if (
-      !user.resetPasswordOtp ||
-      user.resetPasswordOtp !== hashedInputOtp ||
+      !user.resetPasswordOtp || // undefined → true, short-circuit
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
+    if ((user.resetPasswordOtpAttempts || 0) >= 5) {
+      user.resetPasswordOtp = undefined;
+      user.resetPasswordOtpExpires = undefined;
+      user.resetPasswordOtpAttempts = 0;
+      await user.save();
+      return res.status(429).json({
+        message: "Too many attempts. Please request a new OTP.",
+      });
+    }
+
+    if (
+      !user.resetPasswordOtp ||
+      !user.resetPasswordOtpExpires ||
+      user.resetPasswordOtpExpires < new Date()
+    ) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    const valid = await verifyOtpHash(otp, user.resetPasswordOtp);
+
+    if (!valid) {
+      user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
+      await user.save();
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
     user.password = newPassword;
     user.resetPasswordOtp = undefined;
     user.resetPasswordOtpExpires = undefined;
+    user.resetPasswordOtpAttempts = 0;
     user.refreshTokenHash = null;
     await user.save();
 
@@ -593,7 +660,7 @@ export const resetPassword = async (req, res) => {
       message: "Password reset successful! You can now log in.",
     });
   } catch (error) {
-    console.error("Reset password error:", error);
+    logger.error({ err: error.message }, "reset password failed");
     return res.status(500).json({ message: "Internal server error" });
   }
 };
