@@ -109,33 +109,31 @@ bookingSchema.index({ user: 1, createdAt: -1 });
 bookingSchema.index({ status: 1, createdAt: -1 });
 
 // ── Validators ─────────────────────────────────────────────────────────────
+bookingSchema.pre("validate", function () {
+  if (!this.checkInDate || !this.checkOutDate) return;
 
-bookingSchema.pre("validate", function (next) {
-  if (!this.checkInDate || !this.checkOutDate) return next();
-
-  // Enforce UTC-midnight invariant — catches accidental local-time writes
   const isUtcMidnight = (d) =>
-    d.getUTCHours() === 0 && d.getUTCMinutes() === 0 &&
-    d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0;
 
   if (!isUtcMidnight(this.checkInDate) || !isUtcMidnight(this.checkOutDate)) {
-    return next(new Error("Dates must be UTC midnight (calendar days only)"));
+    throw new Error("Dates must be UTC midnight (calendar days only)");
   }
 
   if (this.checkOutDate <= this.checkInDate) {
-    return next(new Error("checkOutDate must be after checkInDate"));
+    throw new Error("checkOutDate must be after checkInDate");
   }
 
   const ms = this.checkOutDate.getTime() - this.checkInDate.getTime();
   const nights = Math.round(ms / 86_400_000);
 
-  if (nights < 1)  return next(new Error("Booking must be at least 1 night"));
-  if (nights > 90) return next(new Error("Booking cannot exceed 90 nights"));
+  if (nights < 1) throw new Error("Booking must be at least 1 night");
+  if (nights > 90) throw new Error("Booking cannot exceed 90 nights");
 
   this.nights = nights;
-  next();
 });
-
 bookingSchema.methods.transitionTo = function (to, { by = null, reason = null } = {}) {
   const from = this.status;
   if (!(ALLOWED_TRANSITIONS[from] || []).includes(to)) {
