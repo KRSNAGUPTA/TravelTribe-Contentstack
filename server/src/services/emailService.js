@@ -127,74 +127,77 @@ export const sendOtpEmail = async (toEmail, otp) => {
 };
 
 export const sendBookingConfirmationEmail = async (booking) => {
-  try {
-    await ensureVerifiedOnce();
-    const transporter = await getTransporter();
+  await ensureVerifiedOnce();
+  const transporter = await getTransporter();
 
-    const mailOptions = {
-      from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
-      to: booking.guest.email,
-      subject: `Booking Confirmed - ${booking.receiptId || "Travel Tribe"}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <h2 style="color: #6d28d9; margin: 0; font-size: 26px;">Travel Tribe</h2>
-            <p style="color: #10b981; font-weight: bold; margin-top: 6px; font-size: 16px;">Booking Confirmed!</p>
-          </div>
+  const guest = booking.guest || {};
+  const receiptId =
+    booking.receiptId ||
+    booking._id?.toString().slice(-8).toUpperCase() ||
+    "TravelTribe";
 
-          <p style="font-size: 15px; color: #374151;">Dear <strong>${booking.guest.name}</strong>,</p>
-          <p style="font-size: 14px; color: #4b5563; line-height: 1.5;">
-            Thank you for booking with Travel Tribe! Your accommodation reservation has been confirmed. Below are your booking details:
-          </p>
-
-          <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #374151;">
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Receipt ID:</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.receiptId || "N/A"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Room Type:</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.roomSelection || "Standard Room"}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Check-in Date:</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right;">${formatDateStr(booking.checkInDate || booking.checkIn)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Check-out Date:</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right;">${formatDateStr(booking.checkOutDate || booking.checkOut)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 6px 0; color: #6b7280;">Guest Phone:</td>
-                <td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.guest.phone}</td>
-              </tr>
-              <tr style="border-top: 1px solid #e5e7eb;">
-                <td style="padding: 10px 0 0 0; font-weight: bold; color: #111827; font-size: 15px;">Total Amount Paid:</td>
-                <td style="padding: 10px 0 0 0; font-weight: bold; color: #6d28d9; text-align: right; font-size: 16px;">₹${booking.amount}</td>
-              </tr>
-            </table>
-          </div>
-
-          <p style="font-size: 13px; color: #6b7280; line-height: 1.4;">
-            Please present your receipt ID or confirmation email upon arrival at check-in.
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">
-            &copy; ${new Date().getFullYear()} Travel Tribe. Safe travels!
-          </p>
+  const mailOptions = {
+    from: `"Travel Tribe" <${process.env.EMAIL_USER}>`,
+    to: guest.email,
+    subject: `Booking Confirmed - ${receiptId}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 550px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #6d28d9; margin: 0; font-size: 26px;">Travel Tribe</h2>
+          <p style="color: #10b981; font-weight: bold; margin-top: 6px; font-size: 16px;">Booking Confirmed!</p>
         </div>
-      `,
-    };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Booking confirmation email sent successfully:", info.messageId);
-    return info;
-  } catch (err) {
-    console.error("Failed to send booking confirmation email:", err.message);
-    throw err;
-  }
+        <p style="font-size: 15px; color: #374151;">Dear <strong>${guest.name || "Guest"}</strong>,</p>
+        <p style="font-size: 14px; color: #4b5563; line-height: 1.5;">
+          Thank you for booking with Travel Tribe! Your accommodation reservation has been confirmed. Below are your booking details:
+        </p>
+
+        <div style="background-color: #f9fafb; border: 1px solid #f3f4f6; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #374151;">
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Receipt ID:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${receiptId}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Room Type:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.roomSelection || "Standard Room"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Check-in Date:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${formatDateStr(booking.checkInDate)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Check-out Date:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${formatDateStr(booking.checkOutDate)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Nights:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${booking.nights}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #6b7280;">Guest Phone:</td>
+              <td style="padding: 6px 0; font-weight: bold; text-align: right;">${guest.phone || "-"}</td>
+            </tr>
+            <tr style="border-top: 1px solid #e5e7eb;">
+              <td style="padding: 10px 0 0 0; font-weight: bold; color: #111827; font-size: 15px;">Total Amount Paid:</td>
+              <td style="padding: 10px 0 0 0; font-weight: bold; color: #6d28d9; text-align: right; font-size: 16px;">₹${((booking.amount || 0) / 100).toFixed(2)}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="font-size: 13px; color: #6b7280; line-height: 1.4;">
+          Please present your receipt ID or confirmation email upon arrival at check-in.
+        </p>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #9ca3af; text-align: center; margin: 0;">
+          &copy; ${new Date().getFullYear()} Travel Tribe. Safe travels!
+        </p>
+      </div>
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
 };
 
 
