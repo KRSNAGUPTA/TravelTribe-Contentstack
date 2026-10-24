@@ -1,8 +1,8 @@
-# TravelTribe API
+# Travel Tribe API
 
-Backend for TravelTribe, a hostel booking platform built around a **hold-first reservation model**. A user reserves a bed for 15 minutes, pays through Razorpay, and the booking is confirmed only after the server verifies the payment and re-checks availability and price.
+Backend for Travel Tribe, a hostel booking platform built around a **hold-first reservation model**. A user reserves a bed for 15 minutes, pays through Razorpay, and the booking is confirmed only after the server verifies the payment and re-checks availability and price.
 
-API version: `2.1.0` · Spec: [`openapi.yaml`](./openapi.yaml) (OpenAPI 3.1)
+Spec: [`openapi.yaml`](./server/openapi.yaml)
 
 ## Contents
 
@@ -24,7 +24,7 @@ API version: `2.1.0` · Spec: [`openapi.yaml`](./openapi.yaml) (OpenAPI 3.1)
 flowchart LR
     Client["Web / mobile client"]
 
-    subgraph API["TravelTribe API"]
+    subgraph API["Travel Tribe API"]
         Auth["Auth & Users<br/>/api/user/*"]
         Hostels["Hostels<br/>/api/hostel/*"]
         Booking["Booking & Availability<br/>/api/booking/*"]
@@ -103,7 +103,7 @@ sequenceDiagram
     autonumber
     actor U as User
     participant C as Client
-    participant API as TravelTribe API
+    participant API as Travel Tribe API
     participant DB as MongoDB
     participant RP as Razorpay
 
