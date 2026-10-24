@@ -140,7 +140,9 @@ app.get("/metrics", async (req, res) => {
   }
   const provided = req.headers["x-metrics-token"] || req.headers.authorization?.replace(/^Bearer\s+/i, "");
   if (provided !== token) {
-    return res.status(401).end();
+    return res.status(401).json({
+      "message": "No Authorization present in req, check OpenAPI spec"
+    });
   }
   try {
     res.set("Content-Type", register.contentType);
