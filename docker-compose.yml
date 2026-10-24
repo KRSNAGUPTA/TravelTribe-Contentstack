@@ -1,23 +1,51 @@
 services:
   server:
     build:
-      context: .
+      context: ./server
       dockerfile: Dockerfile
+      target: development
     container_name: travel-tribe-server
     ports:
       - "5001:5001"
     env_file:
       - ./server/.env
     environment:
-      # Bookings use MongoDB transactions, which require a replica set.
       MONGO_URI: mongodb://mongo:27017/traveltribe?replicaSet=rs0
     volumes:
-      - .:/app
+      - ./server/src:/app/src
+      - ./server/package.json:/app/package.json:ro
       - node_modules:/app/node_modules
     depends_on:
       mongo:
         condition: service_healthy
-    command: npm run dev --workspace=server
+    command: npm run dev
+    working_dir: /app
+    restart: unless-stopped
+    networks:
+      - traveltribe
+
+  worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: development
+    container_name: travel-tribe-worker
+    env_file:
+      - ./server/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/traveltribe?replicaSet=rs0
+    volumes:
+      - ./server/src:/app/src
+      - ./server/package.json:/app/package.json:ro
+      - node_modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    command: node src/worker.js
+    working_dir: /app
+    restart: unless-stopped
+    networks:
+      - traveltribe
 
   mongo:
     image: mongo:7
@@ -34,11 +62,14 @@ services:
       start_period: 5s
     volumes:
       - mongo_data:/data/db
+    restart: unless-stopped
+    networks:
+      - traveltribe
 
   mongo-express:
     image: mongo-express
     container_name: travel-tribe-mongo-ui
-    restart: always
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
@@ -46,8 +77,15 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: admin
       ME_CONFIG_BASICAUTH_PASSWORD: admin
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    networks:
+      - traveltribe
 
 volumes:
   mongo_data:
   node_modules:
+
+networks:
+  traveltribe:
+    driver: bridge
