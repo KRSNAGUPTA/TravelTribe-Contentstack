@@ -32,4 +32,4 @@ APP_PASSWORD=xxxx xxxx xxxx xxxx
 
 
 DISCORD_BOT_WEBHOOK=<URL>
-
+METRICS_TOKEN=
