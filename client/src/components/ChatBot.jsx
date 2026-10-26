@@ -1,3 +1,5 @@
+import { getAccessToken } from "@/api";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -125,6 +127,8 @@ export default function ChatBot() {
     };
   }, [isOpen]);
 
+  const accessToken = getAccessToken()
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -189,9 +193,10 @@ export default function ChatBot() {
     try {
       const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${accessToken}`},
         body: JSON.stringify({ message: text, session_id: sessionId }),
         signal: controller.signal,
+
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -442,7 +447,7 @@ function MessageBubble({ msg, onRetry, disabled }) {
             type="button"
             onClick={onRetry}
             disabled={disabled}
-            className="mt-2 text-xs font-medium underline underline-offset-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 rounded"
+            className="cursor-pointer mt-2 text-xs font-medium underline underline-offset-2 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 rounded"
           >
             Try again
           </button>
