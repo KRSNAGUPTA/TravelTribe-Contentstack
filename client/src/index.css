@@ -1,121 +1,130 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  /* ── Primary palette (Coral) ── */
-  --primary: 12 74% 62%;
-  --primary-hover: 11 66% 54%;
-  --primary-active: 10 60% 46%;
-  --primary-soft: 12 74% 62% / 0.12;
-  --primary-foreground: 0 0% 100%;
-  --on-primary: 0 0% 100%;
+/* Register the design tokens that your components actually use */
+@theme {
+  --color-primary: hsl(12 74% 62%);
+  --color-primary-hover: hsl(11 66% 54%);
+  --color-primary-active: hsl(10 60% 46%);
+  --color-primary-soft: hsl(12 74% 62% / 0.12);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-on-primary: hsl(0 0% 100%);
 
-  /* ── Accent ── */
-  --accent: 12 60% 96%;
-  --accent-foreground: 10 60% 38%;
-  --accent-hover: 11 66% 54%;
-  --accent-soft: 12 74% 62% / 0.14;
-  --accent-ink: 10 60% 38%;
+  --color-accent: hsl(12 60% 96%);
+  --color-accent-foreground: hsl(10 60% 38%);
+  --color-accent-hover: hsl(11 66% 54%);
+  --color-accent-soft: hsl(12 74% 62% / 0.14);
+  --color-accent-ink: hsl(10 60% 38%);
 
-  /* ── Ink (text) ── */
-  --text-dark: 20 15% 10%;
-  --text-muted: 20 8% 42%;
-  --text-secondary: 20 10% 32%;
-  --text-inverse: 0 0% 100%;
+  --color-ink: hsl(20 15% 10%);
+  --color-ink-muted: hsl(20 8% 42%);
+  --color-ink-secondary: hsl(20 10% 32%);
+  --color-text-dark: hsl(20 15% 10%);
+  --color-text-muted: hsl(20 8% 42%);
+  --color-text-secondary: hsl(20 10% 32%);
+  --color-text-inverse: hsl(0 0% 100%);
 
-  /* ── Surfaces ── */
-  --background: 30 40% 98%;
-  --foreground: 20 15% 10%;
-  --card: 0 0% 100%;
-  --card-foreground: 20 15% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 20 15% 10%;
+  --color-paper: hsl(30 40% 98%);
+  --color-paper-tint: hsl(30 25% 94%);
+  --color-background: hsl(30 40% 98%);
+  --color-foreground: hsl(20 15% 10%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(20 15% 10%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(20 15% 10%);
 
-  --secondary: 30 25% 94%;
-  --secondary-foreground: 20 15% 10%;
-  --muted: 30 20% 94%;
-  --muted-foreground: 20 8% 42%;
+  --color-secondary: hsl(30 25% 94%);
+  --color-secondary-foreground: hsl(20 15% 10%);
+  --color-muted: hsl(30 20% 94%);
+  --color-muted-foreground: hsl(20 8% 42%);
 
-  --bg-muted: 12 74% 62% / 0.04;
-  --bg-muted-soft: 30 40% 98%;
+  --color-bg-muted: hsl(12 74% 62% / 0.04);
+  --color-bg-muted-soft: hsl(0 0% 0%);
 
-  /* ── Borders & lines ── */
-  --border: 20 12% 88%;
-  --border-subtle: 20 12% 88%;
-  --border-strong: 20 12% 78%;
-  --input: 20 12% 88%;
+  --color-border: hsl(20 12% 88%);
+  --color-border-subtle: hsl(20 12% 88%);
+  --color-border-strong: hsl(20 12% 78%);
+  --color-hairline: hsl(20 12% 88%);
+  --color-hairline-strong: hsl(20 12% 78%);
+  --color-input: hsl(20 12% 88%);
 
-  /* ── Feedback ── */
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 98%;
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(0 0% 98%);
 
-  /* ── Overlays & effects ── */
-  --overlay: 20 15% 10% / 0.55;
-  --ring: 12 74% 62% / 0.35;
-  --card-shadow-hover: 20 15% 10% / 0.18;
+  --color-overlay: hsl(20 15% 10% / 0.55);
+  --color-ring: hsl(12 74% 62% / 0.35);
 
-  /* ── Hero gradient ── */
-  --hero-grad-start: 12 74% 62% / 0.10;
-  --hero-grad-end: 30 40% 98%;
+  --color-chart-1: hsl(12 76% 61%);
+  --color-chart-2: hsl(173 58% 39%);
+  --color-chart-3: hsl(197 37% 24%);
+  --color-chart-4: hsl(43 74% 66%);
+  --color-chart-5: hsl(27 87% 67%);
 
-  /* ── Charts ── */
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
-
-  /* ── Radius ── */
   --radius: 0.5rem;
 }
 
+/* Dark mode overrides (same token names, new values) */
 .dark {
-  --background: 20 15% 8%;
-  --foreground: 30 20% 96%;
-  --card: 20 15% 10%;
-  --card-foreground: 30 20% 96%;
-  --popover: 20 15% 10%;
-  --popover-foreground: 30 20% 96%;
-  --primary-foreground: 0 0% 100%;
+  --color-primary: hsl(12 74% 62%);
+  --color-primary-hover: hsl(11 66% 54%);
+  --color-primary-active: hsl(10 60% 46%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-on-primary: hsl(0 0% 100%);
 
-  --secondary: 20 12% 16%;
-  --secondary-foreground: 30 20% 96%;
-  --muted: 20 12% 16%;
-  --muted-foreground: 30 10% 65%;
+  --color-accent: hsl(12 55% 22%);
+  --color-accent-foreground: hsl(12 85% 82%);
+  --color-accent-ink: hsl(12 85% 78%);
 
-  --accent: 12 55% 22%;
-  --accent-foreground: 12 85% 82%;
-  --accent-ink: 12 85% 78%;
+  --color-ink: hsl(30 20% 96%);
+  --color-ink-muted: hsl(30 10% 65%);
+  --color-ink-secondary: hsl(30 12% 78%);
+  --color-text-dark: hsl(30 20% 96%);
+  --color-text-muted: hsl(30 10% 65%);
+  --color-text-secondary: hsl(30 12% 78%);
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
+  --color-paper: hsl(20 15% 8%);
+  --color-paper-tint: hsl(20 12% 16%);
+  --color-background: hsl(20 15% 8%);
+  --color-foreground: hsl(30 20% 96%);
+  --color-card: hsl(20 15% 10%);
+  --color-card-foreground: hsl(30 20% 96%);
+  --color-popover: hsl(20 15% 10%);
+  --color-popover-foreground: hsl(30 20% 96%);
 
-  --border: 20 12% 20%;
-  --border-subtle: 20 12% 20%;
-  --border-strong: 20 12% 30%;
-  --input: 20 12% 20%;
+  --color-secondary: hsl(20 12% 16%);
+  --color-secondary-foreground: hsl(30 20% 96%);
+  --color-muted: hsl(20 12% 16%);
+  --color-muted-foreground: hsl(30 10% 65%);
 
-  --text-dark: 30 20% 96%;
-  --text-muted: 30 10% 65%;
-  --text-secondary: 30 12% 78%;
+  --color-bg-muted: hsl(12 74% 62% / 0.06);
+  --color-bg-muted-soft: hsl(20 15% 8%);
 
-  --bg-muted: 12 74% 62% / 0.06;
-  --bg-muted-soft: 20 15% 8%;
+  --color-border: hsl(20 12% 20%);
+  --color-border-subtle: hsl(20 12% 20%);
+  --color-border-strong: hsl(20 12% 30%);
+  --color-hairline: hsl(20 12% 20%);
+  --color-hairline-strong: hsl(20 12% 30%);
+  --color-input: hsl(20 12% 20%);
 
-  --chart-1: 220 70% 50%;
-  --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
-  --chart-4: 280 65% 60%;
-  --chart-5: 340 75% 55%;
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+
+  --color-chart-1: hsl(220 70% 50%);
+  --color-chart-2: hsl(160 60% 45%);
+  --color-chart-3: hsl(30 80% 55%);
+  --color-chart-4: hsl(280 65% 60%);
+  --color-chart-5: hsl(340 75% 55%);
 }
 
+/* Base layer — plain CSS, no @apply on custom utilities */
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--color-border);
   }
+  html,
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   }
 }
 
