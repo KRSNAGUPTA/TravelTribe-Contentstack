@@ -88,8 +88,7 @@ function About() {
             viewBox="0 0 1440 200"
             preserveAspectRatio="none"
             shapeRendering="geometricPrecision"
-            className="absolute -bottom-px left-0 h-16 w-full sm:h-20 md:h-28"
-            style={{ color: "hsl(var(--bg-muted-soft))" }}
+            className="absolute -bottom-px left-0 h-16 w-full sm:h-20 md:h-28 text-paper"
           >
             <path
               fill="currentColor"

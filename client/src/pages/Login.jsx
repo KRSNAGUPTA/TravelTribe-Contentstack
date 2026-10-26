@@ -370,14 +370,13 @@ const Login = () => {
           viewBox="0 0 200 1440"
           preserveAspectRatio="none"
           shapeRendering="geometricPrecision"
-          className="absolute -right-px top-0 h-full w-16 xl:w-24"
-          style={{ color: "hsl(var(--bg-muted-soft))" }}
+          className="absolute -right-px top-0 h-full w-16 xl:w-24 text-paper"
         >
           <path fill="currentColor" d={wavePath} />
         </svg>
       </aside>
 
-      {/* ==================== RIGHT ==================== */}
+      {/*  RIGHT  */}
       <section className="relative flex w-full flex-1 items-center justify-center overflow-y-auto bg-paper px-5 py-8 sm:px-8 lg:w-1/2 lg:px-12">
         <div className="w-full max-w-md pt-16 lg:pt-0">
           <Card className="rounded-3xl border border-hairline bg-white shadow-[0_20px_60px_-15px_var(--card-shadow-hover)]">

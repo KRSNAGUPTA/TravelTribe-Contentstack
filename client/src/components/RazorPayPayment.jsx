@@ -1,220 +1,276 @@
-import React, { useState } from "react";
-import api from "@/api";
-import { Button } from "./ui/button";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Loader, ShieldCheck } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/AuthContext";
+import {
+  holdBooking,
+  createOrder,
+  verifyPayment,
+  getAvailability,
+  newIdempotencyKey,
+} from "@/services/bookingApi";
 
-const RazorPayPayment = ({
+const loadRazorpay = () =>
+  new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+
+export default function RazorPayPayment({
   hostelId,
   formData,
   hostelName,
   roomType,
+  nights,
   validateForm,
-}) => {
+}) {
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { toast } = useToast();
+  const { user } = useAuth();
+  const [processing, setProcessing] = useState(false);
 
-  // Pull the live primary color from the CSS token so Razorpay's modal
-  // matches the app theme without hardcoding a hex value.
-  const getPrimaryHex = () => {
-    if (typeof window === "undefined") return "#ff6b3d";
-    const triplet = getComputedStyle(document.documentElement)
-      .getPropertyValue("--primary")
-      .trim();
-    if (!triplet) return "#ff6b3d";
+  // Holds the idempotency key for the current attempt so retries reuse it.
+  const holdKeyRef = useRef(null);
+  // The held booking id once a hold is created.
+  const bookingIdRef = useRef(null);
 
-    const [h, s, l] = triplet
-      .split(/\s+/)
-      .map((v) => parseFloat(v.replace("%", "")));
+  // Reset idempotency key when the user changes any identifying input.
+  useEffect(() => {
+    holdKeyRef.current = null;
+    bookingIdRef.current = null;
+  }, [
+    hostelId,
+    formData?.checkIn,
+    formData?.checkOut,
+    formData?.roomSelection,
+    formData?.guest?.email,
+    formData?.guest?.name,
+    formData?.guest?.phone,
+    formData?.guest?.gender,
+  ]);
 
-    // HSL → hex (Razorpay requires hex, not hsl()).
-    const sN = s / 100;
-    const lN = l / 100;
-    const k = (n) => (n + h / 30) % 12;
-    const a = sN * Math.min(lN, 1 - lN);
-    const f = (n) =>
-      lN - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-    const toHex = (n) =>
-      Math.round(255 * f(n))
-        .toString(16)
-        .padStart(2, "0");
-
-    return `#${toHex(0)}${toHex(8)}${toHex(4)}`;
+  const resetAttempt = () => {
+    holdKeyRef.current = null;
+    bookingIdRef.current = null;
   };
 
-  const handleBooking = async ({ receiptId, paymentId }) => {
-    const bookingData = { ...formData, hostelId, receiptId, paymentId };
-    const res = await api.post("/api/booking/", bookingData);
-
-    toast({
-      title: "Booking successful",
-      description: "Check your profile for booking information",
-    });
-
-    navigate("/profile");
-    return res.data;
-  };
-
-  const handlePayment = async (e) => {
-    e.preventDefault();
-
+  const handlePay = async () => {
+    if (processing) return;
     if (!validateForm()) return;
 
-    setIsProcessing(true);
+    setProcessing(true);
 
     try {
-      const orderResponse = await api.post("/api/payment/create-order", {
-        amount: parseFloat(formData.amount),
-        currency: "INR",
-        hostelId: `${hostelId}`,
+      // 0. Fresh availability check — fail fast before burning a hold.
+      const avail = await getAvailability(
+        hostelId,
+        formData.checkIn,
+        formData.checkOut,
+        formData.roomSelection
+      );
+      const days = avail?.data?.calendar || [];
+      const anySoldOut = days.some((d) => {
+        const cell = d?.rooms?.[formData.roomSelection];
+        return cell && cell.available <= 0;
+      });
+      if (anySoldOut) {
+        toast({
+          title: "Sold out",
+          description:
+            "This room just sold out for the selected dates. Please pick different dates.",
+          variant: "destructive",
+        });
+        resetAttempt();
+        return;
+      }
+
+      // 1. Create hold (server computes amount).
+      if (!holdKeyRef.current) holdKeyRef.current = newIdempotencyKey();
+
+      const holdRes = await holdBooking({
+        hostelId,
+        roomSelection: formData.roomSelection,
+        checkIn: formData.checkIn,
+        checkOut: formData.checkOut,
+        guest: formData.guest,
+        idempotencyKey: holdKeyRef.current,
       });
 
-      const cleanPhone = formData.phone?.replace(/\D/g, "").slice(-10) || "";
+      const heldBooking = holdRes.data?.booking;
+      const holdAmount = holdRes.data?.amount;
+      if (!heldBooking?._id) {
+        throw new Error("Hold response missing booking id");
+      }
+      bookingIdRef.current = heldBooking._id;
 
-      const description = roomType
-        ? `Booking — ${hostelName || "Hostel"} (${roomType})`
-        : `Booking — ${hostelName || "Hostel"}`;
+      // 2. Create Razorpay order (server reads amount from hold).
+      const orderRes = await createOrder({
+        bookingId: heldBooking._id,
+        idempotencyKey: newIdempotencyKey(),
+      });
+      const { orderId, amount, currency, keyId } = orderRes.data || {};
+      if (!orderId || !keyId) {
+        throw new Error("Payment order could not be created");
+      }
 
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: orderResponse.data.amount,
-        currency: "INR",
+      // 3. Load Razorpay SDK.
+      const ok = await loadRazorpay();
+      if (!ok) {
+        toast({
+          title: "Payment unavailable",
+          description: "Could not load Razorpay. Check your connection.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 4. Open Razorpay checkout.
+      const rzp = new window.Razorpay({
+        key: keyId,
+        order_id: orderId,
+        amount: typeof amount === "number" ? amount : holdAmount,
+        currency: currency || "INR",
         name: "Travel Tribe",
-        description,
-        order_id: orderResponse.data.id,
+        description: `${hostelName} — ${roomType} (${nights} night${
+          nights === 1 ? "" : "s"
+        })`,
         prefill: {
-          name: formData.name || "",
-          email: formData.email || "",
-          contact: cleanPhone,
+          name: formData.guest?.name,
+          email: formData.guest?.email,
+          contact: formData.guest?.phone,
         },
-        theme: {
-          color: getPrimaryHex(),
+        notes: {
+          hostelId,
+          roomSelection: formData.roomSelection,
+          bookingId: heldBooking._id,
         },
-        modal: {
-          ondismiss: () => setIsProcessing(false),
-        },
+        theme: { color: "#e11d48" },
         handler: async (response) => {
-          setIsProcessing(true);
           try {
-            const verifyResponse = await api.post(
-              "/api/payment/verify-payment",
-              response
-            );
-
-            if (!verifyResponse.data?.success) {
-              throw new Error(
-                verifyResponse.data?.message || "Payment verification failed"
-              );
-            }
-
-            const { paymentId } = verifyResponse.data;
-            if (!paymentId) {
-              throw new Error(
-                "Server did not return a paymentId after verification"
-              );
-            }
+            await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
 
             toast({
-              title: "Payment successful",
-              description: `₹${orderResponse.data.amount / 100} received`,
+              title: "Booking confirmed",
+              description: "Your stay is locked in. Enjoy!",
             });
+            resetAttempt();
+            navigate("/profile");
+          } catch (err) {
+            const status = err?.response?.status;
+            const data = err?.response?.data;
 
-            await handleBooking({
-              receiptId: orderResponse.data.receipt,
-              paymentId,
-            });
-          } catch (error) {
-            console.error("Post-payment error:", error);
-
-            const message =
-              error?.response?.data?.message ||
-              error?.message ||
-              "Booking could not be completed";
-
-            if (error?.response?.status === 409) {
+            if (status === 409 && data?.refundInitiated) {
               toast({
+                title: "Refund initiated",
+                description:
+                  data?.message ||
+                  "Your hold expired or the price changed. A refund has been initiated.",
                 variant: "destructive",
-                title: "Booking conflict",
-                description: message,
               });
             } else {
               toast({
-                variant: "destructive",
-                title: "Booking failed after payment",
+                title: "Payment verification failed",
                 description:
-                  "Your payment was successful but booking failed. Our team will contact you shortly.",
+                  data?.message ||
+                  "We could not confirm your payment. Contact support if money was deducted.",
+                variant: "destructive",
               });
             }
-          } finally {
-            setIsProcessing(false);
+            resetAttempt();
           }
         },
-      };
+        modal: {
+          ondismiss: () => {
+            // User closed the Razorpay window. Hold remains pending
+            // and will be swept by the expireHolds job.
+            toast({
+              title: "Payment cancelled",
+              description:
+                "Your hold will expire in 15 minutes unless you complete payment.",
+            });
+          },
+        },
+      });
 
-      const razorpayInstance = new window.Razorpay(options);
-
-      razorpayInstance.on("payment.failed", (response) => {
-        console.error("Razorpay payment failed:", response.error);
-        setIsProcessing(false);
+      rzp.on("payment.failed", (resp) => {
         toast({
-          variant: "destructive",
           title: "Payment failed",
           description:
-            response.error?.description || "Payment failed or cancelled.",
+            resp?.error?.description ||
+            "Razorpay reported a failure. Please try again.",
+          variant: "destructive",
         });
+        resetAttempt();
       });
 
-      razorpayInstance.open();
-    } catch (error) {
-      console.error("Payment init error:", error);
-      toast({
-        variant: "destructive",
-        title: "Payment failed",
-        description: "Please try again or contact support",
-      });
-      setIsProcessing(false);
+      rzp.open();
+    } catch (err) {
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+
+      if (status === 409) {
+        toast({
+          title: "Booking conflict",
+          description:
+            data?.message ||
+            "This room is no longer available. Try different dates.",
+          variant: "destructive",
+        });
+      } else if (status === 401) {
+        toast({
+          title: "Please log in again",
+          description: "Your session expired.",
+          variant: "destructive",
+        });
+      } else if (status === 400) {
+        toast({
+          title: "Invalid booking request",
+          description: data?.message || "Please review your inputs.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Could not start payment",
+          description:
+            data?.message ||
+            err?.message ||
+            "Something went wrong. Please try again.",
+          variant: "destructive",
+        });
+      }
+      resetAttempt();
+    } finally {
+      setProcessing(false);
     }
   };
 
   return (
     <Button
-      onClick={handlePayment}
-      disabled={isProcessing}
-      className="group h-11 gap-2 rounded-full bg-primary px-6 text-on-primary shadow-sm transition-colors hover:bg-primary-hover active:bg-primary-active"
+      type="button"
+      onClick={handlePay}
+      disabled={processing}
+      className="cursor-pointer group h-11 rounded-full bg-primary px-6 text-[0.85rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover disabled:opacity-60"
     >
-      {isProcessing ? (
+      {processing ? (
         <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Processing...</span>
+          <Loader className="mr-2 h-4 w-4 animate-spin" />
+          Processing…
         </>
       ) : (
         <>
-          <RazorpayMark className="h-4 w-4" />
-          <span>Pay Now</span>
+          <ShieldCheck className="mr-0 h-4 w-4" />
+          Pay
         </>
       )}
     </Button>
   );
-};
-
-// Inline Razorpay mark — stroke-based so it inherits currentColor from the button.
-function RazorpayMark({ className }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className={className}
-    >
-      <path d="M4 16 20 4l-3 10-6 3-3 5-4-6z" />
-    </svg>
-  );
 }
-
-export default RazorPayPayment;
