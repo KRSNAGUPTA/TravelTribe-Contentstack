@@ -74,6 +74,7 @@ const ensureHostelInDb = async (hostelId) => {
   try {
     hostel = await Hostel.create({
       hostelId: String(hostelId).trim(),
+      title: entry.title || entry.hostelName || null,
       reviews: [],
       room_types: roomTypes,
     });

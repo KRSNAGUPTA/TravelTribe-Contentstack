@@ -22,7 +22,10 @@ const generateToken = (id, role, isRefresh, expireIn) => {
       expiresIn: expireIn,
     });
   } catch (error) {
-    logger.error({ err: error.message }, "failed to generate JWT token");
+    logger.error(
+      { err: error.message, userId: id, role, isRefresh },
+      "failed to generate JWT token"
+    );
     throw error;
   }
 };
@@ -45,8 +48,8 @@ const isProd = process.env.NODE_ENV === "production";
 const setRefreshCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: isProd, 
-    sameSite: isProd ? "None" : "Lax", // "Lax: allow in every request, None: Only with secure"
+    secure: isProd,
+    sameSite: isProd ? "None" : "Lax",
     path: "/api/user/refresh",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -76,6 +79,7 @@ export const refreshToken = async (req, res) => {
   try {
     const refreshT = req.cookies?.refreshToken;
     if (!refreshT) {
+      logger.warn("refresh token missing from cookies");
       return res.status(401).json({ message: "Refresh token not provided" });
     }
 
@@ -83,6 +87,10 @@ export const refreshToken = async (req, res) => {
     try {
       decoded = jwt.verify(refreshT, process.env.JWT_SECRET);
     } catch (err) {
+      logger.warn(
+        { err: err.message, name: err.name },
+        "refresh token verification failed"
+      );
       clearRefreshCookie(res);
       return res
         .status(403)
@@ -90,6 +98,10 @@ export const refreshToken = async (req, res) => {
     }
 
     if (decoded.isRefresh !== true) {
+      logger.warn(
+        { userId: decoded.id },
+        "refresh endpoint called with non-refresh token"
+      );
       clearRefreshCookie(res);
       return res
         .status(403)
@@ -98,6 +110,7 @@ export const refreshToken = async (req, res) => {
 
     const user = await User.findById(decoded.id);
     if (!user) {
+      logger.warn({ userId: decoded.id }, "refresh token user not found");
       clearRefreshCookie(res);
       return res
         .status(403)
@@ -106,6 +119,10 @@ export const refreshToken = async (req, res) => {
 
     const incomingHash = hashToken(refreshT);
     if (!user.refreshTokenHash || user.refreshTokenHash !== incomingHash) {
+      logger.warn(
+        { userId: user._id },
+        "refresh token reuse detected — revoking"
+      );
       user.refreshTokenHash = null;
       await user.save();
       clearRefreshCookie(res);
@@ -118,6 +135,7 @@ export const refreshToken = async (req, res) => {
     const { accessToken, refreshToken: newRefresh } = await issueTokens(user);
     setRefreshCookie(res, newRefresh);
 
+    logger.info({ userId: user._id }, "access token refreshed");
     return res.status(200).json({
       message: "Access token refreshed",
       accessToken,
@@ -135,6 +153,7 @@ export const handleGoogleLogin = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
+      logger.warn("google login missing id token");
       return res.status(400).json({ message: "No token provided" });
     }
 
@@ -159,6 +178,7 @@ export const handleGoogleLogin = async (req, res) => {
         isGoogleUser: true,
       });
       isNewUser = true;
+      logger.info({ userId: user._id, email: normalizedEmail }, "google user created");
     }
 
     const { accessToken, refreshToken: refreshTok } = await issueTokens(user);
@@ -167,11 +187,15 @@ export const handleGoogleLogin = async (req, res) => {
     if (isNewUser) {
       setImmediate(() => {
         sendNotification("register", user).catch((err) =>
-          logger.error({ err: err.message }, "discord notify failed"),
+          logger.error(
+            { err: err.message, userId: user._id },
+            "discord notify failed"
+          )
         );
       });
     }
 
+    logger.info({ userId: user._id, isNewUser }, "google login successful");
     return res.status(200).json({
       accessToken,
       user: {
@@ -194,10 +218,12 @@ export const registerUser = async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
     if (!name || !email || !password) {
+      logger.warn({ email }, "signup missing required fields");
       return res.status(400).json({ message: "Details missing" });
     }
 
     if (password.length < 6) {
+      logger.warn({ email }, "signup password too short");
       return res
         .status(400)
         .json({ message: "Password must be at least 6 characters" });
@@ -206,6 +232,7 @@ export const registerUser = async (req, res) => {
     const normalizedEmail = email.toLowerCase().trim();
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
+      logger.warn({ email: normalizedEmail }, "signup email already registered");
       return res.status(409).json({ message: "User already exists" });
     }
 
@@ -217,10 +244,17 @@ export const registerUser = async (req, res) => {
     });
 
     await newUser.save();
+    logger.info(
+      { userId: newUser._id, email: normalizedEmail },
+      "user registered"
+    );
 
     setImmediate(() => {
       sendNotification("register", newUser).catch((err) =>
-        logger.error({ err: err.message }, "discord notify failed"),
+        logger.error(
+          { err: err.message, userId: newUser._id },
+          "discord notify failed"
+        )
       );
     });
 
@@ -244,6 +278,7 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
+      logger.warn("login missing email or password");
       return res
         .status(400)
         .json({ message: "Email and password are required" });
@@ -253,11 +288,13 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      logger.warn({ email: normalizedEmail }, "login failed — user not found");
+      return res.status(404).json({ message: "User not found" });
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
+      logger.warn({ userId: user._id }, "login failed — invalid password");
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
@@ -266,10 +303,14 @@ export const loginUser = async (req, res) => {
 
     setImmediate(() => {
       sendNotification("login", user).catch((err) =>
-        logger.error({ err: err.message }, "discord notify failed"),
+        logger.error(
+          { err: err.message, userId: user._id },
+          "discord notify failed"
+        )
       );
     });
 
+    logger.info({ userId: user._id }, "login successful");
     return res.json({
       message: "Login successful",
       accessToken,
@@ -301,16 +342,21 @@ export const logoutUser = async (req, res) => {
           if (user) {
             user.refreshTokenHash = null;
             await user.save();
+            logger.info({ userId: user._id }, "logout — refresh revoked");
           }
         }
       } catch (err) {
-        // token invalid or expired — nothing to revoke
+        logger.debug(
+          { err: err.message },
+          "logout with invalid/expired refresh token"
+        );
       }
     }
 
     clearRefreshCookie(res);
     return res.json({ message: "Logged out successfully" });
   } catch (error) {
+    logger.error({ err: error.message }, "logout failed");
     clearRefreshCookie(res);
     return res.json({ message: "Logged out successfully" });
   }
@@ -334,9 +380,14 @@ export const searchUser = async (req, res) => {
     const users = await User.find(filter).select("-password -refreshTokenHash");
 
     if (users.length === 0) {
+      logger.info({ query, role }, "search user — no results");
       return res.status(404).json({ message: "No users found" });
     }
 
+    logger.info(
+      { query, role, count: users.length },
+      "search user complete"
+    );
     return res.status(200).json({ message: "Users found", users });
   } catch (error) {
     logger.error({ err: error.message }, "search user failed");
@@ -349,6 +400,7 @@ export const searchUser = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await User.find({}).select("-password -refreshTokenHash");
+    logger.info({ count: users.length }, "get all users");
     return res.status(200).json(users);
   } catch (error) {
     logger.error({ err: error.message }, "get all users failed");
@@ -359,13 +411,17 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      logger.warn({ id: req.params.id }, "get user by id — invalid format");
       return res.status(400).json({ message: "Invalid User ID format" });
     }
 
     const user = await User.findById(req.params.id).select(
-      "-password -refreshTokenHash",
+      "-password -refreshTokenHash"
     );
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn({ id: req.params.id }, "get user by id — not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     return res.status(200).json(user);
   } catch (error) {
@@ -377,14 +433,22 @@ export const getUserById = async (req, res) => {
 export const makeAdmin = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      logger.warn({ id: req.params.id }, "make admin — invalid id format");
       return res.status(400).json({ message: "Invalid User ID format" });
     }
 
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn({ id: req.params.id }, "make admin — user not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     user.role = "admin";
     await user.save();
+    logger.info(
+      { userId: user._id, by: req.user?._id },
+      "user promoted to admin"
+    );
 
     return res.status(200).json({
       message: "User promoted to admin",
@@ -404,14 +468,22 @@ export const makeAdmin = async (req, res) => {
 export const removeAdmin = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      logger.warn({ id: req.params.id }, "remove admin — invalid id format");
       return res.status(400).json({ message: "Invalid User ID format" });
     }
 
     const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      logger.warn({ id: req.params.id }, "remove admin — user not found");
+      return res.status(404).json({ message: "User not found" });
+    }
 
     user.role = "user";
     await user.save();
+    logger.info(
+      { userId: user._id, by: req.user?._id },
+      "admin demoted to user"
+    );
 
     return res.status(200).json({
       message: "Admin demoted to user",
@@ -432,13 +504,20 @@ export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
+      logger.warn({ id }, "delete user — invalid id format");
       return res.status(400).json({ message: "Invalid User ID format" });
     }
 
     const deletedUser = await User.findByIdAndDelete(id);
-    if (!deletedUser)
+    if (!deletedUser) {
+      logger.warn({ id }, "delete user — not found");
       return res.status(404).json({ message: "User not found" });
+    }
 
+    logger.info(
+      { deletedUserId: id, by: req.user?._id },
+      "user deleted"
+    );
     return res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     logger.error({ err: error.message }, "delete user failed");
@@ -449,10 +528,13 @@ export const deleteUser = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = req?.user;
-    if (!user?._id) return res.status(401).json({ message: "Unauthorized" });
+    if (!user?._id) {
+      logger.warn("get profile — unauthorized");
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     const userData = await User.findById(user._id).select(
-      "-password -refreshTokenHash",
+      "-password -refreshTokenHash"
     );
     return res.status(200).json({ message: "Fetched Profile", userData });
   } catch (error) {
@@ -466,11 +548,13 @@ export const updateUser = async (req, res) => {
   try {
     const user = req?.user;
     if (!user?._id) {
+      logger.warn("update user — unauthorized");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const userData = await User.findById(user._id);
     if (!userData) {
+      logger.warn({ userId: user._id }, "update user — not found");
       return res.status(404).json({ message: "User not found" });
     }
 
@@ -481,6 +565,10 @@ export const updateUser = async (req, res) => {
         _id: { $ne: user._id },
       });
       if (emailUsed) {
+        logger.warn(
+          { userId: user._id, email: normalizedEmail },
+          "update user — email already in use"
+        );
         return res
           .status(409)
           .json({ message: "An account already exists with this email" });
@@ -493,6 +581,7 @@ export const updateUser = async (req, res) => {
 
     if (password) {
       if (password.length < 6) {
+        logger.warn({ userId: user._id }, "update user — password too short");
         return res
           .status(400)
           .json({ message: "Password must be at least 6 characters" });
@@ -501,6 +590,7 @@ export const updateUser = async (req, res) => {
     }
 
     await userData.save();
+    logger.info({ userId: user._id }, "user profile updated");
 
     return res.status(200).json({ message: "User data updated successfully" });
   } catch (error) {
@@ -508,10 +598,12 @@ export const updateUser = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) {
+      logger.warn("forgot password — email missing");
       return res.status(400).json({ message: "Email is required" });
     }
 
@@ -520,6 +612,10 @@ export const forgotPassword = async (req, res) => {
 
     if (!user || user.isGoogleUser) {
       await new Promise((r) => setTimeout(r, 200));
+      logger.info(
+        { email: normalizedEmail, reason: !user ? "unknown" : "google_user" },
+        "forgot password — suppressed (anti-enumeration)"
+      );
       return res.status(200).json({
         message: "If an account exists, an OTP has been sent.",
       });
@@ -537,14 +633,15 @@ export const forgotPassword = async (req, res) => {
 
     if (!job) {
       logger.error(
-        { email: user.email },
-        "OTP enqueue failed — user will not receive OTP",
+        { userId: user._id, email: user.email },
+        "forgot password — OTP enqueue failed"
       );
       return res.status(500).json({
         message: "Failed to send OTP. Please try again in a moment.",
       });
     }
 
+    logger.info({ userId: user._id }, "forgot password — OTP enqueued");
     return res.status(200).json({
       message: "If an account exists, an OTP has been sent.",
     });
@@ -555,20 +652,23 @@ export const forgotPassword = async (req, res) => {
       .json({ message: "Failed to send OTP. Please try again." });
   }
 };
+
 export const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
+      logger.warn("verify OTP — missing email or OTP");
       return res.status(400).json({ message: "Email and OTP are required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
+      logger.warn({ email }, "verify OTP — user not found");
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Attempt limit — 5 wrong guesses kills the OTP
     if ((user.resetPasswordOtpAttempts || 0) >= 5) {
+      logger.warn({ userId: user._id }, "verify OTP — attempt limit reached");
       user.resetPasswordOtp = undefined;
       user.resetPasswordOtpExpires = undefined;
       user.resetPasswordOtpAttempts = 0;
@@ -583,6 +683,7 @@ export const verifyOtp = async (req, res) => {
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {
+      logger.warn({ userId: user._id }, "verify OTP — expired or missing");
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
@@ -591,9 +692,14 @@ export const verifyOtp = async (req, res) => {
     if (!valid) {
       user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
       await user.save();
+      logger.warn(
+        { userId: user._id, attempts: user.resetPasswordOtpAttempts },
+        "verify OTP — invalid code"
+      );
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
+    logger.info({ userId: user._id }, "verify OTP — success");
     return res.status(200).json({ message: "OTP verified successfully" });
   } catch (error) {
     logger.error({ err: error.message }, "verify OTP failed");
@@ -605,10 +711,12 @@ export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
+      logger.warn("reset password — missing fields");
       return res.status(400).json({ message: "All fields are required" });
     }
 
     if (newPassword.length < 6) {
+      logger.warn("reset password — new password too short");
       return res
         .status(400)
         .json({ message: "Password must be at least 6 characters" });
@@ -616,17 +724,12 @@ export const resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
+      logger.warn({ email }, "reset password — user not found");
       return res.status(404).json({ message: "User not found" });
-    }
-    if (
-      !user.resetPasswordOtp || // undefined → true, short-circuit
-      !user.resetPasswordOtpExpires ||
-      user.resetPasswordOtpExpires < new Date()
-    ) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
     if ((user.resetPasswordOtpAttempts || 0) >= 5) {
+      logger.warn({ userId: user._id }, "reset password — attempt limit reached");
       user.resetPasswordOtp = undefined;
       user.resetPasswordOtpExpires = undefined;
       user.resetPasswordOtpAttempts = 0;
@@ -641,6 +744,7 @@ export const resetPassword = async (req, res) => {
       !user.resetPasswordOtpExpires ||
       user.resetPasswordOtpExpires < new Date()
     ) {
+      logger.warn({ userId: user._id }, "reset password — expired or missing OTP");
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
@@ -649,6 +753,10 @@ export const resetPassword = async (req, res) => {
     if (!valid) {
       user.resetPasswordOtpAttempts = (user.resetPasswordOtpAttempts || 0) + 1;
       await user.save();
+      logger.warn(
+        { userId: user._id, attempts: user.resetPasswordOtpAttempts },
+        "reset password — invalid OTP"
+      );
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
@@ -659,6 +767,7 @@ export const resetPassword = async (req, res) => {
     user.refreshTokenHash = null;
     await user.save();
 
+    logger.info({ userId: user._id }, "password reset successful");
     return res.status(200).json({
       message: "Password reset successful! You can now log in.",
     });

@@ -92,12 +92,16 @@ function CheckItem({ label, ok }) {
   );
 }
 
+const getHostelTitle = (entry) =>
+  entry?.title || entry?.hostelName || entry?.name || entry?.hostelId || null;
+
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user: authUser, isInitializing } = useAuth();
+  const { isInitializing } = useAuth();
 
   const [userData, setUserData] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [hostelNames, setHostelNames] = useState({});
   const [statusFilter, setStatusFilter] = useState("all");
   const [formData, setFormData] = useState({
     name: "",
@@ -119,7 +123,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (isInitializing) return;
 
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
         const userRes = await api.get("/api/user/profile");
         const resolved = userRes.data.userData || userRes.data;
@@ -131,13 +135,60 @@ export default function ProfilePage() {
         });
 
         const bookingRes = await api.get("/api/booking/my-bookings");
-        setBookings(bookingRes.data || []);
+        const bookingsData = bookingRes.data || [];
+        setBookings(bookingsData);
+
+        const uniqueHostelIds = [
+          ...new Set(bookingsData.map((b) => b.hostelId).filter(Boolean)),
+        ];
+
+        const entries = await Promise.all(
+          uniqueHostelIds.map(async (hostelId) => {
+            try {
+              const res = await api.get(`/api/hostel/${hostelId}`);
+              const title = getHostelTitle(res.data);
+              return [hostelId, title];
+            } catch {
+              return [hostelId, null];
+            }
+          })
+        );
+
+        const fetchedNames = Object.fromEntries(
+          entries.filter(([, title]) => Boolean(title))
+        );
+
+        // For hostelIds still missing a title, fetch from the CMS list once
+        const missingIds = uniqueHostelIds.filter((id) => !fetchedNames[id]);
+        if (missingIds.length > 0) {
+          try {
+            const listRes = await api.get("/api/hostel", { params: { limit: 100 } });
+            const list = listRes.data?.data || [];
+            for (const entry of list) {
+              const id = entry?.uid || entry?.hostelId;
+              if (id && missingIds.includes(id)) {
+                const title = getHostelTitle(entry);
+                if (title) fetchedNames[id] = title;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // Final fallback: keep the raw ID as the label
+        const finalNames = {};
+        for (const id of uniqueHostelIds) {
+          finalNames[id] = fetchedNames[id] || id;
+        }
+
+        setHostelNames(finalNames);
       } catch (error) {
         console.error("Error fetching user profile or bookings:", error);
       }
     };
 
-    fetchUserData();
+    fetchData();
   }, [isInitializing]);
 
   const filteredBookings = bookings.filter(
@@ -266,7 +317,6 @@ export default function ProfilePage() {
     : "N/A";
 
   const pwChecks = passwordChecks(formData.password);
-  const pwAllValid = Object.values(pwChecks).every(Boolean);
 
   return (
     <div className="relative flex min-h-screen w-full flex-col bg-paper text-ink">
@@ -327,7 +377,7 @@ export default function ProfilePage() {
 
           <Popover open={editOpen} onOpenChange={handleOpenChange}>
             <PopoverTrigger asChild>
-              <Button className="h-10 rounded-full bg-primary px-5 text-[0.82rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover">
+              <Button className="h-10 cursor-pointer rounded-full bg-primary px-5 text-[0.82rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover">
                 <Edit className="mr-1.5 h-3.5 w-3.5" />
                 {PAGE_TEXT.editButton}
               </Button>
@@ -415,7 +465,7 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => setShowPassword((s) => !s)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer rounded-full p-1.5 text-ink-muted transition hover:bg-primary/10 hover:text-primary"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -445,7 +495,7 @@ export default function ProfilePage() {
                 <Button
                   onClick={handleProfileUpdate}
                   disabled={savingProfile}
-                  className="h-11 w-full rounded-full bg-primary font-semibold text-on-primary shadow-md transition hover:bg-primary-hover disabled:opacity-60"
+                  className="h-11 w-full cursor-pointer rounded-full bg-primary font-semibold text-on-primary shadow-md transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {savingProfile ? "Saving..." : PAGE_TEXT.saveButton}
                 </Button>
@@ -479,7 +529,7 @@ export default function ProfilePage() {
             </div>
 
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-full rounded-full border-input px-5 text-left sm:w-52">
+              <SelectTrigger className="h-10 w-full cursor-pointer rounded-full border-input px-5 text-left sm:w-52">
                 <SelectValue placeholder="Filter bookings" />
               </SelectTrigger>
               <SelectContent className="rounded-2xl">
@@ -532,36 +582,38 @@ export default function ProfilePage() {
                   <TableBody>
                     {filteredBookings.map((booking) => (
                       <TableRow
-                        key={booking.receiptId}
+                        key={booking._id || booking.receiptId}
                         className="border-hairline transition hover:bg-paper/40"
                       >
                         <TableCell className="font-mono text-[0.78rem] text-ink-muted">
-                          {booking.receiptId}
+                          {booking._id
+                            ? booking._id.toString().slice(-8).toUpperCase()
+                            : booking.receiptId || "—"}
                         </TableCell>
                         <TableCell className="font-medium text-ink">
                           <button
                             type="button"
                             onClick={() => handleHostelClick(booking.hostelId)}
-                            className="text-left transition-colors hover:text-primary hover:underline underline-offset-2"
+                            className="cursor-pointer text-left transition-colors hover:text-primary hover:underline underline-offset-2"
                           >
-                            {booking.hostelId}
+                            {hostelNames[booking.hostelId] || booking.hostelId || "—"}
                           </button>
                         </TableCell>
                         <TableCell className="text-ink-muted">
-                          {booking.roomSelection}
+                          {booking.roomSelection || "—"}
                         </TableCell>
                         <TableCell className="text-ink-muted">
-                          {new Date(booking.checkInDate).toLocaleDateString(
-                            "en-IN"
-                          )}
+                          {booking.checkInDate
+                            ? new Date(booking.checkInDate).toLocaleDateString("en-IN")
+                            : "—"}
                         </TableCell>
                         <TableCell className="text-ink-muted">
-                          {new Date(booking.checkOutDate).toLocaleDateString(
-                            "en-IN"
-                          )}
+                          {booking.checkOutDate
+                            ? new Date(booking.checkOutDate).toLocaleDateString("en-IN")
+                            : "—"}
                         </TableCell>
                         <TableCell className="font-semibold text-ink">
-                          ₹{booking.amount}
+                          ₹{((booking.amount || 0) / 100).toFixed(2)}
                         </TableCell>
                         <TableCell>
                           <span
@@ -578,7 +630,7 @@ export default function ProfilePage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 rounded-full p-0 hover:bg-primary/10 hover:text-primary"
+                                className="h-8 w-8 cursor-pointer rounded-full p-0 hover:bg-primary/10 hover:text-primary"
                               >
                                 <EllipsisVertical className="h-4 w-4" />
                               </Button>
@@ -590,7 +642,7 @@ export default function ProfilePage() {
                               <button
                                 type="button"
                                 onClick={() => handleDownloadClick(booking)}
-                                className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.82rem] text-ink transition hover:bg-primary/10 hover:text-primary"
+                                className="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-[0.82rem] text-ink transition hover:bg-primary/10 hover:text-primary"
                               >
                                 <Download className="h-3.5 w-3.5" />
                                 Download PDF

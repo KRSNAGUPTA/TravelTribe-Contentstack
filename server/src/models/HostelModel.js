@@ -25,6 +25,7 @@ const reviewSchema = new mongoose.Schema(
 const hostelSchema = new mongoose.Schema(
   {
     hostelId: { type: String, required: true, unique: true, trim: true },
+    title: { type: String, trim: true, default: null },
     reviews:    { type: [reviewSchema], default: [] },
     room_types: { type: [roomTypeSchema], default: [] },
   },

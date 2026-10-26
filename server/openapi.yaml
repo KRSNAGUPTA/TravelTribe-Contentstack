@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TravelTribe API
-  version: 2.1.0
+  version: 2.2.0
   description: |
     Backend API for TravelTribe — a hostel booking platform with a hold-first reservation model.
 
@@ -69,13 +69,27 @@ components:
         accessToken: { type: string, description: JWT access token, valid 15 minutes }
         user: { $ref: "#/components/schemas/UserPublic" }
 
+    RoomTypeSummary:
+      type: object
+      properties:
+        room_key: { type: string, example: "single" }
+        room_name: { type: string, example: "Single" }
+        base_price:
+          type: integer
+          description: Price per night in RUPEES (CMS source of truth)
+          example: 2000
+        total_beds: { type: integer, example: 4 }
+
     RoomMeta:
       type: object
       properties:
         room_key: { type: string, example: "single" }
         room_name: { type: string, example: "Single" }
         totalBeds: { type: integer, example: 4 }
-        price_per_night: { type: integer, description: Price in paise, example: 200000 }
+        price_per_night:
+          type: integer
+          description: Price in paise (server-side, from CMS base_price × 100)
+          example: 200000
 
     RoomAvailability:
       type: object
@@ -715,7 +729,24 @@ paths:
                 properties:
                   data:
                     type: array
-                    items: { type: object }
+                    items:
+                      type: object
+                      properties:
+                        uid: { type: string }
+                        title: { type: string }
+                        address: { type: string }
+                        nearby_college:
+                          type: array
+                          items: { type: string }
+                        images:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              url: { type: string }
+                        room_types:
+                          type: array
+                          items: { $ref: "#/components/schemas/RoomTypeSummary" }
                   pagination:
                     type: object
                     properties:
@@ -735,6 +766,12 @@ paths:
     get:
       tags: [Hostels]
       summary: Get the MongoDB record for a hostel
+      description: |
+        Mongo hostel record. If the hostel was never lazily initialized
+        (no booking/availability call touched it), returns an empty shell
+        with `reviews: []` and `room_types: []`. Once initialized by
+        `ensureHostelInDb`, `room_types[].price_per_night` is in paise
+        (converted from CMS `base_price × 100`).
       parameters:
         - in: path
           name: id
@@ -742,7 +779,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Hostel DB record
+          description: Hostel DB record (or empty shell if not initialized)
           content:
             application/json:
               schema:
@@ -760,7 +797,10 @@ paths:
                         room_key: { type: string }
                         room_name: { type: string }
                         total_beds: { type: integer }
-                        price_per_night: { type: integer, description: Price in paise }
+                        price_per_night:
+                          type: integer
+                          nullable: true
+                          description: Price in paise (server-side, from CMS base_price × 100)
         "404":
           description: Hostel not found in CMS
           content:
@@ -1258,6 +1298,13 @@ paths:
     get:
       tags: [Misc]
       summary: Prometheus metrics (token-protected)
+      description: |
+        Requires the `METRICS_TOKEN` environment variable to be set on the server.
+        The token can be passed as `Authorization: Bearer <token>` or
+        `X-Metrics-Token: <token>`. Browsers cannot send custom headers via
+        the address bar — use curl, Prometheus (`bearer_token_file`), or the
+        ModHeader extension. Returns 404 if `METRICS_TOKEN` is unset, 401 on
+        wrong token.
       responses:
         "200":
           description: Prometheus exposition format

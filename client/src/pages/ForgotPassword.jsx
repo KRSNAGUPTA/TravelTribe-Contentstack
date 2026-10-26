@@ -201,9 +201,10 @@ export default function ForgotPassword() {
     }
   };
 
-  const handleVerifyOtp = async (e) => {
+  const handleVerifyOtp = async (e, otpOverride) => {
     e?.preventDefault?.();
-    if (!otp || otp.trim().length !== 6) {
+    const code = otpOverride ?? otp;
+    if (!code || code.trim().length !== 6) {
       toast({
         title: "Error",
         description: "Please enter the 6-digit OTP",
@@ -213,7 +214,7 @@ export default function ForgotPassword() {
     }
     try {
       setLoading(true);
-      const res = await api.post("/api/user/verify-otp", { email, otp });
+      const res = await api.post("/api/user/verify-otp", { email, otp: code });
       toast({
         title: "Verified!",
         description: res.data.message || "OTP verified successfully.",
@@ -415,7 +416,7 @@ export default function ForgotPassword() {
                     onChange={setOtp}
                     onComplete={(v) => {
                       if (v.length === 6)
-                        setTimeout(() => handleVerifyOtp(), 120);
+                        setTimeout(() => handleVerifyOtp(undefined, v), 120);
                     }}
                   />
                   <Button
@@ -624,7 +625,7 @@ export default function ForgotPassword() {
                       onChange={setOtp}
                       onComplete={(v) => {
                         if (v.length === 6)
-                          setTimeout(() => handleVerifyOtp(), 120);
+                          setTimeout(() => handleVerifyOtp(undefined, v), 120);
                       }}
                     />
                     <Button

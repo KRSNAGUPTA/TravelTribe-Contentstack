@@ -271,17 +271,21 @@ const Login = () => {
       navigate("/");
     } catch (err) {
       console.error(err);
-      const message =
-        err.response?.status === 409
-          ? "User already exists"
-          : err.response?.status === 400
-            ? "Invalid credentials"
-            : "Something went wrong";
+      
+      const errMessage = [
+        { key: 409, val: "User already exists" },
+        { key: 404, val: "User not found, please signup!" },
+        { key: 400, val: "Invalid credentials" }
+      ];
+      
+      const matchedError = errMessage.find(e => e.key === err.response?.status);
+      
+      const displayMessage = matchedError?.val || "Internal Error";
 
-      setError(message);
+      setError(displayMessage);
       toast({
         title: "Authentication failed",
-        description: message,
+        description: displayMessage,
         variant: "destructive",
         icon: <AlertCircle className="text-red-500" />,
       });
