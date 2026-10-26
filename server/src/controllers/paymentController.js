@@ -29,6 +29,7 @@ import {
 } from "../queues/emailQueue.js";
 import { sendNotification } from "../discordBot/NotificationBot.js";
 import logger from "../utils/logger.js";
+import {paymentVerifiedTotal} from "../utils/metrics.js"
 
 const PAYMENT_TTL_MS = 15 * 60 * 1000;
 

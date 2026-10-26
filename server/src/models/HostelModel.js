@@ -13,7 +13,6 @@ const roomTypeSchema = new mongoose.Schema(
 const reviewSchema = new mongoose.Schema(
   {
     user:    { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    booking: { type: mongoose.Schema.Types.ObjectId, ref: "Booking", required: true },
     name:    { type: String, required: true },
     img:     { type: String, default: null },
     rating:  { type: Number, required: true, min: 1, max: 5 },

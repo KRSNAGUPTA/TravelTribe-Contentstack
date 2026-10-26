@@ -40,11 +40,13 @@ const hashOtp = (otp) => bcrypt.hash(String(otp).trim(), 10);
 
 const verifyOtpHash = (otp, hash) => bcrypt.compare(String(otp).trim(), hash);
 
+const isProd = process.env.NODE_ENV === "production";
+
 const setRefreshCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "None",
+    secure: isProd, 
+    sameSite: isProd ? "None" : "Lax", // "Lax: allow in every request, None: Only with secure"
     path: "/api/user/refresh",
     maxAge: 30 * 24 * 60 * 60 * 1000,
   });
@@ -53,8 +55,9 @@ const setRefreshCookie = (res, token) => {
 const clearRefreshCookie = (res) => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "None" : "Lax",
     expires: new Date(0),
-    sameSite: "None",
     path: "/api/user/refresh",
   });
 };
