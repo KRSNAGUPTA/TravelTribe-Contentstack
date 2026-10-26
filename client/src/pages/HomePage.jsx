@@ -29,8 +29,6 @@ import { StickyBar } from "@/components/StickyBanner";
 export default function HomePage() {
   const [landingData, setLandingData] = useState(null);
 
-  
-
   useEffect(() => {
     const fetchData = async () => {
       const entry = (
@@ -58,20 +56,20 @@ export default function HomePage() {
 
   const heroSection = landingData.find((s) => s.hero_section)?.hero_section;
   const featuresSection = landingData.find(
-    (s) => s.features_section
+    (s) => s.features_section,
   )?.features_section;
   const hostelsSection = landingData.find(
-    (s) => s.hostels_section
+    (s) => s.hostels_section,
   )?.hostels_section;
 
   // ── Resolve hostel refs into real hostel objects ──
   // Resolved refs still carry `_content_type_uid`, so filter for hostels.
   const featuredHostels = (hostelsSection?.reference || []).filter(
-    (h) => h.title || h.uid
+    (h) => h.title || h.uid,
   );
 
   const testimonialsSection = landingData.find(
-    (s) => s.testimonials_section
+    (s) => s.testimonials_section,
   )?.testimonials_section;
   const faqSection = landingData.find((s) => s.faq_section)?.faq_section;
 
@@ -182,8 +180,7 @@ export default function HomePage() {
           viewBox="0 0 1440 200"
           preserveAspectRatio="none"
           shapeRendering="geometricPrecision"
-          className="absolute -bottom-px left-0 z-10 h-12 w-full sm:h-16 lg:h-20"
-          style={{ color: "hsl(var(--bg-muted-soft))" }}
+          className="absolute -bottom-px left-0 z-10 h-12 w-full sm:h-16 lg:h-20 text-paper"
         >
           <path
             fill="currentColor"
@@ -218,7 +215,9 @@ export default function HomePage() {
             >
               {hostelsSection?.title}
             </h2>
-            <a href="/hostel" className="border-b-2 text-primary">See all</a>
+            <a href="/hostel" className="border-b-2 text-primary">
+              See all
+            </a>
           </div>
 
           <Carousel

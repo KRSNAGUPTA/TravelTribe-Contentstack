@@ -24,12 +24,6 @@ const Footer = () => {
   const { user } = useContext(AuthContext);
 
   useEffect(() => {
-    if (user?.newsletter_subscribed) {
-      setIsAlreadySubscribed(true);
-    }
-  }, [user]);
-
-  useEffect(() => {
     if (user?.email) setEmail(user.email);
   }, [user?.email]);
 
@@ -222,7 +216,7 @@ const Footer = () => {
                         <Button
                           onClick={handleSubscribe}
                           disabled
-                          className="h-10 w-full rounded-full bg-primary/60 px-5 text-[0.82rem] font-semibold text-on-primary sm:w-auto"
+                          className="h-10 w-full  rounded-full cursor-pointer bg-primary/60 px-5 text-[0.82rem] font-semibold text-on-primary sm:w-auto"
                         >
                           <span className="inline-flex items-center gap-1.5">
                             <Check className="h-3.5 w-3.5" />
@@ -241,7 +235,7 @@ const Footer = () => {
               ) : (
                 <Button
                   onClick={handleSubscribe}
-                  className="h-10 w-full rounded-full bg-primary px-5 text-[0.82rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover sm:w-auto"
+                  className="h-10 w-full cursor-pointer  rounded-full bg-primary px-5 text-[0.82rem] font-semibold text-on-primary shadow-md transition hover:bg-primary-hover sm:w-auto"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <span {...footerData?.$?.subscribe_button_text}>

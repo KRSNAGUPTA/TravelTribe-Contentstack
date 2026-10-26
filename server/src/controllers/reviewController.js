@@ -1,5 +1,5 @@
-import Hostel from "../model/HostelModel.js";
-import Booking from "../model/BookingModel.js";
+import Hostel from "../models/HostelModel.js";
+import Booking from "../models/BookingModel.js";
 
 // ─── GET /api/hostel/:id/reviews ─────────────────────────────────────────────
 
@@ -35,14 +35,13 @@ export const getReviews = async (req, res) => {
   }
 };
 
-// ─── POST /api/hostel/:id/reviews ────────────────────────────────────────────
+//  POST /api/hostel/:id/reviews 
 
 export const addReview = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
 
-    // ── Validate input ────────────────────────────────────────────────────
     const rating = Number(req.body.rating);
     if (!rating || rating < 1 || rating > 5 || !Number.isInteger(rating)) {
       return res

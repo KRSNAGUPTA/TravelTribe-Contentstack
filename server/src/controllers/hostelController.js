@@ -1,5 +1,5 @@
-import Hostel from "../model/HostelModel.js";
-import Booking from "../model/BookingModel.js";
+import Hostel from "../models/HostelModel.js";
+import Booking from "../models/BookingModel.js";
 import cmsClient from "../contentstackClient.js";
 
 const ACTIVE_BOOKING_STATUSES = ["pending", "confirmed"];
